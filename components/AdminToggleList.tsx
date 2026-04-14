@@ -74,8 +74,10 @@ export default function AdminToggleList({ initialProducts }: Props) {
   return (
     <div className="space-y-6 pb-10">
       {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-800 text-white px-5 py-3 rounded-full text-sm font-medium shadow-lg z-50 animate-fade-in-up">
-          {toast}
+        <div className="fixed bottom-6 left-0 right-0 flex justify-center z-50 pointer-events-none">
+          <div className="bg-gray-800 text-white px-5 py-3 rounded-full text-sm font-medium shadow-lg animate-fade-in-up pointer-events-auto">
+            {toast}
+          </div>
         </div>
       )}
 

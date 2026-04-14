@@ -66,7 +66,7 @@ export default function Navbar() {
 
       {/* Mobile Menu Dropdown */}
       {isOpen && (
-        <div className="md:hidden absolute top-16 left-0 right-0 bg-white border-b border-gray-200 shadow-md py-4 px-4 flex flex-col gap-4 animate-fade-in-up">
+        <div className="md:hidden absolute top-16 left-0 right-0 bg-white border-b border-gray-200 shadow-md py-4 px-4 flex flex-col gap-4 animate-fade-in-up z-[60]">
           <Link 
             href="/" 
             className={`text-lg font-medium px-4 py-2 rounded-lg ${pathname === '/' ? 'bg-gray-50 text-[#1D9E75]' : 'text-gray-800'}`}
