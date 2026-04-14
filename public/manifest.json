@@ -1,6 +1,6 @@
 {
-  "name": "Primeur — Fruits & Légumes",
-  "short_name": "Primeur",
+  "name": "Pontault Primeurs — Fruits & Légumes",
+  "short_name": "Pontault Primeurs",
   "description": "Commandez vos fruits, légumes et fromages en ligne",
   "start_url": "/",
   "display": "standalone",

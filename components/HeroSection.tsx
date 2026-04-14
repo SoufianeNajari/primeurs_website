@@ -7,7 +7,7 @@ export default function HeroSection() {
       {/* Background Image */}
       <Image 
         src="/images/hero.jpg" 
-        alt="Primeur" 
+        alt="Pontault Primeurs" 
         fill 
         style={{ objectFit: 'cover' }}
         priority
@@ -19,7 +19,7 @@ export default function HeroSection() {
       {/* Content */}
       <div className="relative z-20 text-center px-4 max-w-3xl mx-auto flex flex-col items-center">
         <h1 className="text-5xl md:text-7xl font-black text-white mb-4 tracking-tight drop-shadow-lg">
-          Primeur
+          Pontault Primeurs
         </h1>
         <p className="text-lg md:text-2xl text-white/90 font-medium mb-8 drop-shadow-md">
           Fruits, légumes et fromages frais — Click & Collect

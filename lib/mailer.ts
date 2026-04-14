@@ -24,7 +24,7 @@ export async function sendEmail({ to, subject, html }: SendMailOptions) {
     // avec laquelle vous avez créé le compte Resend (pour tester gratuitement).
     // Une fois un nom de domaine configuré sur Resend, remplacez "onboarding@resend.dev" par "contact@votre-domaine.com".
     const data = await resend.emails.send({
-      from: 'Primeur <onboarding@resend.dev>',
+      from: 'Pontault Primeurs <onboarding@resend.dev>',
       to: Array.isArray(to) ? to : [to],
       subject,
       html,

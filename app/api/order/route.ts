@@ -64,7 +64,7 @@ export async function POST(request: Request) {
       <hr style="margin: 30px 0;" />
       
       <h3>Nous trouver</h3>
-      <p><strong>Primeur</strong></p>
+      <p><strong>Pontault Primeurs</strong></p>
       <p>TODO - 12 rue du Marché, 75000 Paris</p>
       <p>TODO - 01 XX XX XX XX</p>
     `;
@@ -80,7 +80,7 @@ export async function POST(request: Request) {
       }),
       sendEmail({
         to: client.email,
-        subject: `Votre réservation est confirmée — Primeur`,
+        subject: `Votre réservation est confirmée — Pontault Primeurs`,
         html: emailClientHtml
       })
     ]);

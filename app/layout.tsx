@@ -8,13 +8,13 @@ import Footer from "@/components/Footer";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
-  title: "Primeur - Fruits & Légumes frais",
+  title: "Pontault Primeurs - Fruits & Légumes frais",
   description: "Commandez vos fruits, légumes et fromages frais en ligne.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Primeur",
+    title: "Pontault Primeurs",
   },
   formatDetection: {
     telephone: false,
@@ -33,10 +33,10 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <head>
-        <meta name="application-name" content="Primeur" />
+        <meta name="application-name" content="Pontault Primeurs" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="Primeur" />
+        <meta name="apple-mobile-web-app-title" content="Pontault Primeurs" />
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#1D9E75" />
