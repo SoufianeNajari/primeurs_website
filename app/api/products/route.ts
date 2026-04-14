@@ -19,6 +19,7 @@ export async function GET() {
       }
     });
   } catch (error) {
+    console.error('Erreur lors de la récupération des produits:', error);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }

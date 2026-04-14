@@ -62,6 +62,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const updateQuantity = React.useCallback((produitId: string, quantite: number) => {
     setCart(prev => {
       if (quantite <= 0) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { [produitId]: _, ...rest } = prev;
         return rest;
       }
@@ -74,6 +75,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const removeFromCart = React.useCallback((produitId: string) => {
     setCart(prev => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { [produitId]: _, ...rest } = prev;
       return rest;
     });

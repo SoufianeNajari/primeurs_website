@@ -40,13 +40,13 @@ function ConfirmationContent() {
 
       <div className="space-y-4">
         <p className="text-sm text-gray-500 font-medium">
-          N'oubliez pas que le paiement s'effectuera directement en magasin.
+          N&apos;oubliez pas que le paiement s&apos;effectuera directement en magasin.
         </p>
         <Link 
           href="/"
           className="block w-full bg-gray-900 text-white py-4 rounded-xl font-bold text-lg hover:bg-gray-800 transition-all active:scale-[0.98] shadow-md"
         >
-          Retour à l'accueil
+          Retour à l&apos;accueil
         </Link>
       </div>
 

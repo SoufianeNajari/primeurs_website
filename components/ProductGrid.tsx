@@ -44,8 +44,8 @@ export default function ProductGrid({ products }: { products: Product[] }) {
         <div className="text-center py-16 text-gray-500 font-medium">Aucun produit dans cette catégorie.</div>
       ) : allUnavailable ? (
         <div className="text-center py-12 px-4 text-gray-600 bg-gray-100 rounded-xl border border-gray-200 shadow-inner">
-          <p className="font-medium text-lg mb-1">C'est la rupture de stock !</p>
-          <p className="text-sm">Aucun produit n'est disponible pour le moment dans cette catégorie.</p>
+          <p className="font-medium text-lg mb-1">C&apos;est la rupture de stock !</p>
+          <p className="text-sm">Aucun produit n&apos;est disponible pour le moment dans cette catégorie.</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6">

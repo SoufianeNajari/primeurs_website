@@ -46,7 +46,8 @@ export default function AdminToggleList({ initialProducts }: Props) {
       const data = await res.json()
       if (!data.success) throw new Error('Erreur API')
 
-    } catch (error) {
+    } catch (err) {
+      console.error(err);
       // Rollback en cas d'erreur
       setProducts(prev => prev.map(p => p.id === id ? { ...p, disponible: currentStatus } : p))
       showToast("Erreur de mise à jour")

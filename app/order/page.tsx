@@ -87,8 +87,12 @@ export default function OrderPage() {
       // Succès -> redirection vers confirmation
       // On passe le jour de retrait en paramètre URL pour l'afficher
       router.push(`/order/confirmation?jour=${encodeURIComponent(jourRetrait)}`);
-    } catch (err: any) {
-      setError(err.message || 'Une erreur est survenue, veuillez réessayer.');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Une erreur est survenue, veuillez réessayer.');
+      }
       setIsSubmitting(false);
     }
   };
@@ -216,7 +220,7 @@ export default function OrderPage() {
               )}
             </button>
             <p className="text-center text-sm text-gray-500 mt-4">
-              Le paiement s'effectuera directement en magasin lors du retrait.
+              Le paiement s&apos;effectuera directement en magasin lors du retrait.
             </p>
           </div>
         </form>
