@@ -95,11 +95,11 @@ export default function AdminToggleList({ initialProducts }: Props) {
                   </span>
                   <div className="mt-1">
                     {produit.disponible ? (
-                      <span className="inline-flex items-center rounded-md bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+                      <span className="inline-flex items-center rounded-full bg-green-light px-2.5 py-0.5 text-xs font-semibold text-green-dark">
                         Dispo
                       </span>
                     ) : (
-                      <span className="inline-flex items-center rounded-md bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">
+                      <span className="inline-flex items-center rounded-full bg-red-soft px-2.5 py-0.5 text-xs font-semibold text-red-text">
                         Indispo
                       </span>
                     )}
@@ -115,7 +115,7 @@ export default function AdminToggleList({ initialProducts }: Props) {
                   aria-checked={produit.disponible}
                   aria-label={`Disponibilité de ${produit.nom}`}
                 >
-                  <div className={`relative inline-flex h-8 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#1D9E75] focus:ring-offset-2 ${produit.disponible ? 'bg-[#1D9E75]' : 'bg-gray-200'} ${loadingIds.has(produit.id) ? 'opacity-50' : ''}`}>
+                  <div className={`relative inline-flex h-8 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-primary focus:ring-offset-2 ${produit.disponible ? 'bg-green-primary' : 'bg-neutral-200'} ${loadingIds.has(produit.id) ? 'opacity-50' : ''}`}>
                     <span 
                       aria-hidden="true" 
                       className={`pointer-events-none inline-block h-7 w-7 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${produit.disponible ? 'translate-x-6' : 'translate-x-0'}`} 

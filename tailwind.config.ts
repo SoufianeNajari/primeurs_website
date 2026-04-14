@@ -9,8 +9,17 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
+        background: "var(--neutral-50)",
+        foreground: "var(--neutral-700)",
+        'green-primary': 'var(--green-primary)',
+        'green-light': 'var(--green-light)',
+        'green-dark': 'var(--green-dark)',
+        'red-soft': 'var(--red-soft)',
+        'red-text': 'var(--red-text)',
+        'neutral-50': 'var(--neutral-50)',
+        'neutral-100': 'var(--neutral-100)',
+        'neutral-700': 'var(--neutral-700)',
+        'neutral-400': 'var(--neutral-400)',
       },
       keyframes: {
         'fade-in-up': {
