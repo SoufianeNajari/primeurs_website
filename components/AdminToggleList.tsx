@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { triggerHaptic } from '@/lib/haptic'
 
 type Product = {
   id: string
@@ -26,6 +27,7 @@ export default function AdminToggleList({ initialProducts }: Props) {
   }
 
   const handleToggle = async (id: string, currentStatus: boolean) => {
+    triggerHaptic();
     if (loadingIds.has(id)) return
 
     const newStatus = !currentStatus

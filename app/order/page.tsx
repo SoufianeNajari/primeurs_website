@@ -80,6 +80,9 @@ export default function OrderPage() {
         throw new Error(data.error || 'Erreur lors de la commande');
       }
 
+      // Sauvegarde du panier pour la fonctionnalité "Historique magique"
+      localStorage.setItem('primeur_last_order', JSON.stringify(cartItems));
+
       router.push(`/order/confirmation?jour=${encodeURIComponent(jourRetrait)}`);
     } catch (err: unknown) {
       if (err instanceof Error) {

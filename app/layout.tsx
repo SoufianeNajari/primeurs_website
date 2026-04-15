@@ -4,6 +4,7 @@ import "./globals.css";
 import { CartProvider } from "@/components/CartContext";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import PWAPrompt from "@/components/PWAPrompt";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
@@ -49,6 +50,7 @@ export default function RootLayout({
           <Navbar />
           {children}
           <Footer />
+          <PWAPrompt />
         </CartProvider>
       </body>
     </html>

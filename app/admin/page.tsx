@@ -1,18 +1,9 @@
-import { cookies } from 'next/headers'
 import { supabaseAdmin } from '@/lib/supabase'
 import AdminToggleList from '@/components/AdminToggleList'
-import LoginForm from './LoginForm'
 
 export const dynamic = 'force-dynamic'
 
 export default async function AdminPage() {
-  const cookieStore = cookies()
-  const authCookie = cookieStore.get('admin_auth')
-
-  if (!authCookie || authCookie.value !== 'true') {
-    return <LoginForm />
-  }
-
   // Fetch tous les produits via service role (admin) pour être sûr de tout voir
   const { data: produits, error } = await supabaseAdmin
     .from('produits')
@@ -22,8 +13,8 @@ export default async function AdminPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 p-4">
-        <div className="bg-red-50 text-red-600 p-4 rounded-md">
+      <div className="p-6">
+        <div className="bg-red-soft text-red-text p-4 border border-red-text/20">
           Erreur de chargement des produits: {error.message}
         </div>
       </div>
@@ -38,13 +29,12 @@ export default async function AdminPage() {
   }, {} as Record<string, typeof produits>)
 
   return (
-    <main className="min-h-screen bg-gray-50 pb-12">
-      <div className="bg-white border-b border-gray-200 px-4 py-4 sticky top-0 z-10 shadow-sm">
-        <h1 className="text-xl font-bold text-gray-800">Gestion des produits</h1>
+    <div className="p-4 md:p-6 max-w-3xl mx-auto">
+      <div className="mb-8">
+        <h2 className="text-2xl font-serif text-neutral-800 mb-2">Disponibilité des produits</h2>
+        <p className="text-sm text-neutral-500">Activez ou désactivez les produits de la boutique en temps réel.</p>
       </div>
-      <div className="p-4 max-w-2xl mx-auto">
-        <AdminToggleList initialProducts={groupedProducts} />
-      </div>
-    </main>
+      <AdminToggleList initialProducts={groupedProducts} />
+    </div>
   )
 }

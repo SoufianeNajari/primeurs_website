@@ -17,6 +17,7 @@ type CartContextType = {
   removeFromCart: (produitId: string) => void;
   updateQuantity: (produitId: string, quantite: number) => void;
   clearCart: () => void;
+  restoreCart: (items: CartItem[]) => void;
   totalItems: number;
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
@@ -162,10 +163,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const clearCart = React.useCallback(() => setCart({}), []);
 
+  const restoreCart = React.useCallback((items: CartItem[]) => {
+    const newCart: Record<string, CartItem> = {};
+    items.forEach(item => {
+      newCart[item.produitId] = item;
+    });
+    setCart(newCart);
+  }, []);
+
   const totalItems = Object.values(cart).reduce((sum, item) => sum + item.quantite, 0);
 
   return (
-    <CartContext.Provider value={{ cart, addToCart, removeFromCart, updateQuantity, clearCart, totalItems, isCartOpen, setIsCartOpen }}>
+    <CartContext.Provider value={{ cart, addToCart, removeFromCart, updateQuantity, clearCart, restoreCart, totalItems, isCartOpen, setIsCartOpen }}>
       {children}
       <CartDrawer />
     </CartContext.Provider>
