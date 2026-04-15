@@ -2,19 +2,19 @@ import Link from 'next/link';
 
 export default function Footer() {
   return (
-    <footer className="bg-gray-900 text-gray-400 py-10 mt-auto">
-      <div className="max-w-6xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-4">
+    <footer className="bg-neutral-800 text-neutral-400 py-12 mt-auto border-t border-neutral-800">
+      <div className="max-w-6xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-6">
         <div className="text-center md:text-left">
-          <h2 className="text-xl font-bold text-white mb-1 tracking-tight">Pontault Primeurs</h2>
-          <p className="text-sm">© 2025 Pontault Primeurs. Tous droits réservés.</p>
+          <h2 className="text-2xl font-serif text-white mb-2 tracking-wide uppercase">Pontault Primeurs</h2>
+          <p className="text-sm font-medium">© 2026 Pontault Primeurs. L&apos;art de la sélection.</p>
         </div>
         
         <div>
           <Link 
             href="/boutique" 
-            className="text-white hover:text-[#1D9E75] transition-colors font-medium text-sm bg-white/10 px-4 py-2 rounded-full hover:bg-white/20"
+            className="text-white border border-neutral-600 hover:border-white transition-colors font-medium text-[11px] uppercase tracking-widest px-6 py-3 hover:bg-white hover:text-neutral-900"
           >
-            Voir la boutique
+            Découvrir la sélection
           </Link>
         </div>
       </div>

@@ -22,7 +22,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport = {
-  themeColor: "#1D9E75",
+  themeColor: "#2C5530",
 };
 
 export default function RootLayout({
@@ -39,7 +39,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="Pontault Primeurs" />
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="theme-color" content="#1D9E75" />
+        <meta name="theme-color" content="#2C5530" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
       </head>
       <body

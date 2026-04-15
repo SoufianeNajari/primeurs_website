@@ -8,15 +8,16 @@ export default async function BoutiquePage() {
   const { data: products } = await supabaseAdmin
     .from('produits')
     .select('*')
-    .order('categorie')
-    .order('nom');
+    .eq('disponible', true)
+    .order('ordre', { ascending: true })
+    .order('nom', { ascending: true });
 
   return (
-    <main className="flex-grow pb-28 min-h-screen bg-gray-50">
-      <div className="bg-white border-b border-gray-200 py-6 px-4">
-        <div className="max-w-5xl mx-auto">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Notre Boutique</h1>
-          <p className="text-gray-500">Ajoutez vos articles au panier pour préparer votre retrait.</p>
+    <main className="flex-grow pb-28 min-h-screen bg-neutral-50">
+      <div className="bg-neutral-50 border-b border-neutral-200 py-10 px-4">
+        <div className="max-w-5xl mx-auto text-center">
+          <h1 className="text-4xl md:text-5xl font-serif text-neutral-800 mb-4">Notre Boutique</h1>
+          <p className="text-neutral-500 font-medium text-lg uppercase tracking-widest text-[11px]">Découvrez notre sélection fraîche du jour</p>
         </div>
       </div>
 

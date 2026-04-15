@@ -3,15 +3,15 @@
 @tailwind utilities;
 
 :root {
-  --green-primary: #1D9E75;    /* vert principal — CTA, toggles actifs */
-  --green-light: #E8F5F0;      /* fond vert très clair — badges dispo */
-  --green-dark: #0F6E56;       /* vert foncé — hover, focus */
-  --red-soft: #FEF2F2;         /* fond rouge très clair — badge indispo */
-  --red-text: #DC2626;         /* texte rouge — badge indispo */
-  --neutral-50: #FAFAF9;       /* fond de page */
-  --neutral-100: #F5F5F0;      /* fond carte */
-  --neutral-700: #374151;      /* texte principal */
-  --neutral-400: #9CA3AF;      /* texte secondaire */
+  --green-primary: #2C5530;    /* vert sapin/primeur authentique */
+  --green-light: #F4F7F4;      /* fond vert très clair/naturel */
+  --green-dark: #1E3D22;       /* vert très foncé — hover */
+  --red-soft: #FDF8F6;         /* fond rouge très clair/naturel */
+  --red-text: #9B3A3A;         /* rouge plus brique/rustique */
+  --neutral-50: #FAF9F7;       /* fond de page très légèrement chaud/papier */
+  --neutral-100: #F3F1ED;      /* fond carte grisé/chaud */
+  --neutral-700: #333333;      /* texte principal */
+  --neutral-400: #8C8C8C;      /* texte secondaire */
 }
 
 *, *::before, *::after {
@@ -28,19 +28,9 @@ body {
   color: var(--neutral-700);
 }
 
-/* Custom animations classes */
 @layer utilities {
-  .animate-bounce-short {
-    animation: bounce-short 0.3s ease-in-out 1;
-  }
-  
   .animate-fade-in-stagger {
     opacity: 0;
     animation: fade-in-up 0.5s ease-out forwards;
   }
-}
-
-@keyframes bounce-short {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-25%); }
 }

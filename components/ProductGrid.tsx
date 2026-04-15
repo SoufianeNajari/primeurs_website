@@ -22,14 +22,14 @@ export default function ProductGrid({ products }: { products: Product[] }) {
   const allUnavailable = filteredProducts.length > 0 && filteredProducts.every(p => !p.disponible);
 
   return (
-    <div className="w-full max-w-5xl mx-auto px-4 py-6">
+    <div className="w-full max-w-5xl mx-auto px-4 py-8">
       {/* Onglets (Tabs) */}
-      <div className="flex overflow-x-auto gap-2 mb-8 pb-2 hide-scrollbar">
+      <div className="flex overflow-x-auto gap-3 mb-10 pb-2 hide-scrollbar border-b border-neutral-200">
         {categories.map(cat => (
           <button
             key={cat}
             onClick={() => setActiveTab(cat)}
-            className={`whitespace-nowrap px-5 py-2.5 rounded-full text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-green-primary focus:ring-offset-2 ${activeTab === cat ? 'bg-green-primary text-white shadow-md' : 'bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50'}`}
+            className={`whitespace-nowrap px-4 py-3 text-[11px] uppercase tracking-widest font-medium transition-colors focus:outline-none border-b-2 -mb-[2px] ${activeTab === cat ? 'border-green-primary text-green-primary' : 'border-transparent text-neutral-500 hover:text-neutral-800'}`}
           >
             {cat}
           </button>
@@ -38,10 +38,10 @@ export default function ProductGrid({ products }: { products: Product[] }) {
 
       {/* Grille de produits */}
       {filteredProducts.length === 0 ? (
-        <div className="text-center py-16 text-neutral-400 font-medium">Aucun produit dans cette catégorie.</div>
+        <div className="text-center py-16 text-neutral-400 font-serif text-lg">Aucun produit dans cette catégorie.</div>
       ) : allUnavailable ? (
-        <div className="text-center py-12 px-4 text-neutral-700 bg-neutral-100 rounded-xl border border-neutral-200 shadow-inner">
-          <p className="font-semibold text-lg mb-1">C&apos;est la rupture de stock !</p>
+        <div className="text-center py-16 px-4 text-neutral-600 bg-neutral-50 border border-neutral-200">
+          <p className="font-serif text-xl mb-2">Rupture de stock</p>
           <p className="text-sm">Aucun produit n&apos;est disponible pour le moment dans cette catégorie.</p>
         </div>
       ) : (

@@ -1,8 +1,7 @@
 'use client'
 
 import { useCart } from './CartContext';
-import { Minus, Plus, ShoppingCart } from 'lucide-react';
-import { useState } from 'react';
+import { Minus, Plus, ShoppingBag } from 'lucide-react';
 
 type Product = {
   id: string;
@@ -13,15 +12,12 @@ type Product = {
 
 export default function ProductCard({ product }: { product: Product }) {
   const { cart, addToCart, updateQuantity, removeFromCart } = useCart();
-  const [isAnimating, setIsAnimating] = useState(false);
 
   const cartItem = cart[product.id];
   const quantity = cartItem ? cartItem.quantite : 0;
 
   const handleAdd = () => {
-    setIsAnimating(true);
     addToCart(product.id, product.nom, product.categorie);
-    setTimeout(() => setIsAnimating(false), 200);
   };
 
   const handleIncrease = () => updateQuantity(product.id, quantity + 1);
@@ -31,46 +27,46 @@ export default function ProductCard({ product }: { product: Product }) {
   };
 
   return (
-    <div className={`bg-white rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.08)] border border-neutral-100 p-4 flex flex-col justify-between h-full transition-all duration-300 ${!product.disponible ? 'opacity-40 grayscale bg-neutral-50 cursor-not-allowed' : 'hover:shadow-md'}`}>
+    <div className={`bg-white border border-neutral-200 p-6 flex flex-col justify-between h-full transition-colors ${!product.disponible ? 'opacity-50 bg-neutral-50 cursor-not-allowed' : 'hover:border-green-primary'}`}>
       <div>
-        <div className="inline-flex items-center rounded-full bg-green-light px-2.5 py-0.5 text-xs font-semibold text-green-dark mb-3">
+        <div className="text-[10px] uppercase tracking-[0.15em] text-neutral-400 mb-2 font-medium">
           {product.categorie}
         </div>
-        <h3 className="text-[18px] font-bold text-neutral-700 mb-3 leading-tight tracking-tight">
+        <h3 className="text-xl font-serif text-neutral-800 mb-4 leading-snug">
           {product.nom}
         </h3>
       </div>
       
-      <div className="mt-4">
+      <div className="mt-6">
         {!product.disponible ? (
-          <button disabled className="w-full bg-neutral-100 text-neutral-400 py-3 rounded-lg font-medium text-sm cursor-not-allowed border border-neutral-200">
+          <div className="w-full bg-neutral-100 text-neutral-500 py-3 text-center font-medium border border-neutral-200 uppercase tracking-widest text-[10px]">
             Indisponible
-          </button>
+          </div>
         ) : quantity > 0 ? (
-          <div className="flex items-center justify-between bg-neutral-50 border border-neutral-200 rounded-lg p-1.5">
+          <div className="flex items-center justify-between border border-neutral-300 p-1">
             <button 
               onClick={handleDecrease} 
               aria-label={`Diminuer la quantité de ${product.nom}`}
-              className="w-9 h-9 flex items-center justify-center text-neutral-700 hover:bg-neutral-200 rounded-full transition-colors active:scale-95 focus:outline-none focus:ring-2 focus:ring-green-primary"
+              className="w-10 h-10 flex items-center justify-center text-neutral-600 hover:bg-neutral-100 transition-colors focus:outline-none"
             >
-              <Minus size={18} />
+              <Minus size={16} strokeWidth={1.5} />
             </button>
-            <span className="font-bold text-neutral-700 text-lg w-8 text-center">{quantity}</span>
+            <span className="font-medium text-neutral-800 text-sm w-8 text-center">{quantity}</span>
             <button 
               onClick={handleIncrease} 
               aria-label={`Augmenter la quantité de ${product.nom}`}
-              className="w-9 h-9 flex items-center justify-center text-green-dark bg-green-light hover:bg-[#d1ebe1] rounded-full transition-colors active:scale-95 focus:outline-none focus:ring-2 focus:ring-green-primary"
+              className="w-10 h-10 flex items-center justify-center text-neutral-600 hover:bg-neutral-100 transition-colors focus:outline-none"
             >
-              <Plus size={18} />
+              <Plus size={16} strokeWidth={1.5} />
             </button>
           </div>
         ) : (
           <button 
             onClick={handleAdd} 
-            className={`w-full bg-green-primary text-white py-3 rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition-all hover:bg-green-dark hover:-translate-y-[1px] active:translate-y-px focus:outline-none focus:ring-2 focus:ring-green-primary focus:ring-offset-2 shadow-sm ${isAnimating ? 'scale-95 bg-green-dark' : ''}`}
+            className="w-full bg-transparent text-green-primary border border-green-primary py-3 font-medium flex items-center justify-center gap-2 transition-colors hover:bg-green-primary hover:text-white focus:outline-none uppercase tracking-widest text-[11px]"
           >
-            <ShoppingCart size={18} />
-            Ajouter
+            <ShoppingBag size={14} strokeWidth={2} />
+            Ajouter au panier
           </button>
         )}
       </div>

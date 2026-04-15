@@ -22,18 +22,18 @@ export default function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <form action={handleSubmit} className="bg-white p-8 rounded-lg shadow-sm border border-gray-100 w-full max-w-sm space-y-6">
-        <h1 className="text-2xl font-bold text-center text-gray-800">Accès Admin</h1>
+    <div className="min-h-screen flex items-center justify-center bg-neutral-50 px-4">
+      <form action={handleSubmit} className="bg-white p-10 border border-neutral-200 w-full max-w-sm space-y-8">
+        <h1 className="text-3xl font-serif text-center text-neutral-800">Accès Admin</h1>
         
         {error && (
-          <div className="text-red-600 text-sm text-center bg-red-50 p-3 rounded-md border border-red-100">
+          <div className="text-red-text text-sm text-center bg-red-soft p-4 border border-red-text/20">
             {error}
           </div>
         )}
         
         <div className="space-y-2">
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="password" className="block text-[11px] uppercase tracking-widest font-medium text-neutral-500">
             Mot de passe
           </label>
           <input 
@@ -41,14 +41,14 @@ export default function LoginForm() {
             id="password" 
             name="password" 
             required 
-            className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#1D9E75] focus:border-[#1D9E75] text-lg outline-none transition-colors"
+            className="w-full px-4 py-3 border border-neutral-300 focus:ring-1 focus:ring-green-primary focus:border-green-primary text-lg outline-none transition-colors"
           />
         </div>
         
         <button 
           type="submit" 
           disabled={loading}
-          className="w-full bg-[#1D9E75] text-white py-3.5 rounded-md font-medium text-lg hover:bg-[#15805e] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full bg-green-primary text-white py-4 font-serif text-lg hover:bg-green-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-green-primary"
         >
           {loading ? 'Vérification...' : 'Accéder'}
         </button>

@@ -68,38 +68,38 @@ export default function AdminToggleList({ initialProducts }: Props) {
   }, {} as Record<string, Product[]>)
 
   if (products.length === 0) {
-    return <div className="text-center text-gray-500 py-8">Aucun produit trouvé.</div>
+    return <div className="text-center text-neutral-500 py-8 font-serif">Aucun produit trouvé.</div>
   }
 
   return (
     <div className="space-y-6 pb-10">
       {toast && (
         <div className="fixed bottom-6 left-0 right-0 flex justify-center z-50 pointer-events-none">
-          <div className="bg-gray-800 text-white px-5 py-3 rounded-full text-sm font-medium shadow-lg animate-fade-in-up pointer-events-auto">
+          <div className="bg-neutral-800 text-white px-5 py-3 text-sm font-medium shadow-md animate-fade-in-up pointer-events-auto">
             {toast}
           </div>
         </div>
       )}
 
       {Object.entries(grouped).map(([categorie, items]) => (
-        <div key={categorie} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <h2 className="bg-gray-50/80 px-4 py-3 text-lg font-bold text-gray-800 border-b border-gray-100">
+        <div key={categorie} className="bg-white border border-neutral-200 overflow-hidden">
+          <h2 className="bg-neutral-50 px-4 py-3 text-lg font-serif text-neutral-800 border-b border-neutral-200">
             {categorie}
           </h2>
-          <ul className="divide-y divide-gray-100">
+          <ul className="divide-y divide-neutral-100">
             {items.map((produit) => (
-              <li key={produit.id} className="flex items-center justify-between px-4 min-h-[56px] hover:bg-gray-50/50 transition-colors">
+              <li key={produit.id} className="flex items-center justify-between px-4 min-h-[60px] hover:bg-neutral-50 transition-colors">
                 <div className="flex flex-col py-2">
-                  <span className="text-[16px] font-medium text-gray-900 leading-snug">
+                  <span className="text-[16px] font-serif text-neutral-800 leading-snug">
                     {produit.nom}
                   </span>
                   <div className="mt-1">
                     {produit.disponible ? (
-                      <span className="inline-flex items-center rounded-full bg-green-light px-2.5 py-0.5 text-xs font-semibold text-green-dark">
+                      <span className="inline-flex items-center border border-green-primary bg-green-light px-2.5 py-0.5 text-[10px] uppercase tracking-widest font-semibold text-green-dark">
                         Dispo
                       </span>
                     ) : (
-                      <span className="inline-flex items-center rounded-full bg-red-soft px-2.5 py-0.5 text-xs font-semibold text-red-text">
+                      <span className="inline-flex items-center border border-red-text bg-red-soft px-2.5 py-0.5 text-[10px] uppercase tracking-widest font-semibold text-red-text">
                         Indispo
                       </span>
                     )}
@@ -115,7 +115,7 @@ export default function AdminToggleList({ initialProducts }: Props) {
                   aria-checked={produit.disponible}
                   aria-label={`Disponibilité de ${produit.nom}`}
                 >
-                  <div className={`relative inline-flex h-8 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-primary focus:ring-offset-2 ${produit.disponible ? 'bg-green-primary' : 'bg-neutral-200'} ${loadingIds.has(produit.id) ? 'opacity-50' : ''}`}>
+                  <div className={`relative inline-flex h-8 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-primary focus:ring-offset-2 ${produit.disponible ? 'bg-green-primary' : 'bg-neutral-300'} ${loadingIds.has(produit.id) ? 'opacity-50' : ''}`}>
                     <span 
                       aria-hidden="true" 
                       className={`pointer-events-none inline-block h-7 w-7 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${produit.disponible ? 'translate-x-6' : 'translate-x-0'}`} 
