@@ -47,18 +47,41 @@ export default function CartDrawer() {
       const fetchSuggestions = async () => {
         try {
           const cartIds = cartItems.map(item => item.produitId);
-          // On récupère quelques produits disponibles qui ne sont pas dans le panier
+          // On récupère un lot de produits disponibles pour trouver les meilleures correspondances
           const { data } = await supabase
             .from('produits')
             .select('id, nom, categorie, disponible')
             .eq('disponible', true)
-            .limit(10);
+            .limit(50);
             
           if (data) {
             const availableSuggestions = data.filter(p => !cartIds.includes(p.id));
-            // Mélanger et prendre les 2 premiers
-            const shuffled = availableSuggestions.sort(() => 0.5 - Math.random());
-            setSuggestions(shuffled.slice(0, 2));
+            
+            // Logique de cross-selling intelligente
+            const keywordsInCart = cartItems.map(i => i.nom.toLowerCase() + ' ' + i.categorie.toLowerCase()).join(' ');
+            
+            const scoredSuggestions = availableSuggestions.map(p => {
+              let score = 0;
+              const n = p.nom.toLowerCase();
+              const c = p.categorie.toLowerCase();
+              
+              // Associations logiques
+              if (keywordsInCart.includes('tomate') && (n.includes('basilic') || n.includes('mozzarella') || n.includes('oignon'))) score += 5;
+              if (keywordsInCart.includes('fraise') && (n.includes('crème') || n.includes('sucre') || n.includes('menthe'))) score += 5;
+              if (keywordsInCart.includes('fromage') && (n.includes('confiture') || n.includes('miel') || n.includes('pain') || n.includes('vin'))) score += 5;
+              if (keywordsInCart.includes('salade') && (n.includes('radis') || n.includes('tomate') || n.includes('concombre'))) score += 4;
+              if (keywordsInCart.includes('pomme') && (n.includes('poire') || n.includes('kiwi'))) score += 3;
+              if (keywordsInCart.includes('légume') && c.includes('herbe')) score += 2;
+              
+              // Un peu d'aléatoire pour la diversité
+              score += Math.random();
+              
+              return { ...p, score };
+            });
+
+            // Trier par score décroissant et prendre les 2 meilleurs
+            const bestMatches = scoredSuggestions.sort((a, b) => b.score - a.score);
+            setSuggestions(bestMatches.slice(0, 2));
           }
         } catch (e) {
           console.error(e);
