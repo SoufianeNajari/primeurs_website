@@ -1,13 +1,10 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { cookies } from 'next/headers';
+import { isAdmin } from '@/lib/admin-auth';
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {
-    const cookieStore = cookies();
-    const authCookie = cookieStore.get('admin_auth');
-
-    if (!authCookie || authCookie.value !== 'true') {
+    if (!(await isAdmin())) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
 

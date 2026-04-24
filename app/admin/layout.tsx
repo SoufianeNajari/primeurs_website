@@ -1,12 +1,9 @@
-import { cookies } from 'next/headers'
 import Link from 'next/link'
 import LoginForm from './LoginForm'
+import { isAdmin } from '@/lib/admin-auth'
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const cookieStore = cookies()
-  const authCookie = cookieStore.get('admin_auth')
-
-  if (!authCookie || authCookie.value !== 'true') {
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  if (!(await isAdmin())) {
     return <LoginForm />
   }
 

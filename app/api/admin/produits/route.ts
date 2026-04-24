@@ -5,7 +5,7 @@ import { isAdmin } from '@/lib/admin-auth';
 import { normalizeProduitInput } from '@/lib/produit-schema';
 
 export async function POST(request: Request) {
-  if (!isAdmin()) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+  if (!(await isAdmin())) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
 
   try {
     const body = await request.json();

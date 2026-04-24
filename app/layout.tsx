@@ -5,6 +5,7 @@ import { CartProvider } from "@/components/CartContext";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import PWAPrompt from "@/components/PWAPrompt";
+import { Analytics } from "@vercel/analytics/next";
 import { SITE, DEFAULT_OG_IMAGE } from "@/lib/site";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
@@ -114,12 +115,19 @@ export default function RootLayout({
       <body
         className={`${inter.className} antialiased bg-neutral-50 min-h-screen flex flex-col text-neutral-700 font-normal leading-[1.6]`}
       >
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[200] focus:bg-white focus:text-neutral-900 focus:px-4 focus:py-2 focus:border focus:border-green-primary focus:outline-none"
+        >
+          Aller au contenu principal
+        </a>
         <CartProvider>
           <Navbar />
-          {children}
+          <div id="main-content">{children}</div>
           <Footer />
           <PWAPrompt />
         </CartProvider>
+        <Analytics />
       </body>
     </html>
   );

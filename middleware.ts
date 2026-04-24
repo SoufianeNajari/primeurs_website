@@ -1,22 +1,36 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { getIronSession } from 'iron-session';
+import type { AdminSession } from '@/lib/admin-auth';
 
-// Protège toutes les routes /admin/* (sauf /admin lui-même qui affiche le login)
-// et les routes API /api/admin/*. Sans cookie admin_auth, les requêtes sont
-// redirigées vers /admin (UI) ou bloquées en 401 (API) — cela évite que les
-// données de l'admin fuient dans le payload RSC envoyé au client non autorisé.
-export function middleware(request: NextRequest) {
+// Protège /admin/* (sauf /admin = login) et /api/admin/*.
+// Utilise iron-session (cookie signé) — impossible de forger côté client.
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const isAuthed = request.cookies.get('admin_auth')?.value === 'true';
+  const res = NextResponse.next();
 
-  if (isAuthed) return NextResponse.next();
+  let isAuthed = false;
+  const secret = process.env.ADMIN_SESSION_SECRET;
+  if (secret && secret.length >= 32) {
+    try {
+      const session = await getIronSession<AdminSession>(request, res, {
+        password: secret,
+        cookieName: 'pp_admin',
+      });
+      isAuthed = session.isAdmin === true;
+    } catch {
+      isAuthed = false;
+    }
+  }
+
+  if (isAuthed) return res;
 
   if (pathname.startsWith('/api/admin/')) {
     return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
   }
 
-  // /admin = page de login, on laisse passer. Tout le reste de /admin/* redirige.
-  if (pathname === '/admin' || pathname === '/admin/') return NextResponse.next();
+  // /admin = page de login, on laisse passer.
+  if (pathname === '/admin' || pathname === '/admin/') return res;
 
   const loginUrl = new URL('/admin', request.url);
   return NextResponse.redirect(loginUrl);

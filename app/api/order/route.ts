@@ -2,9 +2,21 @@ import { NextResponse } from 'next/server';
 import { sendEmail } from '@/lib/mailer';
 import { supabaseAdmin } from '@/lib/supabase';
 import { emailShop, emailClient, type LigneCommande } from '@/lib/emails/templates';
+import { rateLimit, getClientIp } from '@/lib/rate-limit';
 
 export async function POST(request: Request) {
   try {
+    // Rate limit : 5 commandes / 10 min / IP
+    const ip = getClientIp();
+    const rl = rateLimit('order', ip, 5, 10 * 60 * 1000);
+    if (!rl.success) {
+      const retryAfter = Math.max(1, Math.ceil((rl.resetAt - Date.now()) / 1000));
+      return NextResponse.json(
+        { error: 'Trop de commandes. Merci de réessayer plus tard.' },
+        { status: 429, headers: { 'Retry-After': String(retryAfter) } },
+      );
+    }
+
     const body = await request.json();
     const { client, panier, jourRetrait, creneau, message } = body as {
       client: { prenom: string; nom: string; email: string; telephone: string };

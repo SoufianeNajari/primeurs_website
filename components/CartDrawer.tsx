@@ -4,6 +4,7 @@ import { useCart, CartItem } from './CartContext';
 import { X, ShoppingBag, Minus, Plus, Trash2, RotateCcw, Loader2, Sparkles } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { FocusTrap } from 'focus-trap-react';
 import { triggerHaptic } from '@/lib/haptic';
 import { supabase } from '@/lib/supabase';
 
@@ -141,22 +142,43 @@ export default function CartDrawer() {
     }
   };
 
+  useEffect(() => {
+    if (!isCartOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsCartOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [isCartOpen, setIsCartOpen]);
+
   if (!isCartOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex justify-end">
+    <FocusTrap focusTrapOptions={{ allowOutsideClick: true, escapeDeactivates: false }}>
+    <div
+      className="fixed inset-0 z-[100] flex justify-end"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="cart-drawer-title"
+    >
       {/* Overlay sombre */}
-      <div 
+      <div
         className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm"
         onClick={() => setIsCartOpen(false)}
+        aria-hidden="true"
       />
-      
+
       {/* Tiroir */}
       <div className="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col">
         
         {/* Header du tiroir */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-neutral-200 bg-neutral-50">
-          <h2 className="text-xl font-serif text-neutral-800 flex items-center gap-3">
+          <h2 id="cart-drawer-title" className="text-xl font-serif text-neutral-800 flex items-center gap-3">
             <ShoppingBag className="text-green-primary" size={24} strokeWidth={1.5} />
             Votre Panier ({totalItems})
           </h2>
@@ -296,5 +318,6 @@ export default function CartDrawer() {
         )}
       </div>
     </div>
+    </FocusTrap>
   );
 }

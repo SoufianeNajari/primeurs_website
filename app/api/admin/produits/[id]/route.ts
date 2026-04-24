@@ -5,7 +5,7 @@ import { isAdmin } from '@/lib/admin-auth';
 import { normalizeProduitInput } from '@/lib/produit-schema';
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
-  if (!isAdmin()) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+  if (!(await isAdmin())) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
 
   try {
     const body = await request.json();
@@ -39,7 +39,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 }
 
 export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
-  if (!isAdmin()) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+  if (!(await isAdmin())) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
 
   const { error } = await supabaseAdmin.from('produits').delete().eq('id', params.id);
   if (error) {
