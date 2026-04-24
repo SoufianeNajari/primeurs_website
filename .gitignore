@@ -35,4 +35,17 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# env
 .env.local
+
+# PWA (next-pwa) — generated at build time
+public/sw.js
+public/sw.js.map
+public/workbox-*.js
+public/workbox-*.js.map
+public/fallback-*.js
+
+# IDE / misc
+.vscode/
+.idea/
+*.log

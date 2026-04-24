@@ -1,17 +1,21 @@
 'use client'
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/components/CartContext';
 import { Loader2, ArrowLeft, ShoppingBag, AlertTriangle, Trash2 } from 'lucide-react';
 import Link from 'next/link';
+import { JOURS_RETRAIT, creneauxForJour } from '@/lib/creneaux';
+import { formatPrix } from '@/lib/produit';
 
 export default function OrderPage() {
-  const { cart, totalItems, removeFromCart } = useCart();
+  const { cart, totalItems, totalEstime, removeFromCart } = useCart();
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [jour, setJour] = useState('');
+  const creneaux = useMemo(() => (jour ? creneauxForJour(jour) : []), [jour]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -46,6 +50,7 @@ export default function OrderPage() {
       email: formData.get('email') as string,
     };
     const jourRetrait = formData.get('jourRetrait') as string;
+    const creneau = (formData.get('creneau') as string) || null;
     const message = formData.get('message') as string;
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -70,6 +75,7 @@ export default function OrderPage() {
           client,
           panier: cartItems,
           jourRetrait,
+          creneau,
           message,
         }),
       });
@@ -83,7 +89,9 @@ export default function OrderPage() {
       // Sauvegarde du panier pour la fonctionnalité "Historique magique"
       localStorage.setItem('primeur_last_order', JSON.stringify(cartItems));
 
-      router.push(`/order/confirmation?jour=${encodeURIComponent(jourRetrait)}`);
+      const params = new URLSearchParams({ jour: jourRetrait });
+      if (creneau) params.set('creneau', creneau);
+      router.push(`/order/confirmation?${params.toString()}`);
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
@@ -111,28 +119,41 @@ export default function OrderPage() {
             <h2 className="text-lg font-serif text-neutral-800">Récapitulatif ({totalItems} articles)</h2>
           </div>
           <ul className="divide-y divide-neutral-100 px-6">
-            {cartItems.map((item) => (
-              <li key={item.produitId} className="py-5 flex justify-between items-center">
-                <div>
-                  <span className="font-serif text-lg text-neutral-800 block">{item.nom}</span>
-                  <span className="text-[10px] uppercase tracking-widest text-neutral-400 font-medium">{item.categorie}</span>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="bg-neutral-50 px-4 py-2 border border-neutral-200 font-medium text-neutral-700 text-sm">
-                    x {item.quantite}
+            {cartItems.map((item) => {
+              const prix = formatPrix(item.prix_kg, item.unite);
+              return (
+                <li key={item.produitId} className="py-5 flex justify-between items-center">
+                  <div>
+                    <span className="font-serif text-lg text-neutral-800 block">{item.nom}</span>
+                    <span className="text-[10px] uppercase tracking-widest text-neutral-400 font-medium">{item.categorie}</span>
+                    {prix && <span className="block text-xs text-neutral-500 mt-1">{prix}</span>}
                   </div>
-                  <button 
-                    type="button"
-                    onClick={() => removeFromCart(item.produitId)}
-                    className="text-neutral-400 hover:text-red-text transition-colors p-2 -mr-2"
-                    aria-label={`Retirer ${item.nom} du panier`}
-                  >
-                    <Trash2 size={18} strokeWidth={1.5} />
-                  </button>
-                </div>
-              </li>
-            ))}
+                  <div className="flex items-center gap-4">
+                    <div className="bg-neutral-50 px-4 py-2 border border-neutral-200 font-medium text-neutral-700 text-sm">
+                      x {item.quantite}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeFromCart(item.produitId)}
+                      className="text-neutral-400 hover:text-red-text transition-colors p-2 -mr-2"
+                      aria-label={`Retirer ${item.nom} du panier`}
+                    >
+                      <Trash2 size={18} strokeWidth={1.5} />
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
+          {totalEstime != null && (
+            <div className="px-6 py-4 border-t border-neutral-200 bg-neutral-50 flex items-baseline justify-between">
+              <span className="text-xs uppercase tracking-widest text-neutral-600 font-medium">Sous-total estimé</span>
+              <span className="text-xl font-serif text-neutral-800">{totalEstime.toFixed(2).replace('.', ',')}&nbsp;€</span>
+            </div>
+          )}
+          {totalEstime != null && (
+            <p className="px-6 pb-4 text-xs text-neutral-500 italic">Pesée finale et prix définitif établis en boutique.</p>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white border border-neutral-200 p-6 md:p-8 space-y-6">
@@ -181,20 +202,34 @@ export default function OrderPage() {
             </div>
           </div>
 
-          <div className="space-y-2 pt-4">
-            <label htmlFor="jourRetrait" className="block text-xs uppercase tracking-wider text-neutral-600">Jour de retrait souhaité *</label>
-            <select 
-              id="jourRetrait" name="jourRetrait" required
-              className="w-full px-4 py-3 border border-neutral-300 rounded-sm focus:ring-1 focus:ring-green-primary focus:border-green-primary outline-none transition-colors bg-white font-medium text-neutral-700"
-            >
-              <option value="">Sélectionnez un jour...</option>
-              <option value="Lundi">Lundi</option>
-              <option value="Mardi">Mardi</option>
-              <option value="Mercredi">Mercredi</option>
-              <option value="Jeudi">Jeudi</option>
-              <option value="Vendredi">Vendredi</option>
-              <option value="Samedi">Samedi</option>
-            </select>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+            <div className="space-y-2">
+              <label htmlFor="jourRetrait" className="block text-xs uppercase tracking-wider text-neutral-600">Jour de retrait *</label>
+              <select
+                id="jourRetrait" name="jourRetrait" required
+                value={jour}
+                onChange={(e) => setJour(e.target.value)}
+                className="w-full px-4 py-3 border border-neutral-300 rounded-sm focus:ring-1 focus:ring-green-primary focus:border-green-primary outline-none transition-colors bg-white font-medium text-neutral-700"
+              >
+                <option value="">Sélectionnez un jour…</option>
+                {JOURS_RETRAIT.map((j) => (
+                  <option key={j.key} value={j.label}>{j.label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="creneau" className="block text-xs uppercase tracking-wider text-neutral-600">Créneau horaire *</label>
+              <select
+                id="creneau" name="creneau" required
+                disabled={!jour}
+                className="w-full px-4 py-3 border border-neutral-300 rounded-sm focus:ring-1 focus:ring-green-primary focus:border-green-primary outline-none transition-colors bg-white font-medium text-neutral-700 disabled:bg-neutral-100 disabled:text-neutral-400"
+              >
+                <option value="">{jour ? 'Choisissez un créneau…' : 'Choisissez d\'abord un jour'}</option>
+                {creneaux.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="space-y-2 pt-2">

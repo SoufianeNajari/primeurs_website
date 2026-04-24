@@ -9,16 +9,19 @@ export type CartItem = {
   nom: string;
   quantite: number;
   categorie: string;
+  prix_kg?: number | null;
+  unite?: string | null;
 };
 
 type CartContextType = {
   cart: Record<string, CartItem>;
-  addToCart: (produitId: string, nom: string, categorie: string, quantite?: number) => void;
+  addToCart: (produitId: string, nom: string, categorie: string, quantite?: number, extra?: { prix_kg?: number | null; unite?: string | null }) => void;
   removeFromCart: (produitId: string) => void;
   updateQuantity: (produitId: string, quantite: number) => void;
   clearCart: () => void;
   restoreCart: (items: CartItem[]) => void;
   totalItems: number;
+  totalEstime: number | null;
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
 };
@@ -40,33 +43,32 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           const productIds = Object.keys(parsedCart);
           
           if (productIds.length > 0) {
-            // Vérifier la disponibilité de chaque produit dans le panier
+            // Vérifier la disponibilité + rafraîchir prix/unité (auto-upgrade des anciens items localStorage)
             const { data: produitsDb, error } = await supabase
               .from('produits')
-              .select('id, disponible')
+              .select('id, disponible, prix_kg, unite')
               .in('id', productIds);
 
             if (!error && produitsDb) {
               const validCart: Record<string, CartItem> = {};
-              const dbMap = new Map(produitsDb.map(p => [p.id, p.disponible]));
-              
-              let cartModified = false;
+              const dbMap = new Map(produitsDb.map(p => [p.id, p]));
+
               for (const id of productIds) {
-                // Si le produit existe en base ET est disponible
-                if (dbMap.get(id) === true) {
-                  validCart[id] = parsedCart[id];
-                } else {
+                const dbProduct = dbMap.get(id);
+                if (dbProduct?.disponible === true) {
+                  validCart[id] = {
+                    ...parsedCart[id],
+                    prix_kg: dbProduct.prix_kg,
+                    unite: dbProduct.unite,
+                  };
+                } else if (dbProduct) {
                   console.log(`Le produit ${parsedCart[id].nom} a été retiré car il n'est plus disponible.`);
-                  cartModified = true;
                 }
               }
-              
+
               setCart(validCart);
-              if (cartModified) {
-                localStorage.setItem('primeur_cart', JSON.stringify(validCart));
-              }
+              localStorage.setItem('primeur_cart', JSON.stringify(validCart));
             } else {
-              // En cas d'erreur réseau, on charge quand même le panier
               setCart(parsedCart);
             }
           }
@@ -123,7 +125,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     };
   }, [isLoaded]);
 
-  const addToCart = React.useCallback((produitId: string, nom: string, categorie: string, quantite: number = 1) => {
+  const addToCart = React.useCallback((produitId: string, nom: string, categorie: string, quantite: number = 1, extra?: { prix_kg?: number | null; unite?: string | null }) => {
     setCart(prev => {
       const existing = prev[produitId];
       return {
@@ -132,7 +134,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           produitId,
           nom,
           categorie,
-          quantite: existing ? existing.quantite + quantite : quantite
+          quantite: existing ? existing.quantite + quantite : quantite,
+          prix_kg: extra?.prix_kg ?? existing?.prix_kg ?? null,
+          unite: extra?.unite ?? existing?.unite ?? null,
         }
       };
     });
@@ -172,9 +176,20 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const totalItems = Object.values(cart).reduce((sum, item) => sum + item.quantite, 0);
+  const totalEstime = (() => {
+    let total = 0;
+    let hasPrix = false;
+    for (const item of Object.values(cart)) {
+      if (item.prix_kg != null) {
+        total += Number(item.prix_kg) * item.quantite;
+        hasPrix = true;
+      }
+    }
+    return hasPrix ? total : null;
+  })();
 
   return (
-    <CartContext.Provider value={{ cart, addToCart, removeFromCart, updateQuantity, clearCart, restoreCart, totalItems, isCartOpen, setIsCartOpen }}>
+    <CartContext.Provider value={{ cart, addToCart, removeFromCart, updateQuantity, clearCart, restoreCart, totalItems, totalEstime, isCartOpen, setIsCartOpen }}>
       {children}
       <CartDrawer />
     </CartContext.Provider>

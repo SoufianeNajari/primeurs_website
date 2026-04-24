@@ -12,10 +12,12 @@ type Product = {
   nom: string;
   categorie: string;
   disponible: boolean;
+  prix_kg: number | null;
+  unite: string | null;
 };
 
 export default function CartDrawer() {
-  const { cart, isCartOpen, setIsCartOpen, updateQuantity, removeFromCart, addToCart, totalItems, restoreCart } = useCart();
+  const { cart, isCartOpen, setIsCartOpen, updateQuantity, removeFromCart, addToCart, totalItems, totalEstime, restoreCart } = useCart();
   const router = useRouter();
   const pathname = usePathname();
   const [lastOrder, setLastOrder] = useState<CartItem[] | null>(null);
@@ -50,7 +52,7 @@ export default function CartDrawer() {
           // On récupère un lot de produits disponibles pour trouver les meilleures correspondances
           const { data } = await supabase
             .from('produits')
-            .select('id, nom, categorie, disponible')
+            .select('id, nom, categorie, disponible, prix_kg, unite')
             .eq('disponible', true)
             .limit(50);
             
@@ -256,7 +258,7 @@ export default function CartDrawer() {
                       <span className="text-[10px] uppercase tracking-widest text-neutral-400 font-medium">{suggest.categorie}</span>
                     </div>
                     <button
-                      onClick={() => { triggerHaptic(); addToCart(suggest.id, suggest.nom, suggest.categorie, 1); }}
+                      onClick={() => { triggerHaptic(); addToCart(suggest.id, suggest.nom, suggest.categorie, 1, { prix_kg: suggest.prix_kg, unite: suggest.unite }); }}
                       className="text-green-primary hover:text-white hover:bg-green-primary border border-green-primary w-8 h-8 flex items-center justify-center transition-colors focus:outline-none"
                       aria-label="Ajouter au panier"
                     >
@@ -271,7 +273,13 @@ export default function CartDrawer() {
 
         {/* Footer du tiroir */}
         {cartItems.length > 0 && (
-          <div className="border-t border-neutral-200 p-6 bg-neutral-50">
+          <div className="border-t border-neutral-200 p-6 bg-neutral-50 space-y-4">
+            {totalEstime != null && (
+              <div className="flex items-baseline justify-between">
+                <span className="text-xs uppercase tracking-widest text-neutral-500 font-medium">Sous-total estimé</span>
+                <span className="text-xl font-serif text-neutral-800">{totalEstime.toFixed(2).replace('.', ',')}&nbsp;€</span>
+              </div>
+            )}
             <button
               onClick={() => {
                 setIsCartOpen(false);
@@ -281,8 +289,8 @@ export default function CartDrawer() {
             >
               Passer la commande
             </button>
-            <p className="text-center text-xs text-neutral-500 mt-4 uppercase tracking-widest">
-              Règlement en boutique
+            <p className="text-center text-xs text-neutral-500 uppercase tracking-widest">
+              {totalEstime != null ? 'Pesée finale · règlement en boutique' : 'Règlement en boutique'}
             </p>
           </div>
         )}

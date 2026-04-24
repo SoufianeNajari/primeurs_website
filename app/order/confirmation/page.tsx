@@ -10,11 +10,13 @@ function ConfirmationContent() {
   const { clearCart } = useCart();
   const searchParams = useSearchParams();
   const [jourRetrait, setJourRetrait] = useState<string | null>(null);
+  const [creneau, setCreneau] = useState<string | null>(null);
 
-  // Vider le panier au montage de la page et récupérer le jour
+  // Vider le panier au montage de la page et récupérer le jour / créneau
   useEffect(() => {
     clearCart();
     setJourRetrait(searchParams.get('jour'));
+    setCreneau(searchParams.get('creneau'));
   }, [clearCart, searchParams]);
 
   return (
@@ -33,8 +35,9 @@ function ConfirmationContent() {
       {jourRetrait && (
         <div className="bg-neutral-50 border border-neutral-200 p-6 mb-10 flex flex-col items-center">
           <Calendar size={24} className="text-neutral-400 mb-3" strokeWidth={1.5} />
-          <span className="text-[10px] font-medium text-neutral-500 uppercase tracking-[0.2em] mb-2">Jour de retrait prévu</span>
+          <span className="text-[10px] font-medium text-neutral-500 uppercase tracking-[0.2em] mb-2">Retrait prévu</span>
           <span className="text-2xl font-serif text-neutral-800">{jourRetrait}</span>
+          {creneau && <span className="text-lg text-green-primary mt-1">Créneau&nbsp;: {creneau}</span>}
         </div>
       )}
 

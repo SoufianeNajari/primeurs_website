@@ -4,13 +4,7 @@ import { useState } from 'react';
 import ProductCard from './ProductCard';
 import { Search } from 'lucide-react';
 import { triggerHaptic } from '@/lib/haptic';
-
-type Product = {
-  id: string;
-  nom: string;
-  categorie: string;
-  disponible: boolean;
-};
+import type { Product } from '@/lib/produit';
 
 export default function ProductGrid({ products }: { products: Product[] }) {
   const [activeTab, setActiveTab] = useState<string>('Tous');
