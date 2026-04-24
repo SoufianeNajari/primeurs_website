@@ -38,13 +38,19 @@ export default function Navbar() {
 
         {/* Desktop Menu */}
         <div className="hidden md:flex items-center gap-8">
-          <Link 
-            href="/boutique" 
+          <Link
+            href="/boutique"
             className={`font-medium tracking-widest uppercase text-[11px] transition-colors hover:text-green-primary ${pathname === '/boutique' ? 'text-green-primary' : 'text-neutral-600'}`}
           >
             Notre boutique
           </Link>
-          
+          <Link
+            href="/blog"
+            className={`font-medium tracking-widest uppercase text-[11px] transition-colors hover:text-green-primary ${pathname?.startsWith('/blog') ? 'text-green-primary' : 'text-neutral-600'}`}
+          >
+            Recettes
+          </Link>
+
           <CartIcon />
         </div>
 
@@ -71,12 +77,19 @@ export default function Navbar() {
           >
             Accueil
           </Link>
-          <Link 
-            href="/boutique" 
+          <Link
+            href="/boutique"
             className={`text-[11px] tracking-widest uppercase font-medium px-4 py-4 border-l-2 ${pathname === '/boutique' ? 'border-green-primary text-green-primary' : 'border-transparent text-neutral-600'}`}
             onClick={() => setIsOpen(false)}
           >
             Notre boutique
+          </Link>
+          <Link
+            href="/blog"
+            className={`text-[11px] tracking-widest uppercase font-medium px-4 py-4 border-l-2 ${pathname?.startsWith('/blog') ? 'border-green-primary text-green-primary' : 'border-transparent text-neutral-600'}`}
+            onClick={() => setIsOpen(false)}
+          >
+            Recettes
           </Link>
         </div>
       )}

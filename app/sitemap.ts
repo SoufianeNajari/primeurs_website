@@ -12,6 +12,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${base}/`, lastModified: now, changeFrequency: 'weekly', priority: 1 },
     { url: `${base}/boutique`, lastModified: now, changeFrequency: 'daily', priority: 0.9 },
     { url: `${base}/order`, lastModified: now, changeFrequency: 'monthly', priority: 0.5 },
+    { url: `${base}/blog`, lastModified: now, changeFrequency: 'weekly', priority: 0.6 },
+    { url: `${base}/mentions-legales`, lastModified: now, changeFrequency: 'yearly', priority: 0.2 },
+    { url: `${base}/cgv`, lastModified: now, changeFrequency: 'yearly', priority: 0.2 },
+    { url: `${base}/confidentialite`, lastModified: now, changeFrequency: 'yearly', priority: 0.2 },
   ];
 
   let productRoutes: MetadataRoute.Sitemap = [];
@@ -34,5 +38,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     productRoutes = [];
   }
 
-  return [...staticRoutes, ...productRoutes];
+  let articleRoutes: MetadataRoute.Sitemap = [];
+  try {
+    const { data } = await supabaseAdmin
+      .from('articles')
+      .select('slug, published_at, updated_at')
+      .not('published_at', 'is', null)
+      .lte('published_at', new Date().toISOString());
+
+    articleRoutes = (data || []).map((a) => ({
+      url: `${base}/blog/${a.slug}`,
+      lastModified: a.updated_at ? new Date(a.updated_at) : now,
+      changeFrequency: 'monthly' as const,
+      priority: 0.5,
+    }));
+  } catch {
+    articleRoutes = [];
+  }
+
+  return [...staticRoutes, ...productRoutes, ...articleRoutes];
 }

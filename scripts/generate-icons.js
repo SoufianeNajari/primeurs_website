@@ -12,8 +12,9 @@ if (!fs.existsSync(iconsDir)) {
 // Le SVG de l'icône : un carré vert avec un P blanc au centre
 const svgIcon = `
 <svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-  <rect width="512" height="512" fill="#1D9E75"/>
-  <text x="50%" y="50%" font-family="Arial, sans-serif" font-weight="bold" font-size="320" fill="white" text-anchor="middle" dominant-baseline="central">P</text>
+  <rect width="512" height="512" rx="80" fill="#2C5530"/>
+  <path d="M256 96 C176 144, 144 224, 176 304 C192 344, 224 368, 256 368 C288 368, 320 344, 336 304 C368 224, 336 144, 256 96 Z" fill="#8BC34A" opacity="0.35"/>
+  <text x="50%" y="56%" font-family="Georgia, serif" font-weight="700" font-size="300" fill="#ffffff" text-anchor="middle" dominant-baseline="central">P</text>
 </svg>
 `;
 

@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { ChevronLeft, Leaf, MapPin, Refrigerator, CalendarRange } from 'lucide-react';
 import { supabaseAdmin } from '@/lib/supabase';
 import { formatPrix, getProductTags, isEnSaison, type Product } from '@/lib/produit';
@@ -8,6 +9,7 @@ import ProductAddButton from '@/components/ProductAddButton';
 import ProductGallery from '@/components/ProductGallery';
 import ProductTags from '@/components/ProductTags';
 import { SITE } from '@/lib/site';
+import { formatArticleDate, type Article } from '@/lib/article';
 import type { Metadata } from 'next';
 
 export const revalidate = 3600;
@@ -71,9 +73,23 @@ function saisonLabel(debut: number, fin: number): string {
   return `de ${MOIS_LABELS[debut - 1]} à ${MOIS_LABELS[fin - 1]}`;
 }
 
+async function getRelatedArticles(slug: string): Promise<Article[]> {
+  const { data, error } = await supabaseAdmin
+    .from('articles')
+    .select('id, slug, titre, extrait, image_url, published_at')
+    .contains('produits_lies', [slug])
+    .not('published_at', 'is', null)
+    .lte('published_at', new Date().toISOString())
+    .order('published_at', { ascending: false })
+    .limit(3);
+  if (error) return [];
+  return (data || []) as Article[];
+}
+
 export default async function ProductPage({ params }: { params: { slug: string } }) {
   const product = await getProductBySlug(params.slug);
   if (!product) notFound();
+  const relatedArticles = await getRelatedArticles(params.slug);
 
   const tags = getProductTags(product);
   const prix = formatPrix(product.prix_kg, product.unite);
@@ -194,6 +210,45 @@ export default async function ProductPage({ params }: { params: { slug: string }
           <p className="text-xs text-neutral-500 mt-3 text-center">Le règlement s&apos;effectue en boutique lors du retrait.</p>
         </div>
       </div>
+
+      {relatedArticles.length > 0 && (
+        <section className="max-w-5xl mx-auto px-4 mt-20 pt-12 border-t border-neutral-200">
+          <h2 className="text-xs uppercase tracking-widest text-neutral-500 font-medium mb-6">
+            Recettes &amp; conseils
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {relatedArticles.map((a) => (
+              <Link
+                key={a.id}
+                href={`/blog/${a.slug}`}
+                className="group bg-white border border-neutral-200 hover:border-green-primary transition-colors flex flex-col"
+              >
+                {a.image_url ? (
+                  <div className="relative aspect-[16/10] overflow-hidden bg-neutral-100">
+                    <Image
+                      src={a.image_url}
+                      alt=""
+                      fill
+                      sizes="(min-width: 768px) 280px, 100vw"
+                      className="object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  </div>
+                ) : (
+                  <div className="aspect-[16/10] bg-neutral-100" aria-hidden />
+                )}
+                <div className="p-4 flex-grow flex flex-col">
+                  <time className="text-[11px] uppercase tracking-widest text-neutral-500 mb-2">
+                    {a.published_at ? formatArticleDate(a.published_at) : ''}
+                  </time>
+                  <h3 className="font-serif text-neutral-900 text-base group-hover:text-green-primary transition-colors leading-snug">
+                    {a.titre}
+                  </h3>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       <StickyCartButton />
     </main>
