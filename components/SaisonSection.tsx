@@ -1,13 +1,13 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { supabaseAdmin } from '@/lib/supabase';
-import { formatPrix, isEnSaison, type Product } from '@/lib/produit';
+import { formatPrixResume, isEnSaison, type Product } from '@/lib/produit';
 import { ArrowRight, Sparkles } from 'lucide-react';
 
 export default async function SaisonSection() {
   const { data } = await supabaseAdmin
     .from('produits')
-    .select('id, nom, slug, categorie, prix_kg, unite, image_url, mois_debut, mois_fin, disponible')
+    .select('id, nom, slug, categorie, options, image_url, mois_debut, mois_fin, disponible')
     .eq('disponible', true)
     .not('mois_debut', 'is', null)
     .not('mois_fin', 'is', null)
@@ -54,8 +54,8 @@ export default async function SaisonSection() {
               <div className="p-3">
                 <div className="text-[10px] uppercase tracking-widest text-neutral-500 font-medium">{p.categorie}</div>
                 <div className="font-serif text-neutral-800 leading-snug">{p.nom}</div>
-                {formatPrix(p.prix_kg, p.unite) && (
-                  <div className="text-xs text-green-dark mt-1 font-medium">{formatPrix(p.prix_kg, p.unite)}</div>
+                {formatPrixResume(p.options) && (
+                  <div className="text-xs text-green-dark mt-1 font-medium">{formatPrixResume(p.options)}</div>
                 )}
               </div>
             </Link>

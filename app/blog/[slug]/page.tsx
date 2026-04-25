@@ -23,12 +23,13 @@ async function getArticle(slug: string): Promise<Article | null> {
   return data as Article | null;
 }
 
+import { formatPrixResume, type ProduitOption } from '@/lib/produit';
+
 type LinkedProduit = {
   slug: string;
   nom: string;
   image_url: string | null;
-  prix_kg: number | null;
-  unite: string | null;
+  options: ProduitOption[] | null;
   categorie: string;
 };
 
@@ -36,7 +37,7 @@ async function getLinkedProduits(slugs: string[]): Promise<LinkedProduit[]> {
   if (!slugs.length) return [];
   const { data } = await supabaseAdmin
     .from('produits')
-    .select('slug, nom, image_url, prix_kg, unite, categorie')
+    .select('slug, nom, image_url, options, categorie')
     .in('slug', slugs)
     .eq('disponible', true);
   return (data || []) as LinkedProduit[];
@@ -167,10 +168,8 @@ export default async function ArticlePage({
                     <p className="font-serif text-neutral-900 text-sm group-hover:text-green-primary transition-colors">
                       {p.nom}
                     </p>
-                    {p.prix_kg && (
-                      <p className="text-xs text-neutral-500 mt-1">
-                        {Number(p.prix_kg).toFixed(2)} €/{p.unite || 'kg'}
-                      </p>
+                    {formatPrixResume(p.options) && (
+                      <p className="text-xs text-neutral-500 mt-1">{formatPrixResume(p.options)}</p>
                     )}
                   </div>
                 </Link>

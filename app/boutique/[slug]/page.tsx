@@ -3,7 +3,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ChevronLeft, Leaf, MapPin, Refrigerator, CalendarRange } from 'lucide-react';
 import { supabaseAdmin } from '@/lib/supabase';
-import { formatPrix, getProductTags, isEnSaison, type Product } from '@/lib/produit';
+import { formatPrixResume, getProductTags, isEnSaison, type Product } from '@/lib/produit';
 import StickyCartButton from '@/components/StickyCartButton';
 import ProductAddButton from '@/components/ProductAddButton';
 import ProductGallery from '@/components/ProductGallery';
@@ -41,11 +41,11 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   const product = await getProductBySlug(params.slug);
   if (!product) return { title: 'Produit introuvable — Pontault Primeurs' };
 
-  const prix = formatPrix(product.prix_kg, product.unite);
+  const prix = formatPrixResume(product.options);
   const description =
     product.description_longue?.slice(0, 160) ||
     product.description?.slice(0, 160) ||
-    `${product.nom} ${prix ? `à ${prix}` : ''} — ${product.categorie} chez Pontault Primeurs.`;
+    `${product.nom} ${prix ? `— ${prix}` : ''} — ${product.categorie} chez Pontault Primeurs.`;
 
   return {
     title: product.nom,
@@ -92,12 +92,45 @@ export default async function ProductPage({ params }: { params: { slug: string }
   const relatedArticles = await getRelatedArticles(params.slug);
 
   const tags = getProductTags(product);
-  const prix = formatPrix(product.prix_kg, product.unite);
+  const prix = formatPrixResume(product.options);
   const images = [product.image_url, ...(product.images || [])].filter((u): u is string => Boolean(u));
   const enSaison = isEnSaison(product.mois_debut, product.mois_fin);
 
   const productUrl = `${SITE.url}/boutique/${product.slug}`;
   const absImages = images.map((i) => (i.startsWith('http') ? i : `${SITE.url}${i}`));
+
+  const optionsAvecPrix = (product.options || []).filter((o) => o.prix != null);
+  const availability = product.disponible ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock';
+  let offers: Record<string, unknown> | undefined;
+  if (optionsAvecPrix.length === 1) {
+    const o = optionsAvecPrix[0];
+    offers = {
+      '@type': 'Offer',
+      url: productUrl,
+      price: o.prix,
+      priceCurrency: 'EUR',
+      priceSpecification: {
+        '@type': 'UnitPriceSpecification',
+        price: o.prix,
+        priceCurrency: 'EUR',
+        referenceQuantity: { '@type': 'QuantitativeValue', value: 1, unitText: o.libelle },
+      },
+      availability,
+      seller: { '@id': `${SITE.url}/#localbusiness` },
+    };
+  } else if (optionsAvecPrix.length > 1) {
+    const prices = optionsAvecPrix.map((o) => Number(o.prix));
+    offers = {
+      '@type': 'AggregateOffer',
+      url: productUrl,
+      priceCurrency: 'EUR',
+      lowPrice: Math.min(...prices),
+      highPrice: Math.max(...prices),
+      offerCount: optionsAvecPrix.length,
+      availability,
+      seller: { '@id': `${SITE.url}/#localbusiness` },
+    };
+  }
 
   const jsonLd = {
     '@context': 'https://schema.org/',
@@ -110,22 +143,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
     image: absImages.length > 0 ? absImages : undefined,
     ...(product.origine && { countryOfOrigin: product.origine }),
     brand: { '@type': 'Brand', name: SITE.name },
-    ...(product.prix_kg != null && {
-      offers: {
-        '@type': 'Offer',
-        url: productUrl,
-        price: product.prix_kg,
-        priceCurrency: 'EUR',
-        priceSpecification: {
-          '@type': 'UnitPriceSpecification',
-          price: product.prix_kg,
-          priceCurrency: 'EUR',
-          referenceQuantity: { '@type': 'QuantitativeValue', value: 1, unitText: product.unite || 'kg' },
-        },
-        availability: product.disponible ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-        seller: { '@id': `${SITE.url}/#localbusiness` },
-      },
-    }),
+    ...(offers && { offers }),
   };
 
   return (

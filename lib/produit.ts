@@ -1,3 +1,9 @@
+export type ProduitOption = {
+  id: string;
+  libelle: string;
+  prix?: number | null;
+};
+
 export type Product = {
   id: string;
   nom: string;
@@ -10,11 +16,10 @@ export type Product = {
   description_longue?: string | null;
   origine?: string | null;
   conseils_conservation?: string | null;
-  prix_kg?: number | null;
+  options: ProduitOption[];
   bio?: boolean | null;
   mois_debut?: number | null;
   mois_fin?: number | null;
-  unite?: string | null;
   ordre?: number | null;
 };
 
@@ -25,9 +30,30 @@ const euro = new Intl.NumberFormat('fr-FR', {
   maximumFractionDigits: 2,
 });
 
-export function formatPrix(prix: number | null | undefined, unite: string | null | undefined = 'kg'): string | null {
+export function formatPrixOption(opt: ProduitOption): string {
+  if (opt.prix == null || Number.isNaN(Number(opt.prix))) return opt.libelle;
+  return `${euro.format(Number(opt.prix))} ${opt.libelle}`;
+}
+
+export function formatPrixMontant(prix: number | null | undefined): string | null {
   if (prix == null || Number.isNaN(Number(prix))) return null;
-  return `${euro.format(Number(prix))} / ${unite || 'kg'}`;
+  return euro.format(Number(prix));
+}
+
+// Résumé prix pour listings : 1 option → "3,50 € au kg" ; N options avec prix → "à partir de 1,20 €" ; sinon null
+export function formatPrixResume(options: ProduitOption[] | null | undefined): string | null {
+  if (!options || options.length === 0) return null;
+  if (options.length === 1) {
+    const only = options[0];
+    if (only.prix == null) return null;
+    return formatPrixOption(only);
+  }
+  const prix = options
+    .map((o) => (o.prix == null ? null : Number(o.prix)))
+    .filter((p): p is number => p != null && !Number.isNaN(p));
+  if (prix.length === 0) return null;
+  const min = Math.min(...prix);
+  return `à partir de ${euro.format(min)}`;
 }
 
 export function isEnSaison(mois_debut: number | null | undefined, mois_fin: number | null | undefined, month: number = new Date().getMonth() + 1): boolean {
@@ -64,3 +90,13 @@ export function slugify(input: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
 }
+
+// Suggestions d'options pour le form admin
+export const OPTION_LIBELLES_SUGGESTIONS = [
+  'au kg',
+  'à la pièce',
+  'la barquette',
+  'la botte',
+  'le bouquet',
+  'au litre',
+];

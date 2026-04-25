@@ -2,22 +2,28 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import type { ProduitOption } from '@/lib/produit';
 import CartDrawer from './CartDrawer';
 
 export type CartItem = {
   produitId: string;
+  optionId: string;
   nom: string;
-  quantite: number;
   categorie: string;
-  prix_kg?: number | null;
-  unite?: string | null;
+  libelle: string;
+  prix?: number | null;
+  quantite: number;
 };
+
+export function cartKey(produitId: string, optionId: string): string {
+  return `${produitId}:${optionId}`;
+}
 
 type CartContextType = {
   cart: Record<string, CartItem>;
-  addToCart: (produitId: string, nom: string, categorie: string, quantite?: number, extra?: { prix_kg?: number | null; unite?: string | null }) => void;
-  removeFromCart: (produitId: string) => void;
-  updateQuantity: (produitId: string, quantite: number) => void;
+  addToCart: (args: { produitId: string; optionId: string; nom: string; categorie: string; libelle: string; prix?: number | null; quantite?: number }) => void;
+  removeFromCart: (key: string) => void;
+  updateQuantity: (key: string, quantite: number) => void;
   clearCart: () => void;
   restoreCart: (items: CartItem[]) => void;
   totalItems: number;
@@ -27,6 +33,8 @@ type CartContextType = {
 };
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
+
+type DbProduit = { id: string; disponible: boolean; options: ProduitOption[] | null };
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<Record<string, CartItem>>({});
@@ -40,36 +48,40 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (saved) {
         try {
           const parsedCart = JSON.parse(saved) as Record<string, CartItem>;
-          const productIds = Object.keys(parsedCart);
-          
+          // Ignorer les items sans optionId (schéma legacy pré-migration options)
+          const items = Object.values(parsedCart).filter((i) => i && i.produitId && i.optionId);
+          const productIds = Array.from(new Set(items.map((i) => i.produitId)));
+
           if (productIds.length > 0) {
-            // Vérifier la disponibilité + rafraîchir prix/unité (auto-upgrade des anciens items localStorage)
             const { data: produitsDb, error } = await supabase
               .from('produits')
-              .select('id, disponible, prix_kg, unite')
+              .select('id, disponible, options')
               .in('id', productIds);
 
             if (!error && produitsDb) {
               const validCart: Record<string, CartItem> = {};
-              const dbMap = new Map(produitsDb.map(p => [p.id, p]));
+              const dbMap = new Map((produitsDb as DbProduit[]).map((p) => [p.id, p]));
 
-              for (const id of productIds) {
-                const dbProduct = dbMap.get(id);
-                if (dbProduct?.disponible === true) {
-                  validCart[id] = {
-                    ...parsedCart[id],
-                    prix_kg: dbProduct.prix_kg,
-                    unite: dbProduct.unite,
-                  };
-                } else if (dbProduct) {
-                  console.log(`Le produit ${parsedCart[id].nom} a été retiré car il n'est plus disponible.`);
-                }
+              for (const item of items) {
+                const dbProduct = dbMap.get(item.produitId);
+                if (dbProduct?.disponible !== true) continue;
+                const freshOption = (dbProduct.options || []).find((o) => o.id === item.optionId);
+                if (!freshOption) continue; // option supprimée → on retire du panier
+                const key = cartKey(item.produitId, item.optionId);
+                validCart[key] = {
+                  ...item,
+                  libelle: freshOption.libelle,
+                  prix: freshOption.prix ?? null,
+                };
               }
 
               setCart(validCart);
               localStorage.setItem('primeur_cart', JSON.stringify(validCart));
             } else {
-              setCart(parsedCart);
+              // Fallback : on garde tel quel (offline)
+              const fallback: Record<string, CartItem> = {};
+              for (const i of items) fallback[cartKey(i.produitId, i.optionId)] = i;
+              setCart(fallback);
             }
           }
         } catch (e) {
@@ -89,7 +101,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [cart, isLoaded]);
 
-  // Écouter les changements Supabase pour retirer les produits devenus indisponibles
+  // Écouter les changements Supabase pour retirer les lignes devenues invalides
   useEffect(() => {
     if (!isLoaded) return;
 
@@ -97,26 +109,37 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       .channel('produits_changes')
       .on(
         'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'produits',
-        },
+        { event: 'UPDATE', schema: 'public', table: 'produits' },
         (payload) => {
-          const { id, disponible, nom } = payload.new as { id: string; disponible: boolean; nom: string };
-          if (disponible === false) {
-            setCart(prev => {
-              if (prev[id]) {
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                const { [id]: _, ...rest } = prev;
-                // Optional: You could add a toast here if you had a global toast system.
-                console.log(`Le produit ${nom} a été retiré du panier car il n'est plus disponible.`);
-                return rest;
+          const row = payload.new as { id: string; disponible: boolean; options: ProduitOption[] | null };
+          setCart((prev) => {
+            const next: Record<string, CartItem> = {};
+            let changed = false;
+            for (const [key, item] of Object.entries(prev)) {
+              if (item.produitId !== row.id) {
+                next[key] = item;
+                continue;
               }
-              return prev;
-            });
-          }
-        }
+              if (row.disponible === false) {
+                changed = true;
+                continue;
+              }
+              const freshOption = (row.options || []).find((o) => o.id === item.optionId);
+              if (!freshOption) {
+                changed = true;
+                continue;
+              }
+              // Refresh libellé/prix si modifiés en prod
+              if (freshOption.libelle !== item.libelle || (freshOption.prix ?? null) !== (item.prix ?? null)) {
+                next[key] = { ...item, libelle: freshOption.libelle, prix: freshOption.prix ?? null };
+                changed = true;
+              } else {
+                next[key] = item;
+              }
+            }
+            return changed ? next : prev;
+          });
+        },
       )
       .subscribe();
 
@@ -125,42 +148,46 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     };
   }, [isLoaded]);
 
-  const addToCart = React.useCallback((produitId: string, nom: string, categorie: string, quantite: number = 1, extra?: { prix_kg?: number | null; unite?: string | null }) => {
-    setCart(prev => {
-      const existing = prev[produitId];
-      return {
-        ...prev,
-        [produitId]: {
-          produitId,
-          nom,
-          categorie,
-          quantite: existing ? existing.quantite + quantite : quantite,
-          prix_kg: extra?.prix_kg ?? existing?.prix_kg ?? null,
-          unite: extra?.unite ?? existing?.unite ?? null,
-        }
-      };
-    });
-    setIsCartOpen(true); // Ouvre le panier lors d'un ajout
-  }, []);
+  const addToCart = React.useCallback(
+    (args: { produitId: string; optionId: string; nom: string; categorie: string; libelle: string; prix?: number | null; quantite?: number }) => {
+      const { produitId, optionId, nom, categorie, libelle, prix, quantite = 1 } = args;
+      const key = cartKey(produitId, optionId);
+      setCart((prev) => {
+        const existing = prev[key];
+        return {
+          ...prev,
+          [key]: {
+            produitId,
+            optionId,
+            nom,
+            categorie,
+            libelle,
+            prix: prix ?? null,
+            quantite: existing ? existing.quantite + quantite : quantite,
+          },
+        };
+      });
+      setIsCartOpen(true);
+    },
+    [],
+  );
 
-  const updateQuantity = React.useCallback((produitId: string, quantite: number) => {
-    setCart(prev => {
+  const updateQuantity = React.useCallback((key: string, quantite: number) => {
+    setCart((prev) => {
       if (quantite <= 0) {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { [produitId]: _, ...rest } = prev;
+        const { [key]: _, ...rest } = prev;
         return rest;
       }
-      return {
-        ...prev,
-        [produitId]: { ...prev[produitId], quantite }
-      };
+      if (!prev[key]) return prev;
+      return { ...prev, [key]: { ...prev[key], quantite } };
     });
   }, []);
 
-  const removeFromCart = React.useCallback((produitId: string) => {
-    setCart(prev => {
+  const removeFromCart = React.useCallback((key: string) => {
+    setCart((prev) => {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { [produitId]: _, ...rest } = prev;
+      const { [key]: _, ...rest } = prev;
       return rest;
     });
   }, []);
@@ -169,8 +196,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const restoreCart = React.useCallback((items: CartItem[]) => {
     const newCart: Record<string, CartItem> = {};
-    items.forEach(item => {
-      newCart[item.produitId] = item;
+    items.forEach((item) => {
+      if (item.produitId && item.optionId) {
+        newCart[cartKey(item.produitId, item.optionId)] = item;
+      }
     });
     setCart(newCart);
   }, []);
@@ -180,8 +209,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     let total = 0;
     let hasPrix = false;
     for (const item of Object.values(cart)) {
-      if (item.prix_kg != null) {
-        total += Number(item.prix_kg) * item.quantite;
+      if (item.prix != null) {
+        total += Number(item.prix) * item.quantite;
         hasPrix = true;
       }
     }

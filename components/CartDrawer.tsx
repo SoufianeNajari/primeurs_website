@@ -1,20 +1,21 @@
 'use client'
 
-import { useCart, CartItem } from './CartContext';
+import { useCart, CartItem, cartKey } from './CartContext';
 import { X, ShoppingBag, Minus, Plus, Trash2, RotateCcw, Loader2, Sparkles } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { FocusTrap } from 'focus-trap-react';
 import { triggerHaptic } from '@/lib/haptic';
 import { supabase } from '@/lib/supabase';
+import type { ProduitOption } from '@/lib/produit';
+import { formatPrixMontant } from '@/lib/produit';
 
-type Product = {
+type Suggestion = {
   id: string;
   nom: string;
   categorie: string;
   disponible: boolean;
-  prix_kg: number | null;
-  unite: string | null;
+  options: ProduitOption[] | null;
 };
 
 export default function CartDrawer() {
@@ -23,7 +24,7 @@ export default function CartDrawer() {
   const pathname = usePathname();
   const [lastOrder, setLastOrder] = useState<CartItem[] | null>(null);
   const [isRestoring, setIsRestoring] = useState(false);
-  const [suggestions, setSuggestions] = useState<Product[]>([]);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
 
   const cartItems = Object.values(cart);
 
@@ -49,42 +50,36 @@ export default function CartDrawer() {
     if (isCartOpen && cartItems.length > 0) {
       const fetchSuggestions = async () => {
         try {
-          const cartIds = cartItems.map(item => item.produitId);
-          // On récupère un lot de produits disponibles pour trouver les meilleures correspondances
+          const cartIds = Array.from(new Set(cartItems.map((item) => item.produitId)));
           const { data } = await supabase
             .from('produits')
-            .select('id, nom, categorie, disponible, prix_kg, unite')
+            .select('id, nom, categorie, disponible, options')
             .eq('disponible', true)
             .limit(50);
-            
+
           if (data) {
-            const availableSuggestions = data.filter(p => !cartIds.includes(p.id));
-            
-            // Logique de cross-selling intelligente
-            const keywordsInCart = cartItems.map(i => i.nom.toLowerCase() + ' ' + i.categorie.toLowerCase()).join(' ');
-            
-            const scoredSuggestions = availableSuggestions.map(p => {
+            const availableSuggestions = (data as Suggestion[]).filter((p) => !cartIds.includes(p.id));
+
+            const keywordsInCart = cartItems
+              .map((i) => i.nom.toLowerCase() + ' ' + i.categorie.toLowerCase())
+              .join(' ');
+
+            const scored = availableSuggestions.map((p) => {
               let score = 0;
               const n = p.nom.toLowerCase();
               const c = p.categorie.toLowerCase();
-              
-              // Associations logiques
               if (keywordsInCart.includes('tomate') && (n.includes('basilic') || n.includes('mozzarella') || n.includes('oignon'))) score += 5;
               if (keywordsInCart.includes('fraise') && (n.includes('crème') || n.includes('sucre') || n.includes('menthe'))) score += 5;
               if (keywordsInCart.includes('fromage') && (n.includes('confiture') || n.includes('miel') || n.includes('pain') || n.includes('vin'))) score += 5;
               if (keywordsInCart.includes('salade') && (n.includes('radis') || n.includes('tomate') || n.includes('concombre'))) score += 4;
               if (keywordsInCart.includes('pomme') && (n.includes('poire') || n.includes('kiwi'))) score += 3;
               if (keywordsInCart.includes('légume') && c.includes('herbe')) score += 2;
-              
-              // Un peu d'aléatoire pour la diversité
               score += Math.random();
-              
-              return { ...p, score };
+              return { p, score };
             });
 
-            // Trier par score décroissant et prendre les 2 meilleurs
-            const bestMatches = scoredSuggestions.sort((a, b) => b.score - a.score);
-            setSuggestions(bestMatches.slice(0, 2));
+            const best = scored.sort((a, b) => b.score - a.score).slice(0, 2).map((s) => s.p);
+            setSuggestions(best);
           }
         } catch (e) {
           console.error(e);
@@ -95,21 +90,16 @@ export default function CartDrawer() {
       setSuggestions([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isCartOpen, cartItems.length]); // Dépend de la longueur pour rafraichir occasionnellement
+  }, [isCartOpen, cartItems.length]);
 
-  // Empêcher le scroll du body quand le tiroir est ouvert
   useEffect(() => {
-    if (isCartOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
+    if (isCartOpen) document.body.style.overflow = 'hidden';
+    else document.body.style.overflow = 'unset';
     return () => {
       document.body.style.overflow = 'unset';
     };
   }, [isCartOpen]);
 
-  // Fermer le tiroir automatiquement si on change de page
   useEffect(() => {
     setIsCartOpen(false);
   }, [pathname, setIsCartOpen]);
@@ -118,19 +108,27 @@ export default function CartDrawer() {
     if (!lastOrder) return;
     setIsRestoring(true);
     triggerHaptic();
-    
-    const productIds = lastOrder.map(i => i.produitId);
-    
+
+    const productIds = Array.from(new Set(lastOrder.map((i) => i.produitId)));
+
     try {
       const { data: produitsDb } = await supabase
         .from('produits')
-        .select('id, disponible')
+        .select('id, disponible, options')
         .in('id', productIds);
-        
+
       if (produitsDb) {
-        const dbMap = new Map(produitsDb.map(p => [p.id, p.disponible]));
-        const validItems = lastOrder.filter(item => dbMap.get(item.produitId) === true);
-        
+        const dbMap = new Map((produitsDb as { id: string; disponible: boolean; options: ProduitOption[] | null }[]).map((p) => [p.id, p]));
+        const validItems = lastOrder
+          .map((item) => {
+            const db = dbMap.get(item.produitId);
+            if (!db || !db.disponible) return null;
+            const opt = (db.options || []).find((o) => o.id === item.optionId);
+            if (!opt) return null;
+            return { ...item, libelle: opt.libelle, prix: opt.prix ?? null } as CartItem;
+          })
+          .filter((i): i is CartItem => i != null);
+
         if (validItems.length > 0) {
           restoreCart(validItems);
         }
@@ -158,6 +156,29 @@ export default function CartDrawer() {
 
   if (!isCartOpen) return null;
 
+  const handleAddSuggestion = (s: Suggestion) => {
+    const opts = s.options || [];
+    if (opts.length === 0) return;
+    // Si plusieurs options, on redirige vers la fiche pour laisser le choix
+    if (opts.length > 1) {
+      setIsCartOpen(false);
+      // Pas de slug fourni ici ; on ouvre simplement la boutique
+      router.push('/boutique');
+      return;
+    }
+    const opt = opts[0];
+    triggerHaptic();
+    addToCart({
+      produitId: s.id,
+      optionId: opt.id,
+      nom: s.nom,
+      categorie: s.categorie,
+      libelle: opt.libelle,
+      prix: opt.prix ?? null,
+      quantite: 1,
+    });
+  };
+
   return (
     <FocusTrap focusTrapOptions={{ allowOutsideClick: true, escapeDeactivates: false }}>
     <div
@@ -166,23 +187,20 @@ export default function CartDrawer() {
       aria-modal="true"
       aria-labelledby="cart-drawer-title"
     >
-      {/* Overlay sombre */}
       <div
         className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm"
         onClick={() => setIsCartOpen(false)}
         aria-hidden="true"
       />
 
-      {/* Tiroir */}
       <div className="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col">
-        
-        {/* Header du tiroir */}
+
         <div className="flex items-center justify-between px-6 py-5 border-b border-neutral-200 bg-neutral-50">
           <h2 id="cart-drawer-title" className="text-xl font-serif text-neutral-800 flex items-center gap-3">
             <ShoppingBag className="text-green-primary" size={24} strokeWidth={1.5} />
             Votre Panier ({totalItems})
           </h2>
-          <button 
+          <button
             onClick={() => setIsCartOpen(false)}
             className="text-neutral-400 hover:text-neutral-800 transition-colors p-2 -mr-2"
             aria-label="Fermer le panier"
@@ -191,7 +209,6 @@ export default function CartDrawer() {
           </button>
         </div>
 
-        {/* Liste des produits */}
         <div className="flex-grow overflow-y-auto px-6 py-4">
           {cartItems.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-neutral-400 space-y-6">
@@ -199,7 +216,7 @@ export default function CartDrawer() {
                 <ShoppingBag size={40} strokeWidth={1} className="text-neutral-300" />
               </div>
               <p className="font-serif text-xl text-neutral-600">Votre panier est vide.</p>
-              
+
               {lastOrder && (
                 <div className="w-full pt-4">
                   <button
@@ -220,7 +237,7 @@ export default function CartDrawer() {
                 </div>
               )}
 
-              <button 
+              <button
                 onClick={() => setIsCartOpen(false)}
                 className="text-sm font-medium uppercase tracking-widest text-green-primary hover:text-green-dark border-b border-green-primary pb-1 mt-6"
               >
@@ -229,40 +246,48 @@ export default function CartDrawer() {
             </div>
           ) : (
             <ul className="space-y-6">
-              {cartItems.map((item) => (
-                <li key={item.produitId} className="flex flex-col gap-4 pb-6 border-b border-neutral-100 last:border-0">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <span className="font-serif text-lg text-neutral-800 block leading-snug">{item.nom}</span>
-                      <span className="text-[10px] uppercase tracking-widest text-neutral-400 font-medium">{item.categorie}</span>
+              {cartItems.map((item) => {
+                const key = cartKey(item.produitId, item.optionId);
+                const prixLabel = formatPrixMontant(item.prix ?? null);
+                return (
+                  <li key={key} className="flex flex-col gap-3 pb-6 border-b border-neutral-100 last:border-0">
+                    <div className="flex justify-between items-start gap-3">
+                      <div className="min-w-0">
+                        <span className="font-serif text-lg text-neutral-800 block leading-snug truncate">{item.nom}</span>
+                        <span className="text-[10px] uppercase tracking-widest text-neutral-400 font-medium">{item.categorie}</span>
+                        <span className="block text-sm text-green-dark font-medium mt-1">
+                          {item.libelle}
+                          {prixLabel && <span className="text-neutral-500 font-normal"> · {prixLabel}</span>}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => { triggerHaptic(); removeFromCart(key); }}
+                        className="text-neutral-300 hover:text-red-text transition-colors p-2 -mr-2 -mt-2 shrink-0"
+                        aria-label={`Retirer ${item.nom}`}
+                      >
+                        <Trash2 size={18} strokeWidth={1.5} />
+                      </button>
                     </div>
-                    <button 
-                      onClick={() => { triggerHaptic(); removeFromCart(item.produitId); }}
-                      className="text-neutral-300 hover:text-red-text transition-colors p-2 -mr-2 -mt-2"
-                      aria-label="Retirer l'article"
-                    >
-                      <Trash2 size={18} strokeWidth={1.5} />
-                    </button>
-                  </div>
-                  <div className="flex items-center justify-between border border-neutral-300 p-1 w-32 bg-neutral-50">
-                    <button 
-                      onClick={() => { triggerHaptic(); updateQuantity(item.produitId, item.quantite - 1); }}
-                      className="w-8 h-8 flex items-center justify-center text-neutral-600 hover:bg-neutral-200 transition-colors"
-                      aria-label="Diminuer la quantité"
-                    >
-                      <Minus size={16} strokeWidth={1.5} />
-                    </button>
-                    <span className="font-medium text-neutral-800 text-sm w-8 text-center">{item.quantite}</span>
-                    <button 
-                      onClick={() => { triggerHaptic(); updateQuantity(item.produitId, item.quantite + 1); }}
-                      className="w-8 h-8 flex items-center justify-center text-neutral-600 hover:bg-neutral-200 transition-colors"
-                      aria-label="Augmenter la quantité"
-                    >
-                      <Plus size={16} strokeWidth={1.5} />
-                    </button>
-                  </div>
-                </li>
-              ))}
+                    <div className="flex items-center justify-between border border-neutral-300 p-1 w-36 bg-neutral-50">
+                      <button
+                        onClick={() => { triggerHaptic(); updateQuantity(key, item.quantite - 1); }}
+                        className="w-9 h-9 flex items-center justify-center text-neutral-600 hover:bg-neutral-200 transition-colors"
+                        aria-label="Diminuer la quantité"
+                      >
+                        <Minus size={16} strokeWidth={1.5} />
+                      </button>
+                      <span className="font-medium text-neutral-800 text-sm w-10 text-center">{item.quantite}</span>
+                      <button
+                        onClick={() => { triggerHaptic(); updateQuantity(key, item.quantite + 1); }}
+                        className="w-9 h-9 flex items-center justify-center text-neutral-600 hover:bg-neutral-200 transition-colors"
+                        aria-label="Augmenter la quantité"
+                      >
+                        <Plus size={16} strokeWidth={1.5} />
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
 
@@ -273,27 +298,29 @@ export default function CartDrawer() {
                 S&apos;accorde parfaitement avec
               </h3>
               <ul className="space-y-4">
-                {suggestions.map((suggest) => (
-                  <li key={suggest.id} className="flex items-center justify-between bg-neutral-50 border border-neutral-200 p-3">
-                    <div>
-                      <span className="font-serif text-neutral-800 block leading-snug">{suggest.nom}</span>
-                      <span className="text-[10px] uppercase tracking-widest text-neutral-400 font-medium">{suggest.categorie}</span>
-                    </div>
-                    <button
-                      onClick={() => { triggerHaptic(); addToCart(suggest.id, suggest.nom, suggest.categorie, 1, { prix_kg: suggest.prix_kg, unite: suggest.unite }); }}
-                      className="text-green-primary hover:text-white hover:bg-green-primary border border-green-primary w-8 h-8 flex items-center justify-center transition-colors focus:outline-none"
-                      aria-label="Ajouter au panier"
-                    >
-                      <Plus size={16} strokeWidth={1.5} />
-                    </button>
-                  </li>
-                ))}
+                {suggestions.map((s) => {
+                  const multi = (s.options?.length ?? 0) > 1;
+                  return (
+                    <li key={s.id} className="flex items-center justify-between bg-neutral-50 border border-neutral-200 p-3">
+                      <div className="min-w-0">
+                        <span className="font-serif text-neutral-800 block leading-snug truncate">{s.nom}</span>
+                        <span className="text-[10px] uppercase tracking-widest text-neutral-400 font-medium">{s.categorie}</span>
+                      </div>
+                      <button
+                        onClick={() => handleAddSuggestion(s)}
+                        className="text-green-primary hover:text-white hover:bg-green-primary border border-green-primary w-10 h-10 flex items-center justify-center transition-colors focus:outline-none shrink-0 ml-3"
+                        aria-label={multi ? `Voir les options pour ${s.nom}` : `Ajouter ${s.nom}`}
+                      >
+                        <Plus size={16} strokeWidth={1.5} />
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           )}
         </div>
 
-        {/* Footer du tiroir */}
         {cartItems.length > 0 && (
           <div className="border-t border-neutral-200 p-6 bg-neutral-50 space-y-4">
             {totalEstime != null && (

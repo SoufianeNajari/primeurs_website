@@ -2,39 +2,16 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useCart } from './CartContext';
-import { Minus, Plus, ShoppingBag } from 'lucide-react';
-import { triggerHaptic } from '@/lib/haptic';
-import { formatPrix, getProductTags, type Product } from '@/lib/produit';
+import { ShoppingBag } from 'lucide-react';
+import { formatPrixResume, getProductTags, type Product } from '@/lib/produit';
 import ProductTags from './ProductTags';
+import OptionPicker from './OptionPicker';
 
 export default function ProductCard({ product }: { product: Product }) {
-  const { cart, addToCart, updateQuantity, removeFromCart } = useCart();
-
-  const cartItem = cart[product.id];
-  const quantity = cartItem ? cartItem.quantite : 0;
   const tags = getProductTags(product);
-  const prixFormate = formatPrix(product.prix_kg, product.unite);
+  const prixResume = formatPrixResume(product.options);
   const href = product.slug ? `/boutique/${product.slug}` : null;
-
-  const handleAdd = (e: React.MouseEvent) => {
-    e.preventDefault();
-    triggerHaptic();
-    addToCart(product.id, product.nom, product.categorie, 1, { prix_kg: product.prix_kg, unite: product.unite });
-  };
-
-  const handleIncrease = (e: React.MouseEvent) => {
-    e.preventDefault();
-    triggerHaptic();
-    updateQuantity(product.id, quantity + 1);
-  };
-
-  const handleDecrease = (e: React.MouseEvent) => {
-    e.preventDefault();
-    triggerHaptic();
-    if (quantity > 1) updateQuantity(product.id, quantity - 1);
-    else removeFromCart(product.id);
-  };
+  const hasMultipleOptions = (product.options?.length ?? 0) > 1;
 
   const imageBlock = (
     <div className="relative aspect-[4/3] w-full overflow-hidden bg-neutral-100">
@@ -67,44 +44,19 @@ export default function ProductCard({ product }: { product: Product }) {
       <h3 className="text-xl font-serif text-neutral-800 leading-snug mb-2">
         {product.nom}
       </h3>
-      {prixFormate && (
-        <div className="text-sm font-medium text-green-dark mb-4">{prixFormate}</div>
+      {prixResume && (
+        <div className="text-sm font-medium text-green-dark mb-3">{prixResume}</div>
       )}
       {product.origine && (
         <div className="text-xs text-neutral-500 mb-4">Origine&nbsp;: {product.origine}</div>
       )}
 
       <div className="mt-auto">
-        {!product.disponible ? (
-          <div className="w-full bg-neutral-100 text-neutral-500 py-3 text-center font-medium border border-neutral-200 uppercase tracking-widest text-[10px]">
-            Indisponible
-          </div>
-        ) : quantity > 0 ? (
-          <div className="flex items-center justify-between border border-neutral-300 p-1">
-            <button
-              onClick={handleDecrease}
-              aria-label={`Diminuer la quantité de ${product.nom}`}
-              className="w-10 h-10 flex items-center justify-center text-neutral-600 hover:bg-neutral-100 transition-colors focus:outline-none active:bg-neutral-200"
-            >
-              <Minus size={16} strokeWidth={1.5} />
-            </button>
-            <span className="font-medium text-neutral-800 text-sm w-8 text-center">{quantity}</span>
-            <button
-              onClick={handleIncrease}
-              aria-label={`Augmenter la quantité de ${product.nom}`}
-              className="w-10 h-10 flex items-center justify-center text-neutral-600 hover:bg-neutral-100 transition-colors focus:outline-none active:bg-neutral-200"
-            >
-              <Plus size={16} strokeWidth={1.5} />
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={handleAdd}
-            className="w-full bg-transparent text-green-primary border border-green-primary py-3 font-medium flex items-center justify-center gap-2 transition-colors hover:bg-green-primary hover:text-white focus:outline-none active:bg-green-dark uppercase tracking-widest text-[11px]"
-          >
-            <ShoppingBag size={14} strokeWidth={2} />
-            Ajouter au panier
-          </button>
+        <OptionPicker product={product} variant="card" />
+        {hasMultipleOptions && product.disponible && (
+          <p className="mt-2 text-[10px] uppercase tracking-widest text-neutral-400">
+            Choisissez votre option
+          </p>
         )}
       </div>
     </div>

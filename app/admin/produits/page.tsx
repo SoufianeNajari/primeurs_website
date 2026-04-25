@@ -3,7 +3,7 @@ import Image from 'next/image';
 import { Plus, Pencil } from 'lucide-react';
 import { supabaseAdmin } from '@/lib/supabase';
 import type { Product } from '@/lib/produit';
-import { formatPrix } from '@/lib/produit';
+import { formatPrixResume } from '@/lib/produit';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,7 +52,8 @@ export default async function AdminProduitsPage() {
                   <div className="flex-1 min-w-0">
                     <div className="font-serif text-neutral-800 truncate">{p.nom}</div>
                     <div className="text-xs text-neutral-500 truncate">
-                      {formatPrix(p.prix_kg, p.unite) || 'Prix non renseigné'}
+                      {formatPrixResume(p.options) || 'Prix non renseigné'}
+                      {p.options && p.options.length > 1 ? ` · ${p.options.length} options` : ''}
                       {p.origine ? ` · ${p.origine}` : ''}
                     </div>
                   </div>

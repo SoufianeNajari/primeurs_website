@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { useCart } from '@/components/CartContext';
+import { useCart, cartKey } from '@/components/CartContext';
 import { Loader2, ArrowLeft, ShoppingBag, AlertTriangle, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { JOURS_RETRAIT, creneauxForJour } from '@/lib/creneaux';
-import { formatPrix } from '@/lib/produit';
+import { formatPrixMontant } from '@/lib/produit';
 
 export default function OrderPage() {
   const { cart, totalItems, totalEstime, removeFromCart } = useCart();
@@ -120,21 +120,25 @@ export default function OrderPage() {
           </div>
           <ul className="divide-y divide-neutral-100 px-6">
             {cartItems.map((item) => {
-              const prix = formatPrix(item.prix_kg, item.unite);
+              const key = cartKey(item.produitId, item.optionId);
+              const prix = formatPrixMontant(item.prix ?? null);
               return (
-                <li key={item.produitId} className="py-5 flex justify-between items-center">
-                  <div>
-                    <span className="font-serif text-lg text-neutral-800 block">{item.nom}</span>
+                <li key={key} className="py-5 flex justify-between items-center gap-3">
+                  <div className="min-w-0">
+                    <span className="font-serif text-lg text-neutral-800 block truncate">{item.nom}</span>
                     <span className="text-[10px] uppercase tracking-widest text-neutral-400 font-medium">{item.categorie}</span>
-                    {prix && <span className="block text-xs text-neutral-500 mt-1">{prix}</span>}
+                    <span className="block text-sm text-green-dark font-medium mt-1">
+                      {item.libelle}
+                      {prix && <span className="text-neutral-500 font-normal"> · {prix}</span>}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3 shrink-0">
                     <div className="bg-neutral-50 px-4 py-2 border border-neutral-200 font-medium text-neutral-700 text-sm">
                       x {item.quantite}
                     </div>
                     <button
                       type="button"
-                      onClick={() => removeFromCart(item.produitId)}
+                      onClick={() => removeFromCart(key)}
                       className="text-neutral-400 hover:text-red-text transition-colors p-2 -mr-2"
                       aria-label={`Retirer ${item.nom} du panier`}
                     >

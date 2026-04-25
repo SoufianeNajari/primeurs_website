@@ -3,6 +3,17 @@ import { sendEmail } from '@/lib/mailer';
 import { supabaseAdmin } from '@/lib/supabase';
 import { emailShop, emailClient, type LigneCommande } from '@/lib/emails/templates';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
+import type { ProduitOption } from '@/lib/produit';
+
+type PanierItem = {
+  produitId: string;
+  optionId: string;
+  nom: string;
+  categorie: string;
+  libelle: string;
+  prix?: number | null;
+  quantite: number;
+};
 
 export async function POST(request: Request) {
   try {
@@ -20,7 +31,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { client, panier, jourRetrait, creneau, message } = body as {
       client: { prenom: string; nom: string; email: string; telephone: string };
-      panier: LigneCommande[];
+      panier: PanierItem[];
       jourRetrait: string;
       creneau?: string | null;
       message?: string;
@@ -38,7 +49,7 @@ export async function POST(request: Request) {
     const produitIds = panier.map((item) => item.produitId);
     const { data: produitsDb, error: produitsError } = await supabaseAdmin
       .from('produits')
-      .select('id, nom, disponible, prix_kg, unite')
+      .select('id, nom, disponible, options')
       .in('id', produitIds);
 
     if (produitsError) {
@@ -46,19 +57,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Erreur interne lors de la vérification de la disponibilité.' }, { status: 500 });
     }
 
-    const produitsDbMap = new Map(produitsDb?.map((p) => [p.id, p]) || []);
+    type ProduitRow = { id: string; nom: string; disponible: boolean; options: ProduitOption[] | null };
+    const produitsDbMap = new Map((produitsDb as ProduitRow[] | null)?.map((p) => [p.id, p]) || []);
     const nomsIndisponibles: string[] = [];
 
     const lignesNormalisees: LigneCommande[] = panier.map((item) => {
       const db = produitsDbMap.get(item.produitId);
-      if (!db || !db.disponible) nomsIndisponibles.push(item.nom);
+      const option = db?.options?.find((o) => o.id === item.optionId);
+      if (!db || !db.disponible || !option) {
+        nomsIndisponibles.push(item.nom);
+      }
       return {
         produitId: item.produitId,
+        optionId: item.optionId,
         nom: item.nom,
         categorie: item.categorie,
+        libelle: option?.libelle ?? item.libelle,
+        prix: option?.prix ?? null,
         quantite: item.quantite,
-        prix_kg: db?.prix_kg ?? null,
-        unite: db?.unite ?? null,
       };
     });
 
