@@ -49,3 +49,6 @@ public/fallback-*.js
 .vscode/
 .idea/
 *.log
+
+# Claude Code local artefacts
+.claude/
