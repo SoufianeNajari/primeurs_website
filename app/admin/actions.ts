@@ -1,7 +1,9 @@
 'use server'
 
-import { getSession } from '@/lib/admin-auth'
+import { revalidatePath } from 'next/cache'
+import { getSession, isAdmin } from '@/lib/admin-auth'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
+import { PARAM_COMMANDES_BLOQUEES, setParam } from '@/lib/parametres'
 
 export async function login(formData: FormData) {
   const ip = getClientIp()
@@ -33,4 +35,19 @@ export async function logout() {
   const session = await getSession()
   session.destroy()
   return { success: true }
+}
+
+export async function setCommandesBloquees(bloque: boolean) {
+  if (!(await isAdmin())) {
+    return { success: false, error: 'Non autorisé' }
+  }
+  try {
+    await setParam(PARAM_COMMANDES_BLOQUEES, bloque)
+    revalidatePath('/admin/dashboard')
+    revalidatePath('/boutique', 'layout')
+    revalidatePath('/order', 'layout')
+    return { success: true }
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : 'Erreur' }
+  }
 }

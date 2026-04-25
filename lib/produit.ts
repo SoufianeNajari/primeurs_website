@@ -18,6 +18,9 @@ export type Product = {
   conseils_conservation?: string | null;
   options: ProduitOption[];
   bio?: boolean | null;
+  local?: boolean | null;
+  variete?: string | null;
+  qualite?: string | null;
   mois_debut?: number | null;
   mois_fin?: number | null;
   ordre?: number | null;
@@ -40,19 +43,23 @@ export function formatPrixMontant(prix: number | null | undefined): string | nul
   return euro.format(Number(prix));
 }
 
-// Résumé prix pour listings : 1 option → "3,50 € au kg" ; N options avec prix → "à partir de 1,20 €" ; sinon null
+// Résumé prix pour listings.
+// Règle : si une option « au kg » est tarifée, on l'affiche directement
+// (sans « à partir de ») — c'est l'unité de référence du primeur. Sinon, on
+// retombe sur la seule option tarifée s'il n'y en a qu'une (pièce, barquette,
+// botte…), ou sur « à partir de X € » s'il y en a plusieurs.
 export function formatPrixResume(options: ProduitOption[] | null | undefined): string | null {
   if (!options || options.length === 0) return null;
-  if (options.length === 1) {
-    const only = options[0];
-    if (only.prix == null) return null;
-    return formatPrixOption(only);
-  }
-  const prix = options
-    .map((o) => (o.prix == null ? null : Number(o.prix)))
-    .filter((p): p is number => p != null && !Number.isNaN(p));
-  if (prix.length === 0) return null;
-  const min = Math.min(...prix);
+
+  const optionsAvecPrix = options.filter((o) => o.prix != null && !Number.isNaN(Number(o.prix)));
+  if (optionsAvecPrix.length === 0) return null;
+
+  const optionKg = optionsAvecPrix.find((o) => /\bkg\b|kilo/i.test(o.libelle));
+  if (optionKg) return formatPrixOption(optionKg);
+
+  if (optionsAvecPrix.length === 1) return formatPrixOption(optionsAvecPrix[0]);
+
+  const min = Math.min(...optionsAvecPrix.map((o) => Number(o.prix)));
   return `à partir de ${euro.format(min)}`;
 }
 
@@ -65,10 +72,16 @@ export function isEnSaison(mois_debut: number | null | undefined, mois_fin: numb
   return month >= mois_debut || month <= mois_fin;
 }
 
-export type TagKind = 'bio' | 'saison' | 'local';
+export type TagKind = 'bio' | 'saison' | 'local' | 'france';
 export type Tag = { kind: TagKind; label: string; textColor: string };
 
-export function getProductTags(p: Pick<Product, 'bio' | 'mois_debut' | 'mois_fin' | 'origine'>): Tag[] {
+export function isFranceOrigine(origine: string | null | undefined): boolean {
+  return !!origine && /france/i.test(origine);
+}
+
+export function getProductTags(
+  p: Pick<Product, 'bio' | 'local' | 'mois_debut' | 'mois_fin' | 'origine'>,
+): Tag[] {
   const tags: Tag[] = [];
   if (p.bio) {
     tags.push({ kind: 'bio', label: 'Bio', textColor: 'text-green-700' });
@@ -76,8 +89,11 @@ export function getProductTags(p: Pick<Product, 'bio' | 'mois_debut' | 'mois_fin
   if (isEnSaison(p.mois_debut, p.mois_fin)) {
     tags.push({ kind: 'saison', label: 'De saison', textColor: 'text-amber-700' });
   }
-  if (p.origine && /france|essonne|île-de-france|ile-de-france|seine-et-marne/i.test(p.origine)) {
+  if (p.local) {
     tags.push({ kind: 'local', label: 'Local', textColor: 'text-blue-700' });
+  }
+  if (isFranceOrigine(p.origine)) {
+    tags.push({ kind: 'france', label: 'France', textColor: 'text-red-700' });
   }
   return tags;
 }

@@ -1,5 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabase';
 import OrdersChart from './OrdersChart';
+import CommandesBloqueesToggle from './CommandesBloqueesToggle';
+import { isCommandesBloquees } from '@/lib/parametres';
 import Link from 'next/link';
 import { Download } from 'lucide-react';
 
@@ -46,6 +48,8 @@ export default async function DashboardPage() {
   start7.setUTCDate(start7.getUTCDate() - 6);
   const start30 = new Date(startToday);
   start30.setUTCDate(start30.getUTCDate() - 29);
+
+  const bloque = await isCommandesBloquees();
 
   const { data: commandesData } = await supabaseAdmin
     .from('commandes')
@@ -125,6 +129,8 @@ export default async function DashboardPage() {
         <h2 className="text-2xl font-serif text-neutral-800 mb-2">Tableau de bord</h2>
         <p className="text-sm text-neutral-500">Vue d&apos;ensemble des commandes des 30 derniers jours.</p>
       </div>
+
+      <CommandesBloqueesToggle initial={bloque} />
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-10">

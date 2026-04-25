@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { supabaseAdmin } from '@/lib/supabase';
 import ProductGrid from '@/components/ProductGrid';
 import StickyCartButton from '@/components/StickyCartButton';
+import BoutiqueFermee from '@/components/BoutiqueFermee';
+import { isCommandesBloquees } from '@/lib/parametres';
 
 export const revalidate = 0; // Force SSR
 
@@ -18,6 +20,10 @@ export const metadata: Metadata = {
 };
 
 export default async function BoutiquePage() {
+  if (await isCommandesBloquees()) {
+    return <BoutiqueFermee />;
+  }
+
   const { data: products } = await supabaseAdmin
     .from('produits')
     .select('*')

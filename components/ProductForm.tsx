@@ -11,6 +11,8 @@ type Mode = { kind: 'create' } | { kind: 'edit'; id: string };
 
 const MOIS = ['', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 
+const QUALITE_SUGGESTIONS = ['Extra', 'Catégorie 1', 'Catégorie 2'];
+
 type OptionRow = { id: string; libelle: string; prix: string };
 
 function genOptionId(): string {
@@ -40,6 +42,9 @@ export default function ProductForm({ mode, initial, categories }: { mode: Mode;
   const [descriptionLongue, setDescriptionLongue] = useState(initial?.description_longue || '');
   const [conseils, setConseils] = useState(initial?.conseils_conservation || '');
   const [bio, setBio] = useState(initial?.bio ?? false);
+  const [local, setLocal] = useState(initial?.local ?? false);
+  const [variete, setVariete] = useState(initial?.variete || '');
+  const [qualite, setQualite] = useState(initial?.qualite || '');
   const [disponible, setDisponible] = useState(initial?.disponible ?? true);
   const [moisDebut, setMoisDebut] = useState<string>(initial?.mois_debut ? String(initial.mois_debut) : '');
   const [moisFin, setMoisFin] = useState<string>(initial?.mois_fin ? String(initial.mois_fin) : '');
@@ -113,6 +118,9 @@ export default function ProductForm({ mode, initial, categories }: { mode: Mode;
       description_longue: descriptionLongue || null,
       conseils_conservation: conseils || null,
       bio,
+      local,
+      variete: variete || null,
+      qualite: qualite || null,
       disponible,
       mois_debut: moisDebut === '' ? null : Number(moisDebut),
       mois_fin: moisFin === '' ? null : Number(moisFin),
@@ -186,8 +194,17 @@ export default function ProductForm({ mode, initial, categories }: { mode: Mode;
             placeholder={autoSlug}
           />
         </Field>
-        <Field label="Origine">
+        <Field label="Origine" hint="Le badge 🇫🇷 s'affiche automatiquement si l'origine contient « France ».">
           <input value={origine} onChange={(e) => setOrigine(e.target.value)} className={inputCls} placeholder="France, Île-de-France" />
+        </Field>
+        <Field label="Variété" hint="Texte libre, affiché sur la carte produit (ex: Golden, Mara des Bois).">
+          <input value={variete} onChange={(e) => setVariete(e.target.value)} className={inputCls} maxLength={120} placeholder="Mara des Bois" />
+        </Field>
+        <Field label="Qualité" hint="Affichée uniquement sur la fiche détaillée. Choisissez une suggestion ou saisissez votre propre valeur.">
+          <input value={qualite} onChange={(e) => setQualite(e.target.value)} list="qualite-suggestions" className={inputCls} maxLength={60} placeholder="Extra" />
+          <datalist id="qualite-suggestions">
+            {QUALITE_SUGGESTIONS.map((q) => <option key={q} value={q} />)}
+          </datalist>
         </Field>
         <Field label="Saison — mois début">
           <select value={moisDebut} onChange={(e) => setMoisDebut(e.target.value)} className={inputCls}>
@@ -272,6 +289,7 @@ export default function ProductForm({ mode, initial, categories }: { mode: Mode;
 
       <div className="flex flex-wrap gap-6">
         <Toggle label="Bio" checked={bio} onChange={setBio} />
+        <Toggle label="Local" checked={local} onChange={setLocal} />
         <Toggle label="Disponible" checked={disponible} onChange={setDisponible} />
       </div>
 

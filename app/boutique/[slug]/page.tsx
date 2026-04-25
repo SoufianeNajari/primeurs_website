@@ -1,9 +1,11 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ChevronLeft, Leaf, MapPin, Refrigerator, CalendarRange } from 'lucide-react';
+import { ChevronLeft, Leaf, MapPin, Refrigerator, CalendarRange, Sprout, Award } from 'lucide-react';
 import { supabaseAdmin } from '@/lib/supabase';
 import { formatPrixResume, getProductTags, isEnSaison, type Product } from '@/lib/produit';
+import { isCommandesBloquees } from '@/lib/parametres';
+import BoutiqueFermee from '@/components/BoutiqueFermee';
 import StickyCartButton from '@/components/StickyCartButton';
 import ProductAddButton from '@/components/ProductAddButton';
 import ProductGallery from '@/components/ProductGallery';
@@ -87,6 +89,9 @@ async function getRelatedArticles(slug: string): Promise<Article[]> {
 }
 
 export default async function ProductPage({ params }: { params: { slug: string } }) {
+  if (await isCommandesBloquees()) {
+    return <BoutiqueFermee />;
+  }
   const product = await getProductBySlug(params.slug);
   if (!product) notFound();
   const relatedArticles = await getRelatedArticles(params.slug);
@@ -183,6 +188,24 @@ export default async function ProductPage({ params }: { params: { slug: string }
           )}
 
           <ul className="border-t border-neutral-200 divide-y divide-neutral-200 mb-6">
+            {product.variete && (
+              <li className="flex items-start gap-3 py-3">
+                <Sprout size={18} className="text-green-primary mt-0.5 shrink-0" strokeWidth={1.5} />
+                <div>
+                  <div className="text-xs uppercase tracking-widest text-neutral-500 mb-0.5">Variété</div>
+                  <div className="text-sm text-neutral-800">{product.variete}</div>
+                </div>
+              </li>
+            )}
+            {product.qualite && (
+              <li className="flex items-start gap-3 py-3">
+                <Award size={18} className="text-green-primary mt-0.5 shrink-0" strokeWidth={1.5} />
+                <div>
+                  <div className="text-xs uppercase tracking-widest text-neutral-500 mb-0.5">Qualité</div>
+                  <div className="text-sm text-neutral-800">{product.qualite}</div>
+                </div>
+              </li>
+            )}
             {product.origine && (
               <li className="flex items-start gap-3 py-3">
                 <MapPin size={18} className="text-green-primary mt-0.5 shrink-0" strokeWidth={1.5} />

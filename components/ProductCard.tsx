@@ -29,7 +29,7 @@ export default function ProductCard({ product }: { product: Product }) {
         </div>
       )}
       {tags.length > 0 && (
-        <div className="absolute left-2 top-2">
+        <div className="absolute right-2 top-2">
           <ProductTags tags={tags} variant="overlay" />
         </div>
       )}
@@ -45,24 +45,29 @@ export default function ProductCard({ product }: { product: Product }) {
   );
 
   const info = (
-    <div className="flex flex-col flex-1 p-5">
+    <div className="flex flex-col flex-1 p-3 sm:p-5">
       <div className="text-[10px] uppercase tracking-[0.15em] text-neutral-500 font-medium mb-1">
         {product.categorie}
       </div>
-      <h3 className="text-xl font-serif text-neutral-800 leading-snug mb-2">
+      <h3 className="text-base sm:text-xl font-serif text-neutral-800 leading-snug mb-1 sm:mb-2">
         {product.nom}
       </h3>
+      {product.variete && (
+        <div className="text-xs text-neutral-600 italic font-serif mb-1 sm:mb-2 truncate">
+          {product.variete}
+        </div>
+      )}
       {prixResume && (
-        <div className="text-sm font-medium text-green-dark mb-3">{prixResume}</div>
+        <div className="text-sm font-medium text-green-dark mb-2 sm:mb-3">{prixResume}</div>
       )}
       {product.origine && (
-        <div className="text-xs text-neutral-500 mb-4">Origine&nbsp;: {product.origine}</div>
+        <div className="text-xs text-neutral-500 mb-3 sm:mb-4 truncate">Origine&nbsp;: {product.origine}</div>
       )}
 
       <div className="mt-auto">
         <OptionPicker product={product} variant="card" />
         {hasMultipleOptions && product.disponible && (
-          <p className="mt-2 text-[10px] uppercase tracking-widest text-neutral-400">
+          <p className="mt-2 text-[10px] uppercase tracking-widest text-neutral-400 hidden sm:block">
             Choisissez votre option
           </p>
         )}

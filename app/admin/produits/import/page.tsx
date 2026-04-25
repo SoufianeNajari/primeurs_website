@@ -15,6 +15,9 @@ const TEMPLATE_HEADERS = [
   'description_longue',
   'origine',
   'bio',
+  'local',
+  'variete',
+  'qualite',
   'mois_debut',
   'mois_fin',
   'ordre',
@@ -25,9 +28,9 @@ const TEMPLATE_HEADERS = [
 ];
 
 const TEMPLATE_EXAMPLE = [
-  'Pommes Gala,Fruits,,Pommes croquantes et sucrées,,France,true,9,3,1,true,,,au kg:3.50',
-  'Tomates cerise,Légumes,,,,Italie,false,6,9,2,true,,,la barquette:2.50|au kg:8.00',
-  'Comté 18 mois,Fromages,,,,Jura,false,,,3,true,,,au kg:32.00|à la coupe',
+  'Pommes Golden,Fruits,,Pommes croquantes et sucrées,,France,false,false,Golden,Extra,9,3,1,true,,,au kg:4.30|à la pièce:0.50',
+  'Tomates cerise,Légumes,,,,"France, Île-de-France",false,true,,Catégorie 1,6,9,2,true,,,la barquette:2.50|au kg:8.00',
+  'Comté 18 mois,Fromages,,,,"France, Jura",false,false,,,,,3,true,,,au kg:32.00|à la coupe',
 ];
 
 function buildTemplateCsv(): string {
@@ -105,7 +108,12 @@ export default function ImportProduitsPage() {
             Format <code>options</code> : <code>libelle:prix</code>, séparées par <code>|</code>.
             Prix optionnel. Ex&nbsp;: <code>au kg:3.50|la botte:1.20</code>
           </li>
-          <li>Booléens (<code>bio</code>, <code>disponible</code>) : <code>true/false</code> ou <code>oui/non</code></li>
+          <li>Booléens (<code>bio</code>, <code>local</code>, <code>disponible</code>) : <code>true/false</code> ou <code>oui/non</code></li>
+          <li>
+            <code>variete</code> (texte affiché sur la carte, ex&nbsp;: « Golden ») et{' '}
+            <code>qualite</code> (texte affiché sur la fiche, ex&nbsp;: « Extra ») sont optionnels
+          </li>
+          <li>Le badge 🇫🇷 s&apos;affiche automatiquement si <code>origine</code> contient « France »</li>
           <li>Mois (1-12) pour saison, ordre = nombre entier (tri)</li>
           <li>
             Si <code>slug</code> vide → généré automatiquement depuis le nom

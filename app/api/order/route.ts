@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { emailShop, emailClient, type LigneCommande } from '@/lib/emails/templates';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { getClientSession } from '@/lib/client-auth';
+import { isCommandesBloquees } from '@/lib/parametres';
 import type { ProduitOption } from '@/lib/produit';
 
 type PanierItem = {
@@ -18,6 +19,13 @@ type PanierItem = {
 
 export async function POST(request: Request) {
   try {
+    if (await isCommandesBloquees()) {
+      return NextResponse.json(
+        { error: 'Les commandes en ligne sont temporairement indisponibles.' },
+        { status: 503 },
+      );
+    }
+
     // Rate limit : 5 commandes / 10 min / IP
     const ip = getClientIp();
     const rl = rateLimit('order', ip, 5, 10 * 60 * 1000);

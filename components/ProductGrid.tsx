@@ -23,7 +23,7 @@ function getMinPrice(p: Product): number | null {
 }
 
 function isLocal(p: Product): boolean {
-  return Boolean(p.origine && /france|essonne|île-de-france|ile-de-france|seine-et-marne/i.test(p.origine));
+  return Boolean(p.local);
 }
 
 export default function ProductGrid({ products }: { products: Product[] }) {
@@ -181,7 +181,7 @@ export default function ProductGrid({ products }: { products: Product[] }) {
           <p className="text-sm">Aucun produit n&apos;est disponible pour le moment dans cette sélection.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 min-[400px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
           {sorted.map((product, index) => (
             <div
               key={product.id}

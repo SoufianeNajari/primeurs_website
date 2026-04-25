@@ -1,4 +1,8 @@
 import type { Metadata } from 'next';
+import { isCommandesBloquees } from '@/lib/parametres';
+import BoutiqueFermee from '@/components/BoutiqueFermee';
+
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'Passer commande',
@@ -8,6 +12,9 @@ export const metadata: Metadata = {
   robots: { index: false, follow: true },
 };
 
-export default function OrderLayout({ children }: { children: React.ReactNode }) {
+export default async function OrderLayout({ children }: { children: React.ReactNode }) {
+  if (await isCommandesBloquees()) {
+    return <BoutiqueFermee />;
+  }
   return children;
 }

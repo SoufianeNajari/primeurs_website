@@ -1,7 +1,7 @@
 import { Leaf, Sparkles, MapPin } from 'lucide-react';
 import type { Tag, TagKind } from '@/lib/produit';
 
-const ICONS: Record<TagKind, typeof Leaf> = {
+const ICONS: Record<Exclude<TagKind, 'france'>, typeof Leaf> = {
   bio: Leaf,
   saison: Sparkles,
   local: MapPin,
@@ -21,8 +21,20 @@ export default function ProductTags({ tags, variant = 'overlay' }: Props) {
       : 'bg-white ring-1 ring-neutral-200';
 
   return (
-    <div className={variant === 'overlay' ? 'flex flex-col items-start gap-1.5' : 'flex flex-wrap gap-1.5'}>
+    <div className={variant === 'overlay' ? 'flex flex-col items-end gap-1.5' : 'flex flex-wrap gap-1.5'}>
       {tags.map((tag) => {
+        if (tag.kind === 'france') {
+          return (
+            <span
+              key={tag.kind}
+              className={`inline-flex items-center gap-1.5 ${base} h-6 px-2.5 text-[10px] uppercase tracking-[0.12em] font-semibold leading-none ${tag.textColor}`}
+              aria-label="Origine France"
+            >
+              <span aria-hidden className="text-[13px] leading-none relative -top-px">🇫🇷</span>
+              <span className="relative top-px">{tag.label}</span>
+            </span>
+          );
+        }
         const Icon = ICONS[tag.kind];
         return (
           <span
