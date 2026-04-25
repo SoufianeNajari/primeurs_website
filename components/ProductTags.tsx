@@ -27,10 +27,10 @@ export default function ProductTags({ tags, variant = 'overlay' }: Props) {
           return (
             <span
               key={tag.kind}
-              className={`inline-flex items-center gap-1.5 ${base} h-6 px-2.5 text-[10px] uppercase tracking-[0.12em] font-semibold leading-none ${tag.textColor}`}
+              className={`inline-flex items-center gap-1 sm:gap-1.5 ${base} h-[21px] sm:h-6 px-2 sm:px-2.5 text-[9px] sm:text-[10px] uppercase tracking-[0.12em] font-semibold leading-none ${tag.textColor}`}
               aria-label="Origine France"
             >
-              <span aria-hidden className="text-[13px] leading-none relative -top-px">🇫🇷</span>
+              <span aria-hidden className="text-[11px] sm:text-[13px] leading-none relative -top-px">🇫🇷</span>
               <span className="relative top-px">{tag.label}</span>
             </span>
           );
@@ -39,9 +39,9 @@ export default function ProductTags({ tags, variant = 'overlay' }: Props) {
         return (
           <span
             key={tag.kind}
-            className={`inline-flex items-center gap-1.5 ${base} h-6 px-2.5 text-[10px] uppercase tracking-[0.12em] font-semibold leading-none ${tag.textColor}`}
+            className={`inline-flex items-center gap-1 sm:gap-1.5 ${base} h-[21px] sm:h-6 px-2 sm:px-2.5 text-[9px] sm:text-[10px] uppercase tracking-[0.12em] font-semibold leading-none ${tag.textColor}`}
           >
-            <Icon size={11} strokeWidth={2.25} className="shrink-0" />
+            <Icon strokeWidth={2.25} className="shrink-0 w-2.5 h-2.5 sm:w-[11px] sm:h-[11px]" />
             <span className="relative top-px">{tag.label}</span>
           </span>
         );

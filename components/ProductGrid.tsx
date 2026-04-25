@@ -87,7 +87,7 @@ export default function ProductGrid({ products }: { products: Product[] }) {
   return (
     <div className="w-full max-w-5xl mx-auto px-4 py-4 md:py-8">
       {/* Barre de recherche, onglets et filtres sticky */}
-      <div className="sticky top-[80px] z-40 bg-neutral-50 pt-2 pb-3 -mx-4 px-4 sm:mx-0 sm:px-0 mb-6">
+      <div className="md:sticky md:top-[80px] z-40 bg-neutral-50 pt-2 pb-3 -mx-4 px-4 sm:mx-0 sm:px-0 mb-6">
         <div className="relative mb-4">
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
             <Search size={18} className="text-neutral-400" strokeWidth={1.5} />
@@ -181,7 +181,7 @@ export default function ProductGrid({ products }: { products: Product[] }) {
           <p className="text-sm">Aucun produit n&apos;est disponible pour le moment dans cette sélection.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 items-start">
           {sorted.map((product, index) => (
             <div
               key={product.id}
