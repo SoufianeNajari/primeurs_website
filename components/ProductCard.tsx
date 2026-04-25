@@ -33,6 +33,14 @@ export default function ProductCard({ product }: { product: Product }) {
           <ProductTags tags={tags} variant="overlay" />
         </div>
       )}
+      {!product.disponible && (
+        <>
+          <div className="absolute inset-0 bg-white/40 pointer-events-none" aria-hidden />
+          <div className="absolute inset-x-0 bottom-0 bg-neutral-900/85 text-white text-center py-2 text-[11px] uppercase tracking-widest font-medium">
+            Indisponible
+          </div>
+        </>
+      )}
     </div>
   );
 
@@ -63,7 +71,7 @@ export default function ProductCard({ product }: { product: Product }) {
   );
 
   const cardClasses = `bg-white border border-neutral-200 flex flex-col h-full overflow-hidden transition-colors ${
-    !product.disponible ? 'opacity-50 bg-neutral-50 cursor-not-allowed' : 'hover:border-green-primary'
+    !product.disponible ? 'bg-neutral-50 cursor-not-allowed [&_h3]:text-neutral-500 [&_.text-green-dark]:text-neutral-400' : 'hover:border-green-primary'
   }`;
 
   if (href && product.disponible) {

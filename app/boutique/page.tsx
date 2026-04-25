@@ -21,7 +21,7 @@ export default async function BoutiquePage() {
   const { data: products } = await supabaseAdmin
     .from('produits')
     .select('*')
-    .eq('disponible', true)
+    .order('disponible', { ascending: false })
     .order('ordre', { ascending: true })
     .order('nom', { ascending: true });
 
