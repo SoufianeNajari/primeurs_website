@@ -118,31 +118,35 @@ export async function POST(request: Request) {
     const orderId = orderData.id;
 
     const shopEmailAddr = process.env.SHOP_EMAIL || 'magasin@primeur-test.com';
+    const [shopHtml, clientHtml] = await Promise.all([
+      emailShop({
+        prenom: client.prenom,
+        nom: client.nom,
+        email: client.email,
+        telephone: client.telephone,
+        jourRetrait,
+        creneau,
+        message,
+        lignes: lignesNormalisees,
+        orderId,
+      }),
+      emailClient({
+        prenom: client.prenom,
+        jourRetrait,
+        creneau,
+        lignes: lignesNormalisees,
+      }),
+    ]);
     await Promise.all([
       sendEmail({
         to: shopEmailAddr,
         subject: `Nouvelle commande — ${client.prenom} ${client.nom} — ${jourRetrait}${creneau ? ` ${creneau}` : ''}`,
-        html: emailShop({
-          prenom: client.prenom,
-          nom: client.nom,
-          email: client.email,
-          telephone: client.telephone,
-          jourRetrait,
-          creneau,
-          message,
-          lignes: lignesNormalisees,
-          orderId,
-        }),
+        html: shopHtml,
       }),
       sendEmail({
         to: client.email,
         subject: `Votre commande est confirmée — Pontault Primeurs`,
-        html: emailClient({
-          prenom: client.prenom,
-          jourRetrait,
-          creneau,
-          lignes: lignesNormalisees,
-        }),
+        html: clientHtml,
       }),
     ]);
 

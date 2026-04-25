@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { Plus, Pencil } from 'lucide-react';
+import { Plus, Pencil, Upload } from 'lucide-react';
 import { supabaseAdmin } from '@/lib/supabase';
 import type { Product } from '@/lib/produit';
 import { formatPrixResume } from '@/lib/produit';
@@ -28,9 +28,14 @@ export default async function AdminProduitsPage() {
           <h1 className="text-2xl font-serif text-neutral-800">Produits</h1>
           <p className="text-sm text-neutral-500">Gérez votre catalogue — {produits.length} produit{produits.length > 1 ? 's' : ''}</p>
         </div>
-        <Link href="/admin/produits/new" className="inline-flex items-center gap-2 bg-green-primary text-white px-4 py-2 font-medium uppercase tracking-widest text-[11px] hover:bg-green-dark">
-          <Plus size={14} /> Nouveau produit
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="/admin/produits/import" className="inline-flex items-center gap-2 border border-neutral-300 text-neutral-700 px-4 py-2 font-medium uppercase tracking-widest text-[11px] hover:border-green-primary transition-colors">
+            <Upload size={14} /> Importer CSV
+          </Link>
+          <Link href="/admin/produits/new" className="inline-flex items-center gap-2 bg-green-primary text-white px-4 py-2 font-medium uppercase tracking-widest text-[11px] hover:bg-green-dark">
+            <Plus size={14} /> Nouveau produit
+          </Link>
+        </div>
       </div>
 
       {Object.keys(grouped).length === 0 ? (
