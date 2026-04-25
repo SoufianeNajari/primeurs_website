@@ -3,6 +3,7 @@ import { sendEmail } from '@/lib/mailer';
 import { supabaseAdmin } from '@/lib/supabase';
 import { emailShop, emailClient, type LigneCommande } from '@/lib/emails/templates';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
+import { getClientSession } from '@/lib/client-auth';
 import type { ProduitOption } from '@/lib/produit';
 
 type PanierItem = {
@@ -85,6 +86,14 @@ export async function POST(request: Request) {
       );
     }
 
+    // Récupère l'id du client whitelisté depuis la session (le middleware
+    // garantit qu'on est bien connecté quand on arrive ici)
+    let clientId: string | null = null;
+    try {
+      const session = await getClientSession();
+      clientId = session.clientId ?? null;
+    } catch {}
+
     const { data: orderData, error: dbError } = await supabaseAdmin
       .from('commandes')
       .insert({
@@ -96,6 +105,7 @@ export async function POST(request: Request) {
         statut: 'reçue',
         jour_retrait: jourRetrait,
         creneau_retrait: creneau || null,
+        client_id: clientId,
       })
       .select('id')
       .single();

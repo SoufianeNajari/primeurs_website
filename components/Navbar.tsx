@@ -2,14 +2,29 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { ShoppingBag, Menu, X } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { ShoppingBag, Menu, X, LogOut } from 'lucide-react';
 import { useCart } from './CartContext';
 
-export default function Navbar() {
+export default function Navbar({ isClientAuthed = false }: { isClientAuthed?: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
   const { totalItems, setIsCartOpen } = useCart();
+
+  async function handleLogout() {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      await fetch('/api/client/logout', { method: 'POST' });
+      router.push('/');
+      router.refresh();
+    } finally {
+      setLoggingOut(false);
+      setIsOpen(false);
+    }
+  }
 
   const CartIcon = () => (
     <button 
@@ -50,6 +65,16 @@ export default function Navbar() {
           >
             Recettes
           </Link>
+          {isClientAuthed && (
+            <button
+              onClick={handleLogout}
+              disabled={loggingOut}
+              className="inline-flex items-center gap-1.5 font-medium tracking-widest uppercase text-[11px] text-neutral-600 hover:text-green-primary transition-colors disabled:opacity-50"
+              aria-label="Se déconnecter"
+            >
+              <LogOut size={14} strokeWidth={1.5} /> Déconnexion
+            </button>
+          )}
 
           <CartIcon />
         </div>
@@ -91,6 +116,15 @@ export default function Navbar() {
           >
             Recettes
           </Link>
+          {isClientAuthed && (
+            <button
+              onClick={handleLogout}
+              disabled={loggingOut}
+              className="text-left inline-flex items-center gap-2 text-[11px] tracking-widest uppercase font-medium px-4 py-4 border-l-2 border-transparent text-neutral-600 disabled:opacity-50"
+            >
+              <LogOut size={14} strokeWidth={1.5} /> Déconnexion
+            </button>
+          )}
         </div>
       )}
     </nav>

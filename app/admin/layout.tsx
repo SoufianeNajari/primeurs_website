@@ -16,6 +16,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <Link href="/admin" className="text-xs uppercase tracking-widest font-medium text-neutral-600 hover:text-green-primary transition-colors">Dispo rapide</Link>
           <Link href="/admin/orders" className="text-xs uppercase tracking-widest font-medium text-neutral-600 hover:text-green-primary transition-colors">Commandes</Link>
           <Link href="/admin/articles" className="text-xs uppercase tracking-widest font-medium text-neutral-600 hover:text-green-primary transition-colors">Articles</Link>
+          <Link href="/admin/clients" className="text-xs uppercase tracking-widest font-medium text-neutral-600 hover:text-green-primary transition-colors">Clients</Link>
         </div>
       </nav>
       <div className="flex-grow">

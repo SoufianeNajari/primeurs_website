@@ -7,6 +7,7 @@ import Footer from "@/components/Footer";
 import PWAPrompt from "@/components/PWAPrompt";
 import { Analytics } from "@vercel/analytics/next";
 import { SITE, DEFAULT_OG_IMAGE } from "@/lib/site";
+import { isClientAuthorized } from "@/lib/client-auth";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
@@ -91,11 +92,12 @@ export const viewport = {
   themeColor: "#2C5530",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const isClientAuthed = await isClientAuthorized();
   return (
     <html lang="fr">
       <head>
@@ -122,7 +124,7 @@ export default function RootLayout({
           Aller au contenu principal
         </a>
         <CartProvider>
-          <Navbar />
+          <Navbar isClientAuthed={isClientAuthed} />
           <div id="main-content">{children}</div>
           <Footer />
           <PWAPrompt />
