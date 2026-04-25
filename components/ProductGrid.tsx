@@ -181,7 +181,7 @@ export default function ProductGrid({ products }: { products: Product[] }) {
           <p className="text-sm">Aucun produit n&apos;est disponible pour le moment dans cette sélection.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 items-start">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
           {sorted.map((product, index) => (
             <div
               key={product.id}

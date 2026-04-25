@@ -77,14 +77,46 @@ function OptionRow({ product, option, variant, single }: { product: Product; opt
 
   const h = variant === 'detail' ? 'h-12' : 'h-11';
   const px = variant === 'detail' ? 'px-4' : 'px-3';
+  const cardSingleTall = variant === 'card' && single;
+  const rowH = cardSingleTall ? 'h-[96px]' : h;
+  const btnCls = cardSingleTall ? 'w-11 h-11' : `${h} aspect-square`;
 
   if (quantity > 0) {
+    if (cardSingleTall) {
+      return (
+        <div className="flex flex-col border border-green-primary bg-green-primary/5 h-[96px] overflow-hidden">
+          <div className="flex-1 flex items-center justify-between px-3 text-[11px] min-w-0 border-b border-green-primary/20">
+            <span className="font-medium text-neutral-800 truncate">{option.libelle}</span>
+            {prixLabel && <span className="text-green-dark font-medium shrink-0 ml-2">{prixLabel}</span>}
+          </div>
+          <div className="flex-1 flex items-stretch">
+            <button
+              onClick={handleDec}
+              aria-label={`Diminuer ${option.libelle}`}
+              className="w-12 flex items-center justify-center text-green-dark hover:bg-green-primary/10 active:bg-green-primary/20 focus:outline-none border-r border-green-primary/20"
+            >
+              <Minus size={16} strokeWidth={2} />
+            </button>
+            <div className="flex-1 flex items-center justify-center text-green-dark font-semibold text-sm">
+              {quantity}
+            </div>
+            <button
+              onClick={handleInc}
+              aria-label={`Augmenter ${option.libelle}`}
+              className="w-12 flex items-center justify-center text-green-dark hover:bg-green-primary/10 active:bg-green-primary/20 focus:outline-none border-l border-green-primary/20"
+            >
+              <Plus size={16} strokeWidth={2} />
+            </button>
+          </div>
+        </div>
+      );
+    }
     return (
-      <div className={`flex items-stretch border border-green-primary bg-green-primary/5 ${h}`}>
+      <div className={`flex items-center border border-green-primary bg-green-primary/5 ${rowH}`}>
         <button
           onClick={handleDec}
           aria-label={`Diminuer ${option.libelle}`}
-          className={`${h} aspect-square flex items-center justify-center text-green-dark hover:bg-green-primary/10 active:bg-green-primary/20 focus:outline-none`}
+          className={`${btnCls} flex items-center justify-center text-green-dark hover:bg-green-primary/10 active:bg-green-primary/20 focus:outline-none`}
         >
           <Minus size={16} strokeWidth={2} />
         </button>
@@ -98,7 +130,7 @@ function OptionRow({ product, option, variant, single }: { product: Product; opt
         <button
           onClick={handleInc}
           aria-label={`Augmenter ${option.libelle}`}
-          className={`${h} aspect-square flex items-center justify-center text-green-dark hover:bg-green-primary/10 active:bg-green-primary/20 focus:outline-none`}
+          className={`${btnCls} flex items-center justify-center text-green-dark hover:bg-green-primary/10 active:bg-green-primary/20 focus:outline-none`}
         >
           <Plus size={16} strokeWidth={2} />
         </button>
@@ -107,14 +139,26 @@ function OptionRow({ product, option, variant, single }: { product: Product; opt
   }
 
   if (single) {
+    if (variant === 'card') {
+      return (
+        <button
+          onClick={handleAdd}
+          className="w-full h-[96px] border border-green-primary bg-transparent text-green-primary hover:bg-green-primary hover:text-white flex flex-col items-center justify-center gap-1.5 transition-colors px-3"
+        >
+          <span className="flex items-center gap-2 uppercase tracking-widest text-[11px] font-medium">
+            <ShoppingBag size={14} strokeWidth={2} />
+            Ajouter au panier
+          </span>
+          <span className="text-[11px] font-medium opacity-80 truncate max-w-full">
+            {prixLabel || option.libelle}
+          </span>
+        </button>
+      );
+    }
     return (
       <button
         onClick={handleAdd}
-        className={`w-full ${h} border font-medium flex items-center justify-center gap-2 transition-colors uppercase tracking-widest text-[11px] ${
-          variant === 'detail'
-            ? 'bg-green-primary text-white border-green-primary hover:bg-green-dark'
-            : 'bg-transparent text-green-primary border-green-primary hover:bg-green-primary hover:text-white'
-        }`}
+        className={`w-full ${h} border font-medium flex items-center justify-center gap-2 transition-colors uppercase tracking-widest text-[11px] bg-green-primary text-white border-green-primary hover:bg-green-dark`}
       >
         <ShoppingBag size={14} strokeWidth={2} />
         {prixLabel ? `Ajouter — ${prixLabel} ${option.libelle}` : `Ajouter — ${option.libelle}`}
