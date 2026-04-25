@@ -6,9 +6,19 @@ import { triggerHaptic } from '@/lib/haptic'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Order = any;
 
+type StatusFilter = 'tous' | 'reçue' | 'prête' | 'retirée';
+
 export default function OrderList({ initialOrders }: { initialOrders: Order[] }) {
   const [orders, setOrders] = useState<Order[]>(initialOrders)
   const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set())
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('tous')
+
+  const counts = {
+    tous: orders.length,
+    'reçue': orders.filter(o => o.statut === 'reçue').length,
+    'prête': orders.filter(o => o.statut === 'prête').length,
+    'retirée': orders.filter(o => o.statut === 'retirée').length,
+  }
 
   const updateStatus = async (id: string, currentStatus: string) => {
     let newStatus = 'reçue'
@@ -48,12 +58,37 @@ export default function OrderList({ initialOrders }: { initialOrders: Order[] })
     return <div className="text-center text-neutral-500 py-12 font-serif text-lg border border-neutral-200 bg-white">Aucune commande pour aujourd&apos;hui.</div>
   }
 
+  const filterTabs: { value: StatusFilter; label: string }[] = [
+    { value: 'tous', label: 'Tous' },
+    { value: 'reçue', label: 'Reçues' },
+    { value: 'prête', label: 'Prêtes' },
+    { value: 'retirée', label: 'Retirées' },
+  ]
+
+  const visibleOrders = statusFilter === 'tous' ? orders : orders.filter(o => o.statut === statusFilter)
+
   // Filtrer pour ne pas trop encombrer l'écran avec les commandes "retirées" (historique)
-  const activeOrders = orders.filter(o => o.statut !== 'retirée')
-  const completedOrders = orders.filter(o => o.statut === 'retirée')
+  const activeOrders = visibleOrders.filter(o => o.statut !== 'retirée')
+  const completedOrders = visibleOrders.filter(o => o.statut === 'retirée')
 
   return (
     <div className="space-y-8">
+      <div className="flex flex-wrap gap-2 mb-2">
+        {filterTabs.map(tab => (
+          <button
+            key={tab.value}
+            onClick={() => setStatusFilter(tab.value)}
+            className={`text-[11px] uppercase tracking-widest font-medium px-3 py-2 border transition-colors ${
+              statusFilter === tab.value
+                ? 'border-green-primary text-green-primary bg-green-primary/5'
+                : 'border-neutral-200 text-neutral-500 hover:border-neutral-400 hover:text-neutral-800'
+            }`}
+          >
+            {tab.label} <span className="text-neutral-400 ml-1">({counts[tab.value]})</span>
+          </button>
+        ))}
+      </div>
+
       <div className="space-y-4">
         <h3 className="text-[11px] uppercase tracking-widest font-medium text-neutral-500 border-b border-neutral-200 pb-2">Commandes en cours ({activeOrders.length})</h3>
         {activeOrders.map(order => (
