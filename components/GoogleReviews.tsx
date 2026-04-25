@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import { Star, ExternalLink } from 'lucide-react';
-import { getGoogleReviews } from '@/lib/google-reviews';
+import { getCachedGoogleReviews } from '@/lib/google-reviews';
 
 function Stars({ value, size = 14 }: { value: number; size?: number }) {
   const full = Math.floor(value);
@@ -30,7 +30,7 @@ function Stars({ value, size = 14 }: { value: number; size?: number }) {
 }
 
 export default async function GoogleReviews() {
-  const data = await getGoogleReviews();
+  const data = await getCachedGoogleReviews();
   if (!data || !data.rating || data.reviews.length === 0) return null;
 
   const topReviews = data.reviews.slice(0, 3);

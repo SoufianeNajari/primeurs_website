@@ -1,3 +1,5 @@
+import { supabaseAdmin } from '@/lib/supabase';
+
 export type GoogleReview = {
   authorName: string;
   authorPhoto: string | null;
@@ -13,12 +15,15 @@ export type GoogleReviewsData = {
   userRatingCount: number;
   reviews: GoogleReview[];
   placeUrl: string;
+  refreshedAt?: string;
 };
 
 const PLACES_ENDPOINT = 'https://places.googleapis.com/v1/places';
-const REVALIDATE_SECONDS = 60 * 60 * 24; // 24h
+const SNAPSHOT_ID = 'main';
 
-export async function getGoogleReviews(): Promise<GoogleReviewsData | null> {
+// Appel direct à l'API Google Places. À utiliser uniquement côté admin
+// (refresh manuel ou cron) — la lecture publique passe par getCachedGoogleReviews.
+export async function fetchGoogleReviewsLive(): Promise<GoogleReviewsData | null> {
   const apiKey = process.env.GOOGLE_PLACES_API_KEY;
   const placeId = process.env.GOOGLE_PLACE_ID;
 
@@ -32,7 +37,7 @@ export async function getGoogleReviews(): Promise<GoogleReviewsData | null> {
         'X-Goog-Api-Key': apiKey,
         'Accept-Language': 'fr',
       },
-      next: { revalidate: REVALIDATE_SECONDS, tags: ['google-reviews'] },
+      cache: 'no-store',
     });
 
     if (!res.ok) {
@@ -72,4 +77,51 @@ export async function getGoogleReviews(): Promise<GoogleReviewsData | null> {
     console.error('[google-reviews] fetch failed', e);
     return null;
   }
+}
+
+// Lecture du snapshot DB. Source de vérité pour l'affichage public.
+export async function getCachedGoogleReviews(): Promise<GoogleReviewsData | null> {
+  const { data, error } = await supabaseAdmin
+    .from('google_reviews_snapshot')
+    .select('rating, user_rating_count, reviews, place_url, refreshed_at')
+    .eq('id', SNAPSHOT_ID)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[google-reviews] read snapshot', error);
+    return null;
+  }
+  if (!data) return null;
+
+  return {
+    rating: data.rating == null ? null : Number(data.rating),
+    userRatingCount: data.user_rating_count ?? 0,
+    reviews: (data.reviews as GoogleReview[]) || [],
+    placeUrl: data.place_url || '',
+    refreshedAt: data.refreshed_at,
+  };
+}
+
+// Appel API + UPSERT en DB. Renvoie le snapshot fraîchement écrit.
+export async function refreshGoogleReviews(): Promise<GoogleReviewsData | null> {
+  const live = await fetchGoogleReviewsLive();
+  if (!live) return null;
+
+  const { error } = await supabaseAdmin
+    .from('google_reviews_snapshot')
+    .upsert({
+      id: SNAPSHOT_ID,
+      rating: live.rating,
+      user_rating_count: live.userRatingCount,
+      reviews: live.reviews,
+      place_url: live.placeUrl,
+      refreshed_at: new Date().toISOString(),
+    });
+
+  if (error) {
+    console.error('[google-reviews] upsert snapshot', error);
+    return null;
+  }
+
+  return getCachedGoogleReviews();
 }

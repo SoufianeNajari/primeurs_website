@@ -1,5 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabase'
 import AdminToggleList from '@/components/AdminToggleList'
+import AdminReviewsWidget from '@/components/AdminReviewsWidget'
+import { getCachedGoogleReviews } from '@/lib/google-reviews'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,8 +30,16 @@ export default async function AdminPage() {
     return acc
   }, {} as Record<string, typeof produits>)
 
+  const reviewsSnapshot = await getCachedGoogleReviews()
+
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto">
+      <AdminReviewsWidget
+        refreshedAt={reviewsSnapshot?.refreshedAt ?? null}
+        rating={reviewsSnapshot?.rating ?? null}
+        userRatingCount={reviewsSnapshot?.userRatingCount ?? 0}
+        reviewsCount={reviewsSnapshot?.reviews.length ?? 0}
+      />
       <div className="mb-8">
         <h2 className="text-2xl font-serif text-neutral-800 mb-2">Disponibilité des produits</h2>
         <p className="text-sm text-neutral-500">Activez ou désactivez les produits de la boutique en temps réel.</p>
