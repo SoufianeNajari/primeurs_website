@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { isAdmin } from '@/lib/admin-auth';
 import { refreshGoogleReviews } from '@/lib/google-reviews';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
@@ -26,6 +27,9 @@ export async function POST() {
       { status: 502 },
     );
   }
+
+  // Invalide le cache ISR de la home pour que les nouveaux avis apparaissent immédiatement
+  revalidatePath('/');
 
   return NextResponse.json({
     success: true,
