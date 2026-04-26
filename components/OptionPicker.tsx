@@ -85,9 +85,8 @@ function OptionRow({ product, option, variant, single }: { product: Product; opt
     if (cardSingleTall) {
       return (
         <div className="flex flex-col border border-green-primary bg-green-primary/5 h-[96px] overflow-hidden">
-          <div className="flex-1 flex items-center justify-between px-3 text-[11px] min-w-0 border-b border-green-primary/20">
+          <div className="flex-1 flex items-center justify-center px-3 text-[11px] min-w-0 border-b border-green-primary/20">
             <span className="font-medium text-neutral-800 truncate">{option.libelle}</span>
-            {prixLabel && <span className="text-green-dark font-medium shrink-0 ml-2">{prixLabel}</span>}
           </div>
           <div className="flex-1 flex items-stretch">
             <button
@@ -143,15 +142,10 @@ function OptionRow({ product, option, variant, single }: { product: Product; opt
       return (
         <button
           onClick={handleAdd}
-          className="w-full h-[96px] border border-green-primary bg-transparent text-green-primary hover:bg-green-primary hover:text-white flex flex-col items-center justify-center gap-1.5 transition-colors px-3"
+          className="w-full h-[96px] border border-green-primary bg-transparent text-green-primary hover:bg-green-primary hover:text-white flex items-center justify-center gap-2 transition-colors px-3 uppercase tracking-widest text-[11px] font-medium"
         >
-          <span className="flex items-center gap-2 uppercase tracking-widest text-[11px] font-medium">
-            <ShoppingBag size={14} strokeWidth={2} />
-            Ajouter au panier
-          </span>
-          <span className="text-[11px] font-medium opacity-80 truncate max-w-full">
-            {prixLabel || option.libelle}
-          </span>
+          <ShoppingBag size={14} strokeWidth={2} />
+          Ajouter au panier
         </button>
       );
     }
