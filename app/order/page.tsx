@@ -20,6 +20,19 @@ export default function OrderPage() {
   const creneaux = useMemo(() => (jour ? creneauxForJour(jour) : []), [jour]);
   const bornes = useFourchetteBornes();
 
+  // Bornes du date picker : J+1 → J+14, en évitant le lundi (boutique fermée).
+  // L'attribut HTML5 `min`/`max` ne peut pas exclure les lundis ; on valide
+  // côté client + côté API.
+  const { dateMin, dateMax } = useMemo(() => {
+    const today = new Date();
+    const min = new Date(today);
+    min.setDate(min.getDate() + 1);
+    const max = new Date(today);
+    max.setDate(max.getDate() + 14);
+    const fmt = (d: Date) => d.toISOString().slice(0, 10);
+    return { dateMin: fmt(min), dateMax: fmt(max) };
+  }, []);
+
   useEffect(() => {
     setIsMounted(true);
   }, []);
@@ -56,7 +69,18 @@ export default function OrderPage() {
     };
     const jourRetrait = formData.get('jourRetrait') as string;
     const creneau = (formData.get('creneau') as string) || null;
+    const dateRetraitSouhaite = (formData.get('dateRetraitSouhaite') as string) || null;
     const message = formData.get('message') as string;
+
+    if (dateRetraitSouhaite) {
+      const d = new Date(dateRetraitSouhaite + 'T00:00:00');
+      // 1 = lundi (boutique fermée le lundi)
+      if (d.getDay() === 1) {
+        setError('La boutique est fermée le lundi. Choisis un autre jour.');
+        setIsSubmitting(false);
+        return;
+      }
+    }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(client.email)) {
@@ -81,6 +105,7 @@ export default function OrderPage() {
           panier: cartItems,
           jourRetrait,
           creneau,
+          dateRetraitSouhaite,
           message,
         }),
       });
@@ -235,7 +260,17 @@ export default function OrderPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+          <div className="space-y-2 pt-4">
+            <label htmlFor="dateRetraitSouhaite" className="block text-xs uppercase tracking-wider text-neutral-600">Date de retrait souhaitée</label>
+            <input
+              type="date" id="dateRetraitSouhaite" name="dateRetraitSouhaite"
+              min={dateMin} max={dateMax}
+              className="w-full px-4 py-3 border border-neutral-300 rounded-sm focus:ring-1 focus:ring-green-primary focus:border-green-primary outline-none transition-colors bg-white font-medium text-neutral-700"
+            />
+            <p className="text-[11px] text-neutral-500 italic">Disponible du mardi au dimanche, dans les 14 jours.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <label htmlFor="jourRetrait" className="block text-xs uppercase tracking-wider text-neutral-600">Jour de retrait *</label>
               <select

@@ -5,6 +5,7 @@ import { emailShop, emailClient, type LigneCommande } from '@/lib/emails/templat
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { getClientSession } from '@/lib/client-auth';
 import { isCommandesBloquees } from '@/lib/parametres';
+import { getFourchetteBornes } from '@/lib/fourchette';
 import type { ProduitOption } from '@/lib/produit';
 
 type PanierItem = {
@@ -38,16 +39,34 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { client, panier, jourRetrait, creneau, message } = body as {
+    const { client, panier, jourRetrait, creneau, dateRetraitSouhaite, message } = body as {
       client: { prenom: string; nom: string; email: string; telephone: string };
       panier: PanierItem[];
       jourRetrait: string;
       creneau?: string | null;
+      dateRetraitSouhaite?: string | null;
       message?: string;
     };
 
     if (!client || !client.prenom || !client.nom || !client.email || !client.telephone || !jourRetrait) {
       return NextResponse.json({ error: 'Champs obligatoires manquants.' }, { status: 400 });
+    }
+
+    // Validation date retrait : ISO YYYY-MM-DD, J+1 → J+14, pas un lundi.
+    let dateRetraitNorm: string | null = null;
+    if (dateRetraitSouhaite) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateRetraitSouhaite)) {
+        return NextResponse.json({ error: 'Date de retrait invalide.' }, { status: 400 });
+      }
+      const d = new Date(dateRetraitSouhaite + 'T00:00:00');
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const minD = new Date(today); minD.setDate(minD.getDate() + 1);
+      const maxD = new Date(today); maxD.setDate(maxD.getDate() + 14);
+      if (Number.isNaN(d.getTime()) || d < minD || d > maxD || d.getDay() === 1) {
+        return NextResponse.json({ error: 'Date de retrait hors plage autorisée.' }, { status: 400 });
+      }
+      dateRetraitNorm = dateRetraitSouhaite;
     }
 
     if (!panier || !Array.isArray(panier) || panier.length === 0) {
@@ -113,6 +132,7 @@ export async function POST(request: Request) {
         statut: 'reçue',
         jour_retrait: jourRetrait,
         creneau_retrait: creneau || null,
+        date_retrait_souhaite: dateRetraitNorm,
         client_id: clientId,
       })
       .select('id')
@@ -126,6 +146,7 @@ export async function POST(request: Request) {
     const orderId = orderData.id;
 
     const shopEmailAddr = process.env.SHOP_EMAIL || 'magasin@primeur-test.com';
+    const fourchetteBornes = await getFourchetteBornes();
     const [shopHtml, clientHtml] = await Promise.all([
       emailShop({
         prenom: client.prenom,
@@ -134,15 +155,19 @@ export async function POST(request: Request) {
         telephone: client.telephone,
         jourRetrait,
         creneau,
+        dateRetraitSouhaite: dateRetraitNorm,
         message,
         lignes: lignesNormalisees,
         orderId,
+        fourchetteMaxPct: fourchetteBornes.max,
       }),
       emailClient({
         prenom: client.prenom,
         jourRetrait,
         creneau,
+        dateRetraitSouhaite: dateRetraitNorm,
         lignes: lignesNormalisees,
+        fourchetteBornes,
       }),
     ]);
     await Promise.all([

@@ -21,6 +21,7 @@ type Commande = {
   client_telephone: string;
   jour_retrait: string | null;
   creneau_retrait: string | null;
+  date_retrait_souhaite: string | null;
   message: string | null;
   lignes: Ligne[];
 };
@@ -56,7 +57,7 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await supabaseAdmin
     .from('commandes')
-    .select('id, created_at, statut, client_nom, client_email, client_telephone, jour_retrait, creneau_retrait, message, lignes')
+    .select('id, created_at, statut, client_nom, client_email, client_telephone, jour_retrait, creneau_retrait, date_retrait_souhaite, message, lignes')
     .gte('created_at', start.toISOString())
     .lt('created_at', end.toISOString())
     .order('created_at', { ascending: true });
@@ -77,6 +78,7 @@ export async function GET(request: NextRequest) {
     'client_telephone',
     'jour_retrait',
     'creneau_retrait',
+    'date_retrait_souhaite',
     'message',
     'produit',
     'libelle',
@@ -103,6 +105,7 @@ export async function GET(request: NextRequest) {
           c.client_telephone,
           c.jour_retrait || '',
           c.creneau_retrait || '',
+          c.date_retrait_souhaite || '',
           c.message || '',
           l?.nom || '',
           l?.libelle || '',
