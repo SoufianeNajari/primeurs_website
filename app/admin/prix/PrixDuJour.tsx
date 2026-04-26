@@ -1,0 +1,343 @@
+'use client';
+
+import { useMemo, useState, useTransition } from 'react';
+import { Check, Loader2 } from 'lucide-react';
+import type { ProduitOption } from '@/lib/produit';
+
+type ProduitPrix = {
+  id: string;
+  nom: string;
+  categorie: string;
+  slug?: string | null;
+  options: ProduitOption[];
+  disponible: boolean;
+  variete?: string | null;
+  prix_updated_at: string;
+};
+
+type Filtre = 'tous' | 'a_actualiser' | 'indispo';
+
+const HOURS_24 = 24 * 60 * 60 * 1000;
+const HOURS_72 = 72 * 60 * 60 * 1000;
+
+function freshnessLevel(prixUpdatedAt: string): 'fresh' | 'medium' | 'stale' {
+  const ageMs = Date.now() - new Date(prixUpdatedAt).getTime();
+  if (ageMs < HOURS_24) return 'fresh';
+  if (ageMs < HOURS_72) return 'medium';
+  return 'stale';
+}
+
+function relativeAge(prixUpdatedAt: string): string {
+  const ageMs = Date.now() - new Date(prixUpdatedAt).getTime();
+  const hours = Math.floor(ageMs / (60 * 60 * 1000));
+  if (hours < 1) return "à l'instant";
+  if (hours < 24) return `il y a ${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `il y a ${days}j`;
+}
+
+function formatPrixInput(prix: number | null | undefined): string {
+  if (prix == null) return '';
+  return String(prix).replace('.', ',');
+}
+
+function parsePrixInput(raw: string): number | null {
+  const trimmed = raw.trim().replace(',', '.');
+  if (trimmed === '') return null;
+  const n = Number(trimmed);
+  if (Number.isNaN(n) || n < 0) return null;
+  return Math.round(n * 100) / 100;
+}
+
+export default function PrixDuJour({ initialProduits }: { initialProduits: ProduitPrix[] }) {
+  const [produits, setProduits] = useState<ProduitPrix[]>(initialProduits);
+  const [filtre, setFiltre] = useState<Filtre>('tous');
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [savedKey, setSavedKey] = useState<string | null>(null);
+  const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
+
+  const filtered = useMemo(() => {
+    if (filtre === 'a_actualiser') {
+      return produits.filter((p) => freshnessLevel(p.prix_updated_at) === 'stale');
+    }
+    if (filtre === 'indispo') {
+      return produits.filter((p) => !p.disponible);
+    }
+    return produits;
+  }, [produits, filtre]);
+
+  const counts = useMemo(() => {
+    const stale = produits.filter((p) => freshnessLevel(p.prix_updated_at) === 'stale').length;
+    const indispo = produits.filter((p) => !p.disponible).length;
+    return { tous: produits.length, stale, indispo };
+  }, [produits]);
+
+  async function saveOptionPrix(produitId: string, optionId: string, newPrix: number | null) {
+    const key = `${produitId}:${optionId}`;
+    const produit = produits.find((p) => p.id === produitId);
+    if (!produit) return;
+
+    const previousPrix = produit.options.find((o) => o.id === optionId)?.prix ?? null;
+    if (previousPrix === newPrix) return;
+
+    setSavingKey(key);
+    setErrorKey(null);
+
+    const nextOptions = produit.options.map((o) => (o.id === optionId ? { ...o, prix: newPrix } : o));
+    setProduits((prev) =>
+      prev.map((p) =>
+        p.id === produitId
+          ? { ...p, options: nextOptions, prix_updated_at: new Date().toISOString() }
+          : p,
+      ),
+    );
+
+    try {
+      const res = await fetch(`/api/admin/produits/${produitId}/prix`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ options: [{ id: optionId, prix: newPrix }] }),
+      });
+      if (!res.ok) throw new Error('save failed');
+      setSavedKey(key);
+      setTimeout(() => setSavedKey((k) => (k === key ? null : k)), 1500);
+    } catch (err) {
+      console.error(err);
+      setErrorKey(key);
+      setProduits((prev) =>
+        prev.map((p) =>
+          p.id === produitId
+            ? {
+                ...p,
+                options: p.options.map((o) =>
+                  o.id === optionId ? { ...o, prix: previousPrix } : o,
+                ),
+              }
+            : p,
+        ),
+      );
+    } finally {
+      setSavingKey((k) => (k === key ? null : k));
+    }
+  }
+
+  async function toggleDisponible(produitId: string, next: boolean) {
+    const previous = produits.find((p) => p.id === produitId)?.disponible;
+    if (previous === undefined) return;
+
+    setProduits((prev) => prev.map((p) => (p.id === produitId ? { ...p, disponible: next } : p)));
+
+    try {
+      const res = await fetch('/api/toggle', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: produitId, disponible: next }),
+      });
+      if (!res.ok) throw new Error('toggle failed');
+    } catch (err) {
+      console.error(err);
+      setProduits((prev) =>
+        prev.map((p) => (p.id === produitId ? { ...p, disponible: previous } : p)),
+      );
+    }
+  }
+
+  return (
+    <div>
+      <div className="sticky top-[60px] z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 bg-neutral-50/95 backdrop-blur border-b border-neutral-200 mb-4">
+        <div className="flex gap-2 overflow-x-auto">
+          <FilterTab active={filtre === 'tous'} onClick={() => setFiltre('tous')} label="Tous" count={counts.tous} />
+          <FilterTab
+            active={filtre === 'a_actualiser'}
+            onClick={() => setFiltre('a_actualiser')}
+            label="À actualiser"
+            count={counts.stale}
+            tone="stale"
+          />
+          <FilterTab
+            active={filtre === 'indispo'}
+            onClick={() => setFiltre('indispo')}
+            label="Indispo"
+            count={counts.indispo}
+            tone="warn"
+          />
+        </div>
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="border border-neutral-200 bg-white p-8 text-center text-neutral-500">
+          Aucun produit dans ce filtre.
+        </div>
+      ) : (
+        <ul className="flex flex-col gap-3">
+          {filtered.map((p) => (
+            <li
+              key={p.id}
+              className={`bg-white border ${
+                p.disponible ? 'border-neutral-200' : 'border-red-200 bg-red-50/30'
+              } overflow-hidden`}
+            >
+              <div className="px-4 py-3 flex items-center gap-3">
+                <FreshnessBadge level={freshnessLevel(p.prix_updated_at)} />
+                <div className="flex-1 min-w-0">
+                  <div className="font-serif text-neutral-800 text-base truncate">{p.nom}</div>
+                  <div className="text-[11px] text-neutral-500 truncate">
+                    <span className="uppercase tracking-widest">{p.categorie}</span>
+                    {p.variete ? <span className="italic"> · {p.variete}</span> : null}
+                    <span> · MAJ {relativeAge(p.prix_updated_at)}</span>
+                  </div>
+                </div>
+                <DispoToggle disponible={p.disponible} onChange={(v) => toggleDisponible(p.id, v)} />
+              </div>
+              <div className="border-t border-neutral-100">
+                {p.options.map((opt) => {
+                  const key = `${p.id}:${opt.id}`;
+                  return (
+                    <OptionPrixRow
+                      key={opt.id}
+                      libelle={opt.libelle}
+                      prix={opt.prix ?? null}
+                      saving={savingKey === key}
+                      saved={savedKey === key}
+                      hasError={errorKey === key}
+                      onSave={(newPrix) =>
+                        startTransition(() => {
+                          saveOptionPrix(p.id, opt.id, newPrix);
+                        })
+                      }
+                    />
+                  );
+                })}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function FilterTab({
+  active,
+  onClick,
+  label,
+  count,
+  tone,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  count: number;
+  tone?: 'stale' | 'warn';
+}) {
+  const baseTone =
+    tone === 'stale'
+      ? active
+        ? 'bg-red-600 text-white border-red-600'
+        : 'bg-white text-red-700 border-red-200'
+      : tone === 'warn'
+      ? active
+        ? 'bg-amber-600 text-white border-amber-600'
+        : 'bg-white text-amber-700 border-amber-200'
+      : active
+      ? 'bg-neutral-900 text-white border-neutral-900'
+      : 'bg-white text-neutral-700 border-neutral-300';
+  return (
+    <button
+      onClick={onClick}
+      className={`shrink-0 inline-flex items-center gap-1.5 border px-3 h-9 text-[11px] uppercase tracking-widest font-medium transition-colors ${baseTone}`}
+    >
+      {label}
+      <span className="text-[10px] opacity-80">{count}</span>
+    </button>
+  );
+}
+
+function FreshnessBadge({ level }: { level: 'fresh' | 'medium' | 'stale' }) {
+  const cls =
+    level === 'fresh'
+      ? 'bg-green-500'
+      : level === 'medium'
+      ? 'bg-amber-500'
+      : 'bg-red-500';
+  const label =
+    level === 'fresh' ? 'Prix à jour (<24h)' : level === 'medium' ? 'À revoir (<72h)' : 'À actualiser (>72h)';
+  return <span className={`shrink-0 w-2.5 h-2.5 rounded-full ${cls}`} aria-label={label} title={label} />;
+}
+
+function DispoToggle({ disponible, onChange }: { disponible: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      onClick={() => onChange(!disponible)}
+      className={`shrink-0 h-9 px-3 text-[10px] uppercase tracking-widest font-medium border transition-colors ${
+        disponible
+          ? 'bg-white border-neutral-300 text-neutral-700 hover:border-green-primary'
+          : 'bg-red-600 border-red-600 text-white hover:bg-red-700'
+      }`}
+      aria-pressed={!disponible}
+    >
+      {disponible ? 'Dispo' : 'Indispo'}
+    </button>
+  );
+}
+
+function OptionPrixRow({
+  libelle,
+  prix,
+  saving,
+  saved,
+  hasError,
+  onSave,
+}: {
+  libelle: string;
+  prix: number | null;
+  saving: boolean;
+  saved: boolean;
+  hasError: boolean;
+  onSave: (newPrix: number | null) => void;
+}) {
+  const [value, setValue] = useState<string>(formatPrixInput(prix));
+
+  function handleBlur() {
+    const parsed = parsePrixInput(value);
+    setValue(formatPrixInput(parsed));
+    onSave(parsed);
+  }
+
+  return (
+    <div className="flex items-center gap-3 px-4 py-2.5 border-t border-neutral-100 first:border-t-0">
+      <div className="flex-1 min-w-0">
+        <div className="text-sm text-neutral-800 truncate">{libelle}</div>
+      </div>
+      <div className="relative shrink-0">
+        <input
+          type="text"
+          inputMode="decimal"
+          enterKeyHint="done"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onBlur={handleBlur}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+          }}
+          placeholder="à la remise"
+          className={`w-[110px] h-10 pr-8 pl-2 text-right border text-sm tabular-nums focus:outline-none focus:border-green-primary ${
+            hasError ? 'border-red-400 bg-red-50' : 'border-neutral-300 bg-white'
+          }`}
+          aria-label={`Prix ${libelle}`}
+        />
+        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-neutral-500 pointer-events-none">
+          {value.trim() === '' ? '' : '€'}
+        </span>
+      </div>
+      <div className="w-5 shrink-0 flex items-center justify-center">
+        {saving ? (
+          <Loader2 size={14} className="animate-spin text-neutral-400" />
+        ) : saved ? (
+          <Check size={14} className="text-green-primary" />
+        ) : null}
+      </div>
+    </div>
+  );
+}
