@@ -5,10 +5,13 @@ import { useRouter } from 'next/navigation';
 import { useCart, cartKey } from '@/components/CartContext';
 import { Loader2, ArrowLeft, ShoppingBag, AlertTriangle, Trash2, Info } from 'lucide-react';
 import Link from 'next/link';
-import { JOURS_RETRAIT, creneauxForJour } from '@/lib/creneaux';
+import { JOURS_RETRAIT } from '@/lib/creneaux';
 import { formatPrixMontant, cartHasPoidsIncertain, isPoidsIncertain } from '@/lib/produit';
 import { calcFourchette, formatFourchette } from '@/lib/fourchette';
 import { useFourchetteBornes } from '@/lib/use-fourchette';
+
+// JS getDay() : 0=dim, 1=lun, 2=mar, …, 6=sam
+const JOUR_INDEX_TO_KEY = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'] as const;
 
 export default function OrderPage() {
   const { cart, totalItems, totalEstime, removeFromCart } = useCart();
@@ -16,9 +19,27 @@ export default function OrderPage() {
   const [isMounted, setIsMounted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [jour, setJour] = useState('');
-  const creneaux = useMemo(() => (jour ? creneauxForJour(jour) : []), [jour]);
+  const [dateRetrait, setDateRetrait] = useState('');
   const bornes = useFourchetteBornes();
+
+  // On dérive le jour de retrait (libellé "Mardi" / …) depuis la date choisie :
+  // un seul champ visible côté client. Le lundi (getDay() === 1) renvoie null
+  // = boutique fermée, géré par la validation.
+  const jourFromDate = useMemo(() => {
+    if (!dateRetrait) return null;
+    const d = new Date(dateRetrait + 'T00:00:00');
+    if (Number.isNaN(d.getTime())) return null;
+    const key = JOUR_INDEX_TO_KEY[d.getDay()];
+    return JOURS_RETRAIT.find((j) => j.key === key) || null;
+  }, [dateRetrait]);
+  const creneaux = jourFromDate?.creneaux ?? [];
+  const isDateInvalid = !!dateRetrait && !jourFromDate;
+  const dateLabel = useMemo(() => {
+    if (!dateRetrait) return null;
+    const d = new Date(dateRetrait + 'T00:00:00');
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  }, [dateRetrait]);
 
   // Bornes du date picker : J+1 → J+14, en évitant le lundi (boutique fermée).
   // L'attribut HTML5 `min`/`max` ne peut pas exclure les lundis ; on valide
@@ -67,20 +88,21 @@ export default function OrderPage() {
       telephone: formData.get('telephone') as string,
       email: formData.get('email') as string,
     };
-    const jourRetrait = formData.get('jourRetrait') as string;
+    const dateRetraitSouhaite = (formData.get('dateRetraitSouhaite') as string) || '';
     const creneau = (formData.get('creneau') as string) || null;
-    const dateRetraitSouhaite = (formData.get('dateRetraitSouhaite') as string) || null;
     const message = formData.get('message') as string;
 
-    if (dateRetraitSouhaite) {
-      const d = new Date(dateRetraitSouhaite + 'T00:00:00');
-      // 1 = lundi (boutique fermée le lundi)
-      if (d.getDay() === 1) {
-        setError('La boutique est fermée le lundi. Choisis un autre jour.');
-        setIsSubmitting(false);
-        return;
-      }
+    if (!dateRetraitSouhaite) {
+      setError('Choisis une date de retrait.');
+      setIsSubmitting(false);
+      return;
     }
+    if (!jourFromDate) {
+      setError('La boutique est fermée le lundi. Choisis un autre jour.');
+      setIsSubmitting(false);
+      return;
+    }
+    const jourRetrait = jourFromDate.label;
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(client.email)) {
@@ -260,39 +282,34 @@ export default function OrderPage() {
             </div>
           </div>
 
-          <div className="space-y-2 pt-4">
-            <label htmlFor="dateRetraitSouhaite" className="block text-xs uppercase tracking-wider text-neutral-600">Date de retrait souhaitée</label>
-            <input
-              type="date" id="dateRetraitSouhaite" name="dateRetraitSouhaite"
-              min={dateMin} max={dateMax}
-              className="w-full px-4 py-3 border border-neutral-300 rounded-sm focus:ring-1 focus:ring-green-primary focus:border-green-primary outline-none transition-colors bg-white font-medium text-neutral-700"
-            />
-            <p className="text-[11px] text-neutral-500 italic">Disponible du mardi au dimanche, dans les 14 jours.</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
             <div className="space-y-2">
-              <label htmlFor="jourRetrait" className="block text-xs uppercase tracking-wider text-neutral-600">Jour de retrait *</label>
-              <select
-                id="jourRetrait" name="jourRetrait" required
-                value={jour}
-                onChange={(e) => setJour(e.target.value)}
+              <label htmlFor="dateRetraitSouhaite" className="block text-xs uppercase tracking-wider text-neutral-600">Date de retrait *</label>
+              <input
+                type="date" id="dateRetraitSouhaite" name="dateRetraitSouhaite" required
+                min={dateMin} max={dateMax}
+                value={dateRetrait}
+                onChange={(e) => setDateRetrait(e.target.value)}
                 className="w-full px-4 py-3 border border-neutral-300 rounded-sm focus:ring-1 focus:ring-green-primary focus:border-green-primary outline-none transition-colors bg-white font-medium text-neutral-700"
-              >
-                <option value="">Sélectionnez un jour…</option>
-                {JOURS_RETRAIT.map((j) => (
-                  <option key={j.key} value={j.label}>{j.label}</option>
-                ))}
-              </select>
+              />
+              {isDateInvalid ? (
+                <p className="text-[11px] text-red-text font-medium">
+                  Boutique fermée le lundi — choisis un autre jour.
+                </p>
+              ) : dateLabel && jourFromDate ? (
+                <p className="text-[11px] text-green-primary font-medium capitalize">{dateLabel}</p>
+              ) : (
+                <p className="text-[11px] text-neutral-500 italic">Du mardi au dimanche, dans les 14 jours.</p>
+              )}
             </div>
             <div className="space-y-2">
               <label htmlFor="creneau" className="block text-xs uppercase tracking-wider text-neutral-600">Créneau horaire *</label>
               <select
                 id="creneau" name="creneau" required
-                disabled={!jour}
+                disabled={!jourFromDate}
                 className="w-full px-4 py-3 border border-neutral-300 rounded-sm focus:ring-1 focus:ring-green-primary focus:border-green-primary outline-none transition-colors bg-white font-medium text-neutral-700 disabled:bg-neutral-100 disabled:text-neutral-400"
               >
-                <option value="">{jour ? 'Choisissez un créneau…' : 'Choisissez d\'abord un jour'}</option>
+                <option value="">{jourFromDate ? 'Choisissez un créneau…' : 'Choisis d\'abord une date'}</option>
                 {creneaux.map((c) => (
                   <option key={c} value={c}>{c}</option>
                 ))}
