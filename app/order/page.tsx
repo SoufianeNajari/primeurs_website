@@ -3,10 +3,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart, cartKey } from '@/components/CartContext';
-import { Loader2, ArrowLeft, ShoppingBag, AlertTriangle, Trash2 } from 'lucide-react';
+import { Loader2, ArrowLeft, ShoppingBag, AlertTriangle, Trash2, Info } from 'lucide-react';
 import Link from 'next/link';
 import { JOURS_RETRAIT, creneauxForJour } from '@/lib/creneaux';
-import { formatPrixMontant } from '@/lib/produit';
+import { formatPrixMontant, cartHasPoidsIncertain, isPoidsIncertain } from '@/lib/produit';
+import { calcFourchette, formatFourchette } from '@/lib/fourchette';
+import { useFourchetteBornes } from '@/lib/use-fourchette';
 
 export default function OrderPage() {
   const { cart, totalItems, totalEstime, removeFromCart } = useCart();
@@ -16,6 +18,7 @@ export default function OrderPage() {
   const [error, setError] = useState('');
   const [jour, setJour] = useState('');
   const creneaux = useMemo(() => (jour ? creneauxForJour(jour) : []), [jour]);
+  const bornes = useFourchetteBornes();
 
   useEffect(() => {
     setIsMounted(true);
@@ -36,6 +39,8 @@ export default function OrderPage() {
   }
 
   const cartItems = Object.values(cart);
+  const hasIncertain = cartHasPoidsIncertain(cartItems);
+  const fourchette = totalEstime != null && !hasIncertain ? calcFourchette(totalEstime, bornes) : null;
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -129,7 +134,11 @@ export default function OrderPage() {
                     <span className="text-[10px] uppercase tracking-widest text-neutral-400 font-medium">{item.categorie}</span>
                     <span className="block text-sm text-green-dark font-medium mt-1">
                       {item.libelle}
-                      {prix && <span className="text-neutral-500 font-normal"> · {prix}</span>}
+                      {isPoidsIncertain(item) ? (
+                        <span className="text-neutral-500 font-normal italic"> · Prix à la remise</span>
+                      ) : prix ? (
+                        <span className="text-neutral-500 font-normal"> · {prix}</span>
+                      ) : null}
                     </span>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
@@ -149,14 +158,34 @@ export default function OrderPage() {
               );
             })}
           </ul>
-          {totalEstime != null && (
-            <div className="px-6 py-4 border-t border-neutral-200 bg-neutral-50 flex items-baseline justify-between">
-              <span className="text-xs uppercase tracking-widest text-neutral-600 font-medium">Sous-total estimé</span>
-              <span className="text-xl font-serif text-neutral-800">{totalEstime.toFixed(2).replace('.', ',')}&nbsp;€</span>
+          {hasIncertain ? (
+            <div className="px-6 py-4 border-t border-neutral-200 bg-neutral-50 flex gap-3 items-start text-sm text-neutral-600">
+              <Info size={18} strokeWidth={1.5} className="text-green-primary shrink-0 mt-0.5" />
+              <span className="leading-relaxed">
+                Votre panier contient des produits dont le poids sera déterminé à la remise.
+                Le prix final vous sera communiqué lors du retrait. Paiement sur place.
+              </span>
             </div>
-          )}
-          {totalEstime != null && (
-            <p className="px-6 pb-4 text-xs text-neutral-500 italic">Pesée finale et prix définitif établis en boutique.</p>
+          ) : (
+            <>
+              {totalEstime != null && (
+                <div className="px-6 py-3 border-t border-neutral-200 bg-neutral-50 flex items-baseline justify-between">
+                  <span className="text-xs uppercase tracking-widest text-neutral-600 font-medium">Sous-total estimé</span>
+                  <span className="text-base font-serif text-neutral-700">{totalEstime.toFixed(2).replace('.', ',')}&nbsp;€</span>
+                </div>
+              )}
+              {fourchette && (
+                <div className="px-6 py-3 bg-neutral-50 flex items-baseline justify-between border-t border-neutral-100">
+                  <span className="text-xs uppercase tracking-widest text-neutral-600 font-medium">Total final</span>
+                  <span className="text-xl font-serif text-neutral-800">{formatFourchette(fourchette)}</span>
+                </div>
+              )}
+              {fourchette && (
+                <p className="px-6 pb-4 pt-2 text-xs text-neutral-500 italic bg-neutral-50">
+                  Prix indicatif, ajusté à la remise (cours du jour, poids réel). Si l&apos;écart dépasse la fourchette, nous vous contactons avant préparation. Paiement sur place.
+                </p>
+              )}
+            </>
           )}
         </div>
 

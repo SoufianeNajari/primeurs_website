@@ -1,19 +1,32 @@
 'use client'
 
 import { useEffect, useState, Suspense } from 'react';
-import { useCart } from '@/components/CartContext';
+import { useCart, type CartItem } from '@/components/CartContext';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { CheckCircle2, Calendar } from 'lucide-react';
+import { CheckCircle2, Calendar, Info } from 'lucide-react';
+import { cartHasPoidsIncertain } from '@/lib/produit';
 
 function ConfirmationContent() {
   const { clearCart } = useCart();
   const searchParams = useSearchParams();
   const [jourRetrait, setJourRetrait] = useState<string | null>(null);
   const [creneau, setCreneau] = useState<string | null>(null);
+  const [hadIncertain, setHadIncertain] = useState(false);
 
-  // Vider le panier au montage de la page et récupérer le jour / créneau
+  // Vider le panier au montage de la page et récupérer le jour / créneau.
+  // On lit `primeur_last_order` AVANT de vider pour savoir si la commande
+  // contenait des produits dont le prix sera fixé à la remise.
   useEffect(() => {
+    try {
+      const raw = localStorage.getItem('primeur_last_order');
+      if (raw) {
+        const items = JSON.parse(raw) as CartItem[];
+        if (Array.isArray(items)) setHadIncertain(cartHasPoidsIncertain(items));
+      }
+    } catch {
+      // ignore
+    }
     clearCart();
     setJourRetrait(searchParams.get('jour'));
     setCreneau(searchParams.get('creneau'));
@@ -42,6 +55,14 @@ function ConfirmationContent() {
       )}
 
       <div className="space-y-6">
+        <div className="bg-neutral-50 border border-neutral-200 p-4 flex gap-3 items-start text-left text-sm text-neutral-600">
+          <Info size={18} strokeWidth={1.5} className="text-green-primary shrink-0 mt-0.5" />
+          <span className="leading-relaxed">
+            {hadIncertain
+              ? 'Certains produits seront pesés et tarifés à la remise. Nous vous communiquons le prix exact lors du retrait.'
+              : 'Si l’écart de prix dépasse la fourchette annoncée, nous vous contactons avant préparation.'}
+          </span>
+        </div>
         <p className="text-sm text-neutral-500 italic">
           Le règlement s&apos;effectuera directement en boutique lors du retrait de votre commande.
         </p>

@@ -43,6 +43,17 @@ export function formatPrixMontant(prix: number | null | undefined): string | nul
   return euro.format(Number(prix));
 }
 
+// Sprint H : une option « poids incertain » est marquée par `prix === null`
+// (option A simple, validée 2026-04-26). Le père laisse le champ vide pour
+// les produits dont le prix sera fixé à la remise.
+export function isPoidsIncertain(opt: { prix?: number | null }): boolean {
+  return opt.prix == null;
+}
+
+export function cartHasPoidsIncertain(items: { prix?: number | null }[]): boolean {
+  return items.some(isPoidsIncertain);
+}
+
 // Résumé prix pour listings.
 // Règle : si une option « au kg » est tarifée, on l'affiche directement
 // (sans « à partir de ») — c'est l'unité de référence du primeur. Sinon, on

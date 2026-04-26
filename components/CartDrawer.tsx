@@ -8,7 +8,10 @@ import { FocusTrap } from 'focus-trap-react';
 import { triggerHaptic } from '@/lib/haptic';
 import { supabase } from '@/lib/supabase';
 import type { ProduitOption } from '@/lib/produit';
-import { formatPrixMontant } from '@/lib/produit';
+import { formatPrixMontant, cartHasPoidsIncertain, isPoidsIncertain } from '@/lib/produit';
+import { calcFourchette, formatFourchette } from '@/lib/fourchette';
+import { useFourchetteBornes } from '@/lib/use-fourchette';
+import { Info } from 'lucide-react';
 
 type Suggestion = {
   id: string;
@@ -27,6 +30,9 @@ export default function CartDrawer() {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
 
   const cartItems = Object.values(cart);
+  const bornes = useFourchetteBornes();
+  const hasIncertain = cartHasPoidsIncertain(cartItems);
+  const fourchette = totalEstime != null && !hasIncertain ? calcFourchette(totalEstime, bornes) : null;
 
   // Charger le dernier panier s'il existe
   useEffect(() => {
@@ -257,7 +263,11 @@ export default function CartDrawer() {
                         <span className="text-[10px] uppercase tracking-widest text-neutral-400 font-medium">{item.categorie}</span>
                         <span className="block text-sm text-green-dark font-medium mt-1">
                           {item.libelle}
-                          {prixLabel && <span className="text-neutral-500 font-normal"> · {prixLabel}</span>}
+                          {isPoidsIncertain(item) ? (
+                            <span className="text-neutral-500 font-normal italic"> · Prix à la remise</span>
+                          ) : prixLabel ? (
+                            <span className="text-neutral-500 font-normal"> · {prixLabel}</span>
+                          ) : null}
                         </span>
                       </div>
                       <button
@@ -323,11 +333,35 @@ export default function CartDrawer() {
 
         {cartItems.length > 0 && (
           <div className="border-t border-neutral-200 p-6 bg-neutral-50 space-y-4">
-            {totalEstime != null && (
-              <div className="flex items-baseline justify-between">
-                <span className="text-xs uppercase tracking-widest text-neutral-500 font-medium">Sous-total estimé</span>
-                <span className="text-xl font-serif text-neutral-800">{totalEstime.toFixed(2).replace('.', ',')}&nbsp;€</span>
+            {hasIncertain ? (
+              <div className="flex gap-3 items-start text-xs text-neutral-600 bg-white border border-neutral-200 p-3">
+                <Info size={16} strokeWidth={1.5} className="text-green-primary shrink-0 mt-0.5" />
+                <span className="leading-relaxed">
+                  Votre panier contient des produits dont le poids sera déterminé à la remise.
+                  Le prix final vous sera communiqué lors du retrait. Paiement sur place.
+                </span>
               </div>
+            ) : (
+              <>
+                {totalEstime != null && (
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-xs uppercase tracking-widest text-neutral-500 font-medium">Sous-total estimé</span>
+                    <span className="text-base font-serif text-neutral-700">{totalEstime.toFixed(2).replace('.', ',')}&nbsp;€</span>
+                  </div>
+                )}
+                {fourchette && (
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-xs uppercase tracking-widest text-neutral-500 font-medium">Total final</span>
+                    <span className="text-xl font-serif text-neutral-800">{formatFourchette(fourchette)}</span>
+                  </div>
+                )}
+                {fourchette && (
+                  <div className="flex gap-2 items-start text-[11px] text-neutral-500 leading-relaxed">
+                    <Info size={13} strokeWidth={1.5} className="shrink-0 mt-0.5 text-neutral-400" />
+                    <span>Prix indicatif, ajusté à la remise (cours du jour, poids réel). Paiement sur place.</span>
+                  </div>
+                )}
+              </>
             )}
             <button
               onClick={() => {
@@ -338,9 +372,6 @@ export default function CartDrawer() {
             >
               Passer la commande
             </button>
-            <p className="text-center text-xs text-neutral-500 uppercase tracking-widest">
-              {totalEstime != null ? 'Pesée finale · règlement en boutique' : 'Règlement en boutique'}
-            </p>
           </div>
         )}
       </div>
