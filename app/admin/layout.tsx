@@ -14,6 +14,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <div className="flex gap-6 flex-wrap">
           <Link href="/admin/dashboard" className="text-xs uppercase tracking-widest font-medium text-neutral-600 hover:text-green-primary transition-colors">Stats</Link>
           <Link href="/admin/produits" className="text-xs uppercase tracking-widest font-medium text-neutral-600 hover:text-green-primary transition-colors">Catalogue</Link>
+          <Link href="/admin/categories" className="text-xs uppercase tracking-widest font-medium text-neutral-600 hover:text-green-primary transition-colors">Catégories</Link>
           <Link href="/admin/prix" className="text-xs uppercase tracking-widest font-medium text-neutral-600 hover:text-green-primary transition-colors">Prix du jour</Link>
           <Link href="/admin" className="text-xs uppercase tracking-widest font-medium text-neutral-600 hover:text-green-primary transition-colors">Dispo rapide</Link>
           <Link href="/admin/orders" className="text-xs uppercase tracking-widest font-medium text-neutral-600 hover:text-green-primary transition-colors">Commandes</Link>

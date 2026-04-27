@@ -3,6 +3,7 @@ import { ZodError } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase';
 import { isAdmin } from '@/lib/admin-auth';
 import { normalizeProduitInput } from '@/lib/produit-schema';
+import { findOrCreateCategorieByNom } from '@/lib/categories';
 
 export async function POST(request: Request) {
   if (!(await isAdmin())) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
@@ -11,9 +12,12 @@ export async function POST(request: Request) {
     const body = await request.json();
     const input = normalizeProduitInput(body);
 
+    const cat = await findOrCreateCategorieByNom(input.categorie);
+    const insertPayload = { ...input, categorie: cat.nom, categorie_id: cat.id };
+
     const { data, error } = await supabaseAdmin
       .from('produits')
-      .insert(input)
+      .insert(insertPayload)
       .select()
       .single();
 

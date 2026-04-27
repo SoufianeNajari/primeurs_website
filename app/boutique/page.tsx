@@ -4,6 +4,7 @@ import ProductGrid from '@/components/ProductGrid';
 import StickyCartButton from '@/components/StickyCartButton';
 import BoutiqueFermee from '@/components/BoutiqueFermee';
 import { isCommandesBloquees } from '@/lib/parametres';
+import { listCategoriesAdmin } from '@/lib/categories';
 
 export const revalidate = 0; // Force SSR
 
@@ -24,12 +25,26 @@ export default async function BoutiquePage() {
     return <BoutiqueFermee />;
   }
 
-  const { data: products } = await supabaseAdmin
-    .from('produits')
-    .select('*')
-    .order('disponible', { ascending: false })
-    .order('ordre', { ascending: true })
-    .order('nom', { ascending: true });
+  const [{ data: products }, categories] = await Promise.all([
+    supabaseAdmin
+      .from('produits')
+      .select('*')
+      .order('disponible', { ascending: false })
+      .order('ordre', { ascending: true })
+      .order('nom', { ascending: true }),
+    listCategoriesAdmin(),
+  ]);
+
+  // Tri des produits par ordre catégorie (categorie_id), puis par les ordres existants
+  const catOrder = new Map<string, number>();
+  for (const c of categories.filter(c => c.actif)) catOrder.set(c.id, c.ordre);
+  const sortedProducts = (products || []).slice().sort((a, b) => {
+    if (a.disponible !== b.disponible) return a.disponible ? -1 : 1;
+    const oa = a.categorie_id ? catOrder.get(a.categorie_id) ?? 999 : 999;
+    const ob = b.categorie_id ? catOrder.get(b.categorie_id) ?? 999 : 999;
+    if (oa !== ob) return oa - ob;
+    return 0;
+  });
 
   return (
     <main className="flex-grow pb-28 min-h-screen bg-neutral-50">
@@ -40,7 +55,7 @@ export default async function BoutiquePage() {
         </div>
       </div>
 
-      <ProductGrid products={products || []} />
+      <ProductGrid products={sortedProducts} />
       
       <StickyCartButton />
     </main>

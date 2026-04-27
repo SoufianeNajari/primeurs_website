@@ -205,7 +205,7 @@ export default function ImportProduitsPage() {
                     <span className="text-neutral-800 truncate">
                       {r.nom}
                       {r.message && (
-                        <span className="block text-xs text-red-700 mt-0.5">{r.message}</span>
+                        <span className={`block text-xs mt-0.5 ${r.status === 'error' ? 'text-red-700' : 'text-blue-700'}`}>{r.message}</span>
                       )}
                     </span>
                     <span>

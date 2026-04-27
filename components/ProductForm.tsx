@@ -177,11 +177,16 @@ export default function ProductForm({ mode, initial, categories }: { mode: Mode;
         <Field label="Nom *">
           <input required value={nom} onChange={(e) => setNom(e.target.value)} className={inputCls} />
         </Field>
-        <Field label="Catégorie *">
-          <input required list="categories" value={categorie} onChange={(e) => setCategorie(e.target.value)} className={inputCls} />
-          <datalist id="categories">
-            {categories.map((c) => <option key={c} value={c} />)}
-          </datalist>
+        <Field label="Catégorie *" hint={<>Pour ajouter une catégorie, <Link href="/admin/categories" className="underline text-green-primary">gérer les catégories</Link>.</>}>
+          <select
+            required
+            value={categorie}
+            onChange={(e) => setCategorie(e.target.value)}
+            className={inputCls}
+          >
+            {categories.length === 0 && <option value="">— aucune catégorie —</option>}
+            {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
         </Field>
         <Field label="Slug (URL)" hint={`Sera : /boutique/${effectiveSlug || '…'}`}>
           <input
@@ -336,7 +341,7 @@ export default function ProductForm({ mode, initial, categories }: { mode: Mode;
 
 const inputCls = 'w-full border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:border-green-primary focus:ring-1 focus:ring-green-primary';
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function Field({ label, hint, children }: { label: string; hint?: React.ReactNode; children: React.ReactNode }) {
   return (
     <label className="block">
       <span className="text-xs uppercase tracking-widest text-neutral-500 font-medium">{label}</span>

@@ -1,10 +1,10 @@
-import { supabaseAdmin } from '@/lib/supabase';
 import ProductForm from '@/components/ProductForm';
+import { listCategoriesAdmin } from '@/lib/categories';
 
 export const dynamic = 'force-dynamic';
 
 export default async function NewProduitPage() {
-  const { data } = await supabaseAdmin.from('produits').select('categorie');
-  const categories = Array.from(new Set((data || []).map((r) => r.categorie))).sort();
+  const cats = await listCategoriesAdmin();
+  const categories = cats.filter(c => c.actif).map(c => c.nom);
   return <ProductForm mode={{ kind: 'create' }} categories={categories} />;
 }

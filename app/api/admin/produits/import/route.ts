@@ -5,6 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { isAdmin } from '@/lib/admin-auth';
 import { normalizeProduitInput } from '@/lib/produit-schema';
 import { parseCsv, parseOptions, parseBool, parseInt12, parseIntOrNull } from '@/lib/csv';
+import { findCategorieByNom, findOrCreateCategorieByNom } from '@/lib/categories';
 
 const MAX_SIZE = 1 * 1024 * 1024; // 1 MB
 const MAX_ROWS = 500;
@@ -94,21 +95,27 @@ export async function POST(request: Request) {
         options,
       });
 
+      // Résolution catégorie : crée auto si inconnue, mention dans le rapport
+      const existingCat = await findCategorieByNom(input.categorie);
+      const cat = existingCat ?? await findOrCreateCategorieByNom(input.categorie);
+      const catCreatedNote = existingCat ? '' : `Catégorie « ${cat.nom} » créée auto. `;
+      const enriched = { ...input, categorie: cat.nom, categorie_id: cat.id };
+
       const existingId = slugToId.get(input.slug!);
       if (existingId) {
         const { error } = await supabaseAdmin
           .from('produits')
-          .update(input)
+          .update(enriched)
           .eq('id', existingId);
         if (error) throw new Error(error.message);
-        results.push({ ligne, nom, status: 'updated' });
+        results.push({ ligne, nom, status: 'updated', message: catCreatedNote || undefined });
       } else {
-        const { error } = await supabaseAdmin.from('produits').insert(input);
+        const { error } = await supabaseAdmin.from('produits').insert(enriched);
         if (error) {
           if (error.code === '23505') throw new Error('Slug déjà utilisé');
           throw new Error(error.message);
         }
-        results.push({ ligne, nom, status: 'created' });
+        results.push({ ligne, nom, status: 'created', message: catCreatedNote || undefined });
       }
     } catch (err) {
       let message = 'Erreur inconnue';
