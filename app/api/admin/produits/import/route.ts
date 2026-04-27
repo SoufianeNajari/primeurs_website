@@ -68,7 +68,8 @@ export async function POST(request: Request) {
     try {
       if (!nom) throw new Error('Nom manquant');
 
-      const optionsRaw = parseOptions(row.options);
+      const optionsRaw = parseOptions(row);
+      if (optionsRaw.length === 0) throw new Error('Aucune option valide (remplir au moins opt1_libelle, ou colonne options legacy)');
       const options = optionsRaw.map((o) => ({
         id: randomUUID(),
         libelle: o.libelle,
