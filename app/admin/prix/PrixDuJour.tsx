@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { Check, Loader2, CheckCheck, Search, X, Filter } from 'lucide-react';
 import type { ProduitOption } from '@/lib/produit';
 import { useToast } from '@/components/admin/Toast';
@@ -73,6 +73,8 @@ export default function PrixDuJour({ initialProduits }: { initialProduits: Produ
   const [, startTransition] = useTransition();
   const toast = useToast();
   const confirm = useConfirm();
+  const produitsRef = useRef<ProduitPrix[]>(initialProduits);
+  useEffect(() => { produitsRef.current = produits; }, [produits]);
 
   // Charger filtre + catégories persistés
   useEffect(() => {
@@ -161,7 +163,7 @@ export default function PrixDuJour({ initialProduits }: { initialProduits: Produ
 
   async function saveOptionPrix(produitId: string, optionId: string, newPrix: number | null, isUndo = false) {
     const key = `${produitId}:${optionId}`;
-    const produit = produits.find((p) => p.id === produitId);
+    const produit = produitsRef.current.find((p) => p.id === produitId);
     if (!produit) return;
 
     const previousPrix = produit.options.find((o) => o.id === optionId)?.prix ?? null;
