@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, useTransition } from 'react';
-import { Check, Loader2, CheckCheck } from 'lucide-react';
+import { Check, Loader2, CheckCheck, Search, X } from 'lucide-react';
 import type { ProduitOption } from '@/lib/produit';
 import { useToast } from '@/components/admin/Toast';
 import { useConfirm } from '@/components/admin/ConfirmModal';
@@ -22,6 +22,14 @@ type Filtre = 'tous' | 'a_actualiser' | 'indispo';
 const HOURS_24 = 24 * 60 * 60 * 1000;
 const HOURS_72 = 72 * 60 * 60 * 1000;
 const FILTRE_STORAGE_KEY = 'prix_filtre';
+const CATEGORIES_STORAGE_KEY = 'prix_categories';
+
+function normalizeText(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '');
+}
 
 function freshnessLevel(prixUpdatedAt: string): 'fresh' | 'medium' | 'stale' {
   const ageMs = Date.now() - new Date(prixUpdatedAt).getTime();
@@ -55,6 +63,8 @@ function parsePrixInput(raw: string): number | null {
 export default function PrixDuJour({ initialProduits }: { initialProduits: ProduitPrix[] }) {
   const [produits, setProduits] = useState<ProduitPrix[]>(initialProduits);
   const [filtre, setFiltre] = useState<Filtre>('tous');
+  const [search, setSearch] = useState('');
+  const [selectedCats, setSelectedCats] = useState<Set<string>>(new Set());
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [savedKey, setSavedKey] = useState<string | null>(null);
   const [errorKey, setErrorKey] = useState<string | null>(null);
@@ -63,12 +73,17 @@ export default function PrixDuJour({ initialProduits }: { initialProduits: Produ
   const toast = useToast();
   const confirm = useConfirm();
 
-  // Charger le filtre persisté
+  // Charger filtre + catégories persistés
   useEffect(() => {
     try {
       const saved = localStorage.getItem(FILTRE_STORAGE_KEY);
       if (saved === 'tous' || saved === 'a_actualiser' || saved === 'indispo') {
         setFiltre(saved);
+      }
+      const cats = localStorage.getItem(CATEGORIES_STORAGE_KEY);
+      if (cats) {
+        const parsed = JSON.parse(cats);
+        if (Array.isArray(parsed)) setSelectedCats(new Set(parsed));
       }
     } catch {
       /* localStorage indisponible */
@@ -84,15 +99,55 @@ export default function PrixDuJour({ initialProduits }: { initialProduits: Produ
     }
   }
 
+  function toggleCat(cat: string) {
+    setSelectedCats((prev) => {
+      const next = new Set(prev);
+      if (next.has(cat)) next.delete(cat);
+      else next.add(cat);
+      try {
+        localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(Array.from(next)));
+      } catch {
+        /* */
+      }
+      return next;
+    });
+  }
+
+  function clearCats() {
+    setSelectedCats(new Set());
+    try {
+      localStorage.removeItem(CATEGORIES_STORAGE_KEY);
+    } catch {
+      /* */
+    }
+  }
+
+  const allCategories = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of produits) set.add(p.categorie);
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'fr'));
+  }, [produits]);
+
+  const normalizedSearch = normalizeText(search.trim());
+
   const filtered = useMemo(() => {
+    let list = produits;
     if (filtre === 'a_actualiser') {
-      return produits.filter((p) => freshnessLevel(p.prix_updated_at) === 'stale');
+      list = list.filter((p) => freshnessLevel(p.prix_updated_at) === 'stale');
+    } else if (filtre === 'indispo') {
+      list = list.filter((p) => !p.disponible);
     }
-    if (filtre === 'indispo') {
-      return produits.filter((p) => !p.disponible);
+    if (selectedCats.size > 0) {
+      list = list.filter((p) => selectedCats.has(p.categorie));
     }
-    return produits;
-  }, [produits, filtre]);
+    if (normalizedSearch) {
+      list = list.filter((p) => {
+        const haystack = normalizeText(`${p.nom} ${p.variete ?? ''} ${p.categorie}`);
+        return haystack.includes(normalizedSearch);
+      });
+    }
+    return list;
+  }, [produits, filtre, selectedCats, normalizedSearch]);
 
   const counts = useMemo(() => {
     const stale = produits.filter((p) => freshnessLevel(p.prix_updated_at) === 'stale').length;
@@ -175,7 +230,7 @@ export default function PrixDuJour({ initialProduits }: { initialProduits: Produ
   }
 
   async function handleBulkTouch() {
-    const staleIds = produits
+    const staleIds = filtered
       .filter((p) => freshnessLevel(p.prix_updated_at) === 'stale')
       .map((p) => p.id);
     if (staleIds.length === 0) return;
@@ -210,7 +265,28 @@ export default function PrixDuJour({ initialProduits }: { initialProduits: Produ
 
   return (
     <div>
-      <div className="sticky top-[60px] z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 bg-neutral-50/95 backdrop-blur border-b border-neutral-200 mb-4">
+      <div className="sticky top-[60px] z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 bg-neutral-50/95 backdrop-blur border-b border-neutral-200 mb-4 space-y-2">
+        <div className="relative">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Rechercher un produit…"
+            className="w-full h-10 pl-10 pr-10 border border-neutral-300 bg-white text-sm focus:outline-none focus:border-green-primary"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              aria-label="Effacer la recherche"
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center text-neutral-400 hover:text-neutral-700"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+
         <div className="flex gap-2 overflow-x-auto">
           <FilterTab active={filtre === 'tous'} onClick={() => changeFiltre('tous')} label="Tous" count={counts.tous} />
           <FilterTab
@@ -228,13 +304,49 @@ export default function PrixDuJour({ initialProduits }: { initialProduits: Produ
             tone="warn"
           />
         </div>
+
+        <div className="flex gap-1.5 overflow-x-auto pb-1">
+          <button
+            type="button"
+            onClick={clearCats}
+            className={`shrink-0 inline-flex items-center px-3 h-8 text-[11px] uppercase tracking-widest font-medium border transition-colors ${
+              selectedCats.size === 0
+                ? 'bg-neutral-800 text-white border-neutral-800'
+                : 'bg-white text-neutral-600 border-neutral-300'
+            }`}
+          >
+            Toutes catégories
+          </button>
+          {allCategories.map((cat) => {
+            const active = selectedCats.has(cat);
+            return (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => toggleCat(cat)}
+                className={`shrink-0 inline-flex items-center px-3 h-8 text-[11px] uppercase tracking-widest font-medium border transition-colors ${
+                  active
+                    ? 'bg-green-primary text-white border-green-primary'
+                    : 'bg-white text-neutral-700 border-neutral-300 hover:border-green-primary'
+                }`}
+              >
+                {cat}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      <p className="text-xs text-neutral-500 mb-3 px-1">
-        💡 Laissez le prix vide pour afficher <span className="italic">« à la remise »</span> côté boutique.
-      </p>
+      <div className="flex items-center justify-between mb-3 px-1">
+        <p className="text-xs text-neutral-500">
+          💡 Laissez vide pour <span className="italic">« à la remise »</span>
+        </p>
+        <p className="text-xs text-neutral-500 tabular-nums">
+          {filtered.length} / {produits.length}
+        </p>
+      </div>
 
-      {filtre === 'a_actualiser' && counts.stale > 0 && (
+      {filtre === 'a_actualiser' && filtered.some((p) => freshnessLevel(p.prix_updated_at) === 'stale') && (
         <button
           type="button"
           onClick={handleBulkTouch}
@@ -242,17 +354,19 @@ export default function PrixDuJour({ initialProduits }: { initialProduits: Produ
           className="w-full mb-3 inline-flex items-center justify-center gap-2 bg-green-primary text-white px-4 py-3 text-sm font-medium hover:bg-green-dark disabled:opacity-50 transition-colors"
         >
           {bulkBusy ? <Loader2 size={16} className="animate-spin" /> : <CheckCheck size={16} />}
-          Marquer les {counts.stale} produit(s) comme à jour
+          Marquer les {filtered.filter((p) => freshnessLevel(p.prix_updated_at) === 'stale').length} produit(s) affiché(s) comme à jour
         </button>
       )}
 
       {filtered.length === 0 ? (
         <div className="border border-neutral-200 bg-white p-8 text-center text-neutral-500">
-          {filtre === 'a_actualiser'
+          {normalizedSearch || selectedCats.size > 0
+            ? 'Aucun produit ne correspond à votre recherche.'
+            : filtre === 'a_actualiser'
             ? 'Tous les prix sont à jour 👌'
             : filtre === 'indispo'
             ? 'Tous les produits sont disponibles 👌'
-            : 'Aucun produit dans ce filtre.'}
+            : 'Aucun produit.'}
         </div>
       ) : (
         <ul className="flex flex-col gap-3">
