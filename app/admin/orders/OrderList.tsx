@@ -115,14 +115,36 @@ function savePrepState(orderId: string, ids: Set<string>) {
   }
 }
 
-export default function OrderList({ initialOrders, fourchette }: { initialOrders: Order[]; fourchette: FourchetteBornes }) {
+export default function OrderList({
+  initialOrders,
+  fourchette,
+  prixActuels,
+}: {
+  initialOrders: Order[]
+  fourchette: FourchetteBornes
+  prixActuels: Record<string, number | null>
+}) {
   const [orders, setOrders] = useState<Order[]>(initialOrders)
   const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set())
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(() => {
     return initialOrders.some(o => o.statut === 'reçue') ? 'reçue' : 'tous'
   })
   const [prepStates, setPrepStates] = useState<Record<string, Set<string>>>({})
+  const [printingOrderId, setPrintingOrderId] = useState<string | null>(null)
   const toast = useToast()
+
+  useEffect(() => {
+    function onAfterPrint() {
+      setPrintingOrderId(null)
+    }
+    window.addEventListener('afterprint', onAfterPrint)
+    return () => window.removeEventListener('afterprint', onAfterPrint)
+  }, [])
+
+  function printOrder(orderId: string) {
+    setPrintingOrderId(orderId)
+    setTimeout(() => window.print(), 50)
+  }
 
   useEffect(() => {
     const map: Record<string, Set<string>> = {}
@@ -209,11 +231,30 @@ export default function OrderList({ initialOrders, fourchette }: { initialOrders
     <div className="space-y-8">
       <style jsx global>{`
         @media print {
+          @page { size: A4; margin: 8mm; }
           .no-print { display: none !important; }
-          body { background: white !important; }
+          body { background: white !important; font-size: 10pt; }
           .order-card { break-inside: avoid; page-break-inside: avoid; box-shadow: none !important; }
+
+          /* Impression d'une commande unique : masquer tout sauf la cible */
+          body.printing-one .order-card:not([data-print-target='true']) { display: none !important; }
+          body.printing-one section > h3 { display: none !important; }
+          body.printing-one .order-card[data-print-target='true'] {
+            font-size: 9.5pt;
+            padding: 0 !important;
+            border: none !important;
+          }
+          body.printing-one .order-card[data-print-target='true'] * {
+            margin-top: 0 !important;
+            margin-bottom: 2mm !important;
+            padding-top: 1mm !important;
+            padding-bottom: 1mm !important;
+          }
+          body.printing-one .order-card[data-print-target='true'] h4 { font-size: 13pt; }
+          body.printing-one .order-card[data-print-target='true'] li { padding: 0.5mm 1.5mm !important; }
         }
       `}</style>
+      <PrintModeToggler active={printingOrderId !== null} />
 
       <div className="flex flex-wrap gap-2 mb-2 no-print">
         {filterTabs.map(tab => (
@@ -248,7 +289,11 @@ export default function OrderList({ initialOrders, fourchette }: { initialOrders
             const prepSet = prepStates[order.id] || new Set()
             const allPrepped = order.lignes.length > 0 && order.lignes.every((_, i) => prepSet.has(`${order.id}-${i}`))
             return (
-              <article key={order.id} className={`order-card bg-white border p-4 sm:p-5 ${order.statut === 'prête' ? 'border-green-primary shadow-sm' : 'border-neutral-200'}`}>
+              <article
+                key={order.id}
+                data-print-target={printingOrderId === order.id ? 'true' : undefined}
+                className={`order-card bg-white border p-4 sm:p-5 ${order.statut === 'prête' ? 'border-green-primary shadow-sm' : 'border-neutral-200'}`}
+              >
                 {/* HEADER */}
                 <div className="flex flex-wrap items-start justify-between gap-3 mb-4 pb-4 border-b border-neutral-100">
                   <div className="flex-1 min-w-0">
@@ -275,9 +320,9 @@ export default function OrderList({ initialOrders, fourchette }: { initialOrders
                   </div>
                   <div className="flex gap-2 no-print">
                     <button
-                      onClick={() => window.print()}
-                      title="Imprimer"
-                      aria-label="Imprimer"
+                      onClick={() => printOrder(order.id)}
+                      title="Imprimer cette commande"
+                      aria-label="Imprimer cette commande"
                       className="inline-flex items-center gap-1.5 px-3 min-h-[40px] border border-neutral-300 text-neutral-700 hover:border-neutral-500 hover:text-neutral-900 transition-colors text-[11px] uppercase tracking-widest font-medium"
                     >
                       <Printer size={16} />
@@ -325,6 +370,11 @@ export default function OrderList({ initialOrders, fourchette }: { initialOrders
                       const isChecked = prepSet.has(lineKey)
                       const incertain = ligne.prix == null
                       const sousTotal = incertain ? null : Number(ligne.prix) * ligne.quantite
+                      const prixActuel = prixActuels[`${ligne.produitId}:${ligne.optionId}`]
+                      const prixActuelDifferent =
+                        !incertain &&
+                        prixActuel != null &&
+                        Math.abs(prixActuel - Number(ligne.prix)) > 0.001
                       return (
                         <li key={idx} className={`px-3 py-3 ${incertain ? 'bg-yellow-50' : ''} ${isChecked ? 'opacity-50' : ''}`}>
                           <div className="grid grid-cols-[40px_1fr] sm:grid-cols-[40px_1fr_140px_110px] gap-2 items-center">
@@ -354,9 +404,19 @@ export default function OrderList({ initialOrders, fourchette }: { initialOrders
                                   {incertain ? 'À calibrer' : euro.format(sousTotal!)}
                                 </span>
                               </div>
+                              {prixActuelDifferent && (
+                                <div className="sm:hidden mt-1 text-[11px] text-orange-700 font-medium">
+                                  Prix aujourd&apos;hui : {euro.format(prixActuel!)} / {ligne.libelle}
+                                </div>
+                              )}
                             </div>
                             <div className={`hidden sm:block text-right text-sm ${incertain ? 'text-amber-700 font-medium' : 'text-neutral-600'} ${isChecked ? 'line-through' : ''}`}>
                               {incertain ? 'À peser' : `${euro.format(Number(ligne.prix))}`}
+                              {prixActuelDifferent && (
+                                <div className="text-[10px] text-orange-700 font-medium mt-0.5">
+                                  Auj. {euro.format(prixActuel!)}
+                                </div>
+                              )}
                             </div>
                             <div className={`hidden sm:block text-right font-semibold ${incertain ? 'text-amber-700' : 'text-neutral-800'} ${isChecked ? 'line-through' : ''}`}>
                               {incertain ? 'À calibrer' : euro.format(sousTotal!)}
@@ -432,4 +492,15 @@ export default function OrderList({ initialOrders, fourchette }: { initialOrders
       )}
     </div>
   )
+}
+
+function PrintModeToggler({ active }: { active: boolean }) {
+  useEffect(() => {
+    if (active) document.body.classList.add('printing-one')
+    else document.body.classList.remove('printing-one')
+    return () => {
+      document.body.classList.remove('printing-one')
+    }
+  }, [active])
+  return null
 }

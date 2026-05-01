@@ -8,14 +8,24 @@ export default async function OrdersPage() {
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-  const [{ data: commandes, error }, fourchette] = await Promise.all([
+  const [{ data: commandes, error }, fourchette, { data: produitsActuels }] = await Promise.all([
     supabaseAdmin
       .from('commandes')
       .select('*')
       .gte('created_at', sevenDaysAgo.toISOString())
       .order('created_at', { ascending: false }),
     getFourchetteBornes(),
+    supabaseAdmin.from('produits').select('id, options'),
   ])
+
+  // Map (produitId:optionId) → prix actuel
+  const prixActuels: Record<string, number | null> = {}
+  for (const p of produitsActuels || []) {
+    const opts = (p.options || []) as { id: string; prix?: number | null }[]
+    for (const o of opts) {
+      prixActuels[`${p.id}:${o.id}`] = o.prix == null ? null : Number(o.prix)
+    }
+  }
 
   if (error) {
     return (
@@ -35,7 +45,7 @@ export default async function OrdersPage() {
           <p className="text-sm text-neutral-500">Fiche de préparation des commandes à retirer (7 derniers jours).</p>
         </div>
       </div>
-      <OrderList initialOrders={commandes || []} fourchette={fourchette} />
+      <OrderList initialOrders={commandes || []} fourchette={fourchette} prixActuels={prixActuels} />
     </div>
   )
 }
