@@ -4,6 +4,8 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Check, X, Trash2 } from 'lucide-react';
 import type { ClientRow, AccessRequestRow } from './page';
+import { useConfirm } from '@/components/admin/ConfirmModal';
+import { useToast } from '@/components/admin/Toast';
 
 type Props = {
   initialClients: ClientRow[];
@@ -17,6 +19,8 @@ export default function ClientsManager({ initialClients, initialRequests }: Prop
   const [showAdd, setShowAdd] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const confirm = useConfirm();
+  const toast = useToast();
 
   function refresh() {
     startTransition(() => router.refresh());
@@ -176,9 +180,16 @@ export default function ClientsManager({ initialClients, initialRequests }: Prop
                     {c.actif ? 'Actif' : 'Inactif'}
                   </label>
                   <button
-                    onClick={() => {
-                      if (!confirm(`Supprimer ${c.prenom || ''} ${c.nom || ''} ?`)) return;
-                      call('/api/admin/clients/delete', { id: c.id }, `del:${c.id}`);
+                    onClick={async () => {
+                      const ok = await confirm({
+                        title: 'Supprimer ce client ?',
+                        message: `${c.prenom || ''} ${c.nom || ''} sera retiré(e) de la liste blanche.`,
+                        confirmLabel: 'Supprimer',
+                        variant: 'danger',
+                      });
+                      if (!ok) return;
+                      const success = await call('/api/admin/clients/delete', { id: c.id }, `del:${c.id}`);
+                      if (success) toast.success('Client supprimé');
                     }}
                     disabled={busy === `del:${c.id}`}
                     className="text-neutral-400 hover:text-red-text disabled:opacity-50"

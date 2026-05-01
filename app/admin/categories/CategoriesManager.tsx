@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Trash2, ArrowUp, ArrowDown, Loader2, Check, X } from 'lucide-react';
+import { useConfirm } from '@/components/admin/ConfirmModal';
+import { useToast } from '@/components/admin/Toast';
 
 type Categorie = {
   id: string;
@@ -24,6 +26,8 @@ export default function CategoriesManager({ initialCategories }: { initialCatego
   const [editing, setEditing] = useState<string | null>(null);
   const [editNom, setEditNom] = useState('');
   const [editEmoji, setEditEmoji] = useState('');
+  const confirm = useConfirm();
+  const toast = useToast();
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -101,19 +105,28 @@ export default function CategoriesManager({ initialCategories }: { initialCatego
 
   async function handleDelete(c: Categorie) {
     if (c.count > 0) {
-      alert(`Impossible : ${c.count} produit(s) utilise(nt) cette catégorie. Désactivez-la ou réaffectez les produits.`);
+      toast.error(`Impossible : ${c.count} produit(s) utilise(nt) cette catégorie.`);
       return;
     }
-    if (!confirm(`Supprimer la catégorie « ${c.nom} » ?`)) return;
+    const ok = await confirm({
+      title: 'Supprimer la catégorie ?',
+      message: `« ${c.nom} » sera définitivement supprimée.`,
+      confirmLabel: 'Supprimer',
+      variant: 'danger',
+    });
+    if (!ok) return;
     setBusy(c.id); setError(null);
     try {
       const res = await fetch(`/api/admin/categories/${c.id}`, { method: 'DELETE' });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Erreur');
       setCats(curr => curr.filter(x => x.id !== c.id));
+      toast.success('Catégorie supprimée');
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur inconnue');
+      const msg = err instanceof Error ? err.message : 'Erreur inconnue';
+      setError(msg);
+      toast.error(msg);
     } finally { setBusy(null); }
   }
 

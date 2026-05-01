@@ -3,24 +3,36 @@
 import { useState, useTransition } from 'react'
 import { Loader2, Lock, Unlock } from 'lucide-react'
 import { setCommandesBloquees } from '../actions'
+import { useConfirm } from '@/components/admin/ConfirmModal'
+import { useToast } from '@/components/admin/Toast'
 
 export default function CommandesBloqueesToggle({ initial }: { initial: boolean }) {
   const [bloque, setBloque] = useState(initial)
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
+  const confirm = useConfirm()
+  const toast = useToast()
 
-  function toggle() {
+  async function toggle() {
     const next = !bloque
-    if (next && !confirm('Bloquer les commandes ? La boutique sera inaccessible aux clients.')) {
-      return
+    if (next) {
+      const ok = await confirm({
+        title: 'Bloquer les commandes ?',
+        message: 'La boutique sera inaccessible aux clients tant que vous ne réactivez pas les commandes.',
+        confirmLabel: 'Bloquer',
+        variant: 'danger',
+      })
+      if (!ok) return
     }
     setError(null)
     startTransition(async () => {
       const res = await setCommandesBloquees(next)
       if (res.success) {
         setBloque(next)
+        toast.success(next ? 'Commandes bloquées' : 'Commandes rouvertes')
       } else {
         setError(res.error || 'Erreur')
+        toast.error(res.error || 'Erreur')
       }
     })
   }

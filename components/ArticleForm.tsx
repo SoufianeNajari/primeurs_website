@@ -9,6 +9,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { slugify } from '@/lib/produit';
 import type { Article } from '@/lib/article';
+import { useConfirm } from '@/components/admin/ConfirmModal';
+import { useToast } from '@/components/admin/Toast';
 
 type Mode = { kind: 'create' } | { kind: 'edit'; id: string };
 type ProduitOption = { slug: string; nom: string };
@@ -26,6 +28,8 @@ export default function ArticleForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState(false);
+  const confirm = useConfirm();
+  const toast = useToast();
 
   const [titre, setTitre] = useState(initial?.titre || '');
   const [slugValue, setSlugValue] = useState(initial?.slug || '');
@@ -115,14 +119,23 @@ export default function ArticleForm({
 
   async function handleDelete() {
     if (mode.kind !== 'edit') return;
-    if (!confirm(`Supprimer l'article "${titre}" ? Cette action est définitive.`)) return;
+    const ok = await confirm({
+      title: "Supprimer l'article ?",
+      message: `« ${titre} » sera définitivement supprimé.`,
+      confirmLabel: 'Supprimer',
+      variant: 'danger',
+    });
+    if (!ok) return;
     const res = await fetch(`/api/admin/articles/${mode.id}`, { method: 'DELETE' });
     if (res.ok) {
+      toast.success('Article supprimé');
       router.push('/admin/articles');
       router.refresh();
     } else {
       const json = await res.json().catch(() => ({}));
-      setError(json.error || 'Suppression échouée');
+      const msg = json.error || 'Suppression échouée';
+      setError(msg);
+      toast.error(msg);
     }
   }
 

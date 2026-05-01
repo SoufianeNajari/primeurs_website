@@ -6,6 +6,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Loader2, Upload, Trash2, X, Plus, GripVertical } from 'lucide-react';
 import { slugify, OPTION_LIBELLES_SUGGESTIONS, type Product, type ProduitOption } from '@/lib/produit';
+import { useConfirm } from '@/components/admin/ConfirmModal';
+import { useToast } from '@/components/admin/Toast';
 
 type Mode = { kind: 'create' } | { kind: 'edit'; id: string };
 
@@ -51,6 +53,8 @@ export default function ProductForm({ mode, initial, categories }: { mode: Mode;
   const [imageUrl, setImageUrl] = useState<string>(initial?.image_url || '');
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const confirm = useConfirm();
+  const toast = useToast();
 
   const autoSlug = slugify(nom);
   const effectiveSlug = slugTouched ? slugValue : autoSlug;
@@ -147,14 +151,23 @@ export default function ProductForm({ mode, initial, categories }: { mode: Mode;
 
   async function handleDelete() {
     if (mode.kind !== 'edit') return;
-    if (!confirm(`Supprimer le produit "${nom}" ? Cette action est définitive.`)) return;
+    const ok = await confirm({
+      title: 'Supprimer ce produit ?',
+      message: `« ${nom} » sera définitivement supprimé.`,
+      confirmLabel: 'Supprimer',
+      variant: 'danger',
+    });
+    if (!ok) return;
     const res = await fetch(`/api/admin/produits/${mode.id}`, { method: 'DELETE' });
     if (res.ok) {
+      toast.success('Produit supprimé');
       router.push('/admin/produits');
       router.refresh();
     } else {
       const json = await res.json().catch(() => ({}));
-      setError(json.error || 'Suppression échouée');
+      const msg = json.error || 'Suppression échouée';
+      setError(msg);
+      toast.error(msg);
     }
   }
 

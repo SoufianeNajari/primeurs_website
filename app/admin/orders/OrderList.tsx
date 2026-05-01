@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { triggerHaptic } from '@/lib/haptic'
 import { calcFourchette, type FourchetteBornes } from '@/lib/fourchette'
 import { Printer, Phone, Mail, Clock, MessageSquare } from 'lucide-react'
+import { useToast } from '@/components/admin/Toast'
 
 type Ligne = {
   produitId: string;
@@ -119,6 +120,7 @@ export default function OrderList({ initialOrders, fourchette }: { initialOrders
   const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set())
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('tous')
   const [prepStates, setPrepStates] = useState<Record<string, Set<string>>>({})
+  const toast = useToast()
 
   useEffect(() => {
     const map: Record<string, Set<string>> = {}
@@ -150,10 +152,12 @@ export default function OrderList({ initialOrders, fourchette }: { initialOrders
         body: JSON.stringify({ statut: newStatus })
       })
       if (!res.ok) throw new Error('Erreur')
+      const label = newStatus === 'prête' ? 'Commande prête' : newStatus === 'retirée' ? 'Commande retirée' : 'Statut mis à jour'
+      toast.success(label)
     } catch (e) {
       console.error(e)
       setOrders(prev => prev.map(o => o.id === id ? { ...o, statut: currentStatus } : o))
-      alert('Erreur lors de la mise à jour.')
+      toast.error('Erreur lors de la mise à jour')
     } finally {
       setLoadingIds(prev => {
         const next = new Set(prev)
