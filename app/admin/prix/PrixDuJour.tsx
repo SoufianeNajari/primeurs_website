@@ -1,8 +1,10 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
-import { Check, Loader2 } from 'lucide-react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
+import { Check, Loader2, CheckCheck } from 'lucide-react';
 import type { ProduitOption } from '@/lib/produit';
+import { useToast } from '@/components/admin/Toast';
+import { useConfirm } from '@/components/admin/ConfirmModal';
 
 type ProduitPrix = {
   id: string;
@@ -19,6 +21,7 @@ type Filtre = 'tous' | 'a_actualiser' | 'indispo';
 
 const HOURS_24 = 24 * 60 * 60 * 1000;
 const HOURS_72 = 72 * 60 * 60 * 1000;
+const FILTRE_STORAGE_KEY = 'prix_filtre';
 
 function freshnessLevel(prixUpdatedAt: string): 'fresh' | 'medium' | 'stale' {
   const ageMs = Date.now() - new Date(prixUpdatedAt).getTime();
@@ -55,7 +58,31 @@ export default function PrixDuJour({ initialProduits }: { initialProduits: Produ
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [savedKey, setSavedKey] = useState<string | null>(null);
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
   const [, startTransition] = useTransition();
+  const toast = useToast();
+  const confirm = useConfirm();
+
+  // Charger le filtre persisté
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(FILTRE_STORAGE_KEY);
+      if (saved === 'tous' || saved === 'a_actualiser' || saved === 'indispo') {
+        setFiltre(saved);
+      }
+    } catch {
+      /* localStorage indisponible */
+    }
+  }, []);
+
+  function changeFiltre(f: Filtre) {
+    setFiltre(f);
+    try {
+      localStorage.setItem(FILTRE_STORAGE_KEY, f);
+    } catch {
+      /* */
+    }
+  }
 
   const filtered = useMemo(() => {
     if (filtre === 'a_actualiser') {
@@ -102,6 +129,7 @@ export default function PrixDuJour({ initialProduits }: { initialProduits: Produ
       if (!res.ok) throw new Error('save failed');
       setSavedKey(key);
       setTimeout(() => setSavedKey((k) => (k === key ? null : k)), 1500);
+      toast.success(newPrix == null ? 'Prix retiré (à la remise)' : `Prix sauvé : ${newPrix}€`);
     } catch (err) {
       console.error(err);
       setErrorKey(key);
@@ -117,6 +145,7 @@ export default function PrixDuJour({ initialProduits }: { initialProduits: Produ
             : p,
         ),
       );
+      toast.error('Échec de la sauvegarde');
     } finally {
       setSavingKey((k) => (k === key ? null : k));
     }
@@ -135,11 +164,47 @@ export default function PrixDuJour({ initialProduits }: { initialProduits: Produ
         body: JSON.stringify({ id: produitId, disponible: next }),
       });
       if (!res.ok) throw new Error('toggle failed');
+      toast.success(next ? 'Produit disponible' : 'Produit indisponible');
     } catch (err) {
       console.error(err);
       setProduits((prev) =>
         prev.map((p) => (p.id === produitId ? { ...p, disponible: previous } : p)),
       );
+      toast.error('Échec de la mise à jour');
+    }
+  }
+
+  async function handleBulkTouch() {
+    const staleIds = produits
+      .filter((p) => freshnessLevel(p.prix_updated_at) === 'stale')
+      .map((p) => p.id);
+    if (staleIds.length === 0) return;
+
+    const ok = await confirm({
+      title: 'Marquer comme à jour ?',
+      message: `Confirmez que les prix des ${staleIds.length} produit(s) listés sont toujours corrects. La date de mise à jour sera bumpée à maintenant, sans changer les prix.`,
+      confirmLabel: 'Confirmer',
+    });
+    if (!ok) return;
+
+    setBulkBusy(true);
+    try {
+      const res = await fetch('/api/admin/produits/prix/touch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: staleIds }),
+      });
+      if (!res.ok) throw new Error('touch failed');
+      const now = new Date().toISOString();
+      setProduits((prev) =>
+        prev.map((p) => (staleIds.includes(p.id) ? { ...p, prix_updated_at: now } : p)),
+      );
+      toast.success(`${staleIds.length} produit(s) marqués à jour`);
+    } catch (err) {
+      console.error(err);
+      toast.error('Échec de la mise à jour groupée');
+    } finally {
+      setBulkBusy(false);
     }
   }
 
@@ -147,17 +212,17 @@ export default function PrixDuJour({ initialProduits }: { initialProduits: Produ
     <div>
       <div className="sticky top-[60px] z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 bg-neutral-50/95 backdrop-blur border-b border-neutral-200 mb-4">
         <div className="flex gap-2 overflow-x-auto">
-          <FilterTab active={filtre === 'tous'} onClick={() => setFiltre('tous')} label="Tous" count={counts.tous} />
+          <FilterTab active={filtre === 'tous'} onClick={() => changeFiltre('tous')} label="Tous" count={counts.tous} />
           <FilterTab
             active={filtre === 'a_actualiser'}
-            onClick={() => setFiltre('a_actualiser')}
+            onClick={() => changeFiltre('a_actualiser')}
             label="À actualiser"
             count={counts.stale}
             tone="stale"
           />
           <FilterTab
             active={filtre === 'indispo'}
-            onClick={() => setFiltre('indispo')}
+            onClick={() => changeFiltre('indispo')}
             label="Indispo"
             count={counts.indispo}
             tone="warn"
@@ -165,9 +230,29 @@ export default function PrixDuJour({ initialProduits }: { initialProduits: Produ
         </div>
       </div>
 
+      <p className="text-xs text-neutral-500 mb-3 px-1">
+        💡 Laissez le prix vide pour afficher <span className="italic">« à la remise »</span> côté boutique.
+      </p>
+
+      {filtre === 'a_actualiser' && counts.stale > 0 && (
+        <button
+          type="button"
+          onClick={handleBulkTouch}
+          disabled={bulkBusy}
+          className="w-full mb-3 inline-flex items-center justify-center gap-2 bg-green-primary text-white px-4 py-3 text-sm font-medium hover:bg-green-dark disabled:opacity-50 transition-colors"
+        >
+          {bulkBusy ? <Loader2 size={16} className="animate-spin" /> : <CheckCheck size={16} />}
+          Marquer les {counts.stale} produit(s) comme à jour
+        </button>
+      )}
+
       {filtered.length === 0 ? (
         <div className="border border-neutral-200 bg-white p-8 text-center text-neutral-500">
-          Aucun produit dans ce filtre.
+          {filtre === 'a_actualiser'
+            ? 'Tous les prix sont à jour 👌'
+            : filtre === 'indispo'
+            ? 'Tous les produits sont disponibles 👌'
+            : 'Aucun produit dans ce filtre.'}
         </div>
       ) : (
         <ul className="flex flex-col gap-3">

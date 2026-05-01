@@ -118,7 +118,9 @@ function savePrepState(orderId: string, ids: Set<string>) {
 export default function OrderList({ initialOrders, fourchette }: { initialOrders: Order[]; fourchette: FourchetteBornes }) {
   const [orders, setOrders] = useState<Order[]>(initialOrders)
   const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set())
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('tous')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(() => {
+    return initialOrders.some(o => o.statut === 'reçue') ? 'reçue' : 'tous'
+  })
   const [prepStates, setPrepStates] = useState<Record<string, Set<string>>>({})
   const toast = useToast()
 
@@ -275,9 +277,11 @@ export default function OrderList({ initialOrders, fourchette }: { initialOrders
                     <button
                       onClick={() => window.print()}
                       title="Imprimer"
-                      className="p-2 border border-neutral-200 text-neutral-600 hover:border-neutral-400 hover:text-neutral-800 transition-colors"
+                      aria-label="Imprimer"
+                      className="inline-flex items-center gap-1.5 px-3 min-h-[40px] border border-neutral-300 text-neutral-700 hover:border-neutral-500 hover:text-neutral-900 transition-colors text-[11px] uppercase tracking-widest font-medium"
                     >
-                      <Printer size={14} />
+                      <Printer size={16} />
+                      <span className="hidden sm:inline">Imprimer</span>
                     </button>
                     {order.statut !== 'retirée' && (
                       <button
