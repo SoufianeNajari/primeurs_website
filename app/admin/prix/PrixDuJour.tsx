@@ -159,7 +159,7 @@ export default function PrixDuJour({ initialProduits }: { initialProduits: Produ
     return { tous: produits.length, stale, indispo };
   }, [produits]);
 
-  async function saveOptionPrix(produitId: string, optionId: string, newPrix: number | null) {
+  async function saveOptionPrix(produitId: string, optionId: string, newPrix: number | null, isUndo = false) {
     const key = `${produitId}:${optionId}`;
     const produit = produits.find((p) => p.id === produitId);
     if (!produit) return;
@@ -188,7 +188,20 @@ export default function PrixDuJour({ initialProduits }: { initialProduits: Produ
       if (!res.ok) throw new Error('save failed');
       setSavedKey(key);
       setTimeout(() => setSavedKey((k) => (k === key ? null : k)), 1500);
-      toast.success(newPrix == null ? 'Prix retiré (à la remise)' : `Prix sauvé : ${newPrix}€`);
+      if (isUndo) {
+        toast.success(newPrix == null ? 'Annulé : prix remis à la remise' : `Annulé : prix remis à ${newPrix}€`);
+      } else {
+        const message = newPrix == null ? 'Prix retiré (à la remise)' : `Prix sauvé : ${newPrix}€`;
+        toast.success(message, {
+          durationMs: 30000,
+          action: {
+            label: 'Annuler',
+            onClick: () => {
+              saveOptionPrix(produitId, optionId, previousPrix, true);
+            },
+          },
+        });
+      }
     } catch (err) {
       console.error(err);
       setErrorKey(key);

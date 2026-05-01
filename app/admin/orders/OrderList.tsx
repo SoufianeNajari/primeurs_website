@@ -6,6 +6,7 @@ import { triggerHaptic } from '@/lib/haptic'
 import { calcFourchette, type FourchetteBornes } from '@/lib/fourchette'
 import { Printer, Phone, Mail, Clock, MessageSquare } from 'lucide-react'
 import { useToast } from '@/components/admin/Toast'
+import { statutBadgeCls, statutLabel } from '@/lib/orderStatus'
 
 type Ligne = {
   produitId: string;
@@ -218,7 +219,7 @@ export default function OrderList({
   }, [activeOrders])
 
   if (orders.length === 0) {
-    return <div className="text-center text-neutral-500 py-12 font-serif text-lg border border-neutral-200 bg-white">Aucune commande sur les 7 derniers jours.</div>
+    return <div className="text-center text-neutral-500 py-12 font-serif text-lg border border-neutral-200 bg-white">Aucune commande sur la période.</div>
   }
 
   const filterTabs: { value: StatusFilter; label: string }[] = [
@@ -296,11 +297,7 @@ export default function OrderList({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
                       <span className="font-mono text-sm font-bold text-neutral-700 bg-neutral-100 px-2 py-0.5">{shortId(order.id)}</span>
-                      <span className={`text-[10px] uppercase tracking-widest font-semibold px-2 py-1 ${
-                        order.statut === 'reçue' ? 'bg-amber-100 text-amber-800 border border-amber-200' :
-                        order.statut === 'prête' ? 'bg-green-primary text-white' :
-                        'bg-neutral-100 text-neutral-500 border border-neutral-200'
-                      }`}>{order.statut}</span>
+                      <span className={`text-[10px] uppercase tracking-widest font-semibold px-2 py-1 ${statutBadgeCls(order.statut)}`}>{statutLabel(order.statut)}</span>
                       <span className="text-xs text-neutral-400 inline-flex items-center gap-1"><Clock size={12} />{formatRelativeTime(order.created_at)}</span>
                     </div>
                     <h4 className="font-serif text-xl text-neutral-800 leading-tight">{order.client_nom}</h4>
@@ -492,7 +489,7 @@ export default function OrderList({
                 <span className="font-mono text-xs text-neutral-500">{shortId(order.id)}</span>
                 <span className="font-serif text-neutral-700">{order.client_nom}</span>
               </div>
-              <span className="text-[10px] uppercase tracking-widest font-semibold text-neutral-400">Retirée</span>
+              <span className={`text-[10px] uppercase tracking-widest font-semibold px-2 py-1 ${statutBadgeCls('retirée')}`}>{statutLabel('retirée')}</span>
             </div>
           ))}
         </div>

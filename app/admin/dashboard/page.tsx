@@ -134,9 +134,9 @@ export default async function DashboardPage() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-10">
-        <Kpi label="Aujourd'hui" value={cmdToday.length} suffix={cmdToday.length > 1 ? 'commandes' : 'commande'} />
-        <Kpi label="7 derniers jours" value={cmd7.length} suffix={cmd7.length > 1 ? 'commandes' : 'commande'} />
-        <Kpi label="30 derniers jours" value={cmd30.length} suffix={cmd30.length > 1 ? 'commandes' : 'commande'} />
+        <Kpi label="Aujourd'hui" value={cmdToday.length} suffix={cmdToday.length > 1 ? 'commandes' : 'commande'} href="/admin/orders?periode=today" />
+        <Kpi label="7 derniers jours" value={cmd7.length} suffix={cmd7.length > 1 ? 'commandes' : 'commande'} href="/admin/orders?periode=7d" />
+        <Kpi label="30 derniers jours" value={cmd30.length} suffix={cmd30.length > 1 ? 'commandes' : 'commande'} href="/admin/orders?periode=30d" />
         <Kpi
           label="Panier moyen (30j)"
           value={panierMoyen != null ? panierMoyen.toFixed(2) : '—'}
@@ -195,14 +195,22 @@ export default async function DashboardPage() {
   );
 }
 
-function Kpi({ label, value, suffix }: { label: string; value: string | number; suffix?: string }) {
-  return (
-    <div className="bg-white border border-neutral-200 p-4">
+function Kpi({ label, value, suffix, href }: { label: string; value: string | number; suffix?: string; href?: string }) {
+  const inner = (
+    <>
       <div className="text-[10px] uppercase tracking-widest text-neutral-500 font-medium mb-2">{label}</div>
       <div className="flex items-baseline gap-1">
         <span className="text-2xl md:text-3xl font-serif text-neutral-900">{value}</span>
         {suffix && <span className="text-xs text-neutral-500">{suffix}</span>}
       </div>
-    </div>
+    </>
   );
+  if (href) {
+    return (
+      <Link href={href} className="bg-white border border-neutral-200 p-4 hover:border-green-primary hover:shadow-sm transition-all block">
+        {inner}
+      </Link>
+    );
+  }
+  return <div className="bg-white border border-neutral-200 p-4">{inner}</div>;
 }
