@@ -187,19 +187,19 @@ export default function CategoriesManager({ initialCategories }: { initialCatego
           <ul className="divide-y divide-neutral-100">
             {cats.map((c, idx) => (
               <li key={c.id} className={`px-3 py-3 flex items-center gap-2 ${!c.actif ? 'opacity-50 bg-neutral-50' : ''}`}>
-                <div className="flex flex-col gap-0.5">
+                <div className="flex sm:flex-col">
                   <button
                     onClick={() => moveUp(idx)}
                     disabled={idx === 0 || busy !== null}
-                    className="p-0.5 text-neutral-400 hover:text-neutral-700 disabled:opacity-20"
+                    className="w-11 h-11 sm:w-9 sm:h-9 flex items-center justify-center text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 disabled:opacity-20 disabled:hover:bg-transparent"
                     aria-label="Monter"
-                  ><ArrowUp size={12} /></button>
+                  ><ArrowUp size={18} /></button>
                   <button
                     onClick={() => moveDown(idx)}
                     disabled={idx === cats.length - 1 || busy !== null}
-                    className="p-0.5 text-neutral-400 hover:text-neutral-700 disabled:opacity-20"
+                    className="w-11 h-11 sm:w-9 sm:h-9 flex items-center justify-center text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 disabled:opacity-20 disabled:hover:bg-transparent"
                     aria-label="Descendre"
-                  ><ArrowDown size={12} /></button>
+                  ><ArrowDown size={18} /></button>
                 </div>
 
                 {editing === c.id ? (

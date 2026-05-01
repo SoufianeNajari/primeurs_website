@@ -50,12 +50,14 @@ export default function ClientsManager({ initialClients, initialRequests }: Prop
     }
   }
 
+  const normalizePhone = (v: string) => v.replace(/[\s.\-/_()]/g, '');
   const filtered = initialClients.filter((c) => {
     if (!search) return true;
     const s = search.toLowerCase();
+    const sPhone = normalizePhone(s);
     return (
-      c.telephone.includes(s.replace(/\s/g, '')) ||
-      c.telephoneDisplay.includes(s) ||
+      (sPhone.length > 0 && normalizePhone(c.telephone).includes(sPhone)) ||
+      (sPhone.length > 0 && normalizePhone(c.telephoneDisplay).includes(sPhone)) ||
       (c.prenom || '').toLowerCase().includes(s) ||
       (c.nom || '').toLowerCase().includes(s)
     );

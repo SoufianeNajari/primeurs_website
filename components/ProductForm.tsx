@@ -337,13 +337,13 @@ export default function ProductForm({ mode, initial, categories }: { mode: Mode;
         </div>
       </div>
 
-      <div className="flex items-center justify-between pt-4 border-t border-neutral-200">
+      <div className="sticky bottom-0 -mx-6 px-6 py-3 bg-white/95 backdrop-blur border-t border-neutral-200 flex items-center justify-between gap-3 z-10 sm:static sm:bg-transparent sm:backdrop-blur-0 sm:py-0 sm:pt-4">
         {mode.kind === 'edit' ? (
           <button type="button" onClick={handleDelete} className="text-sm text-red-600 hover:text-red-800 flex items-center gap-1">
-            <Trash2 size={14} /> Supprimer ce produit
+            <Trash2 size={14} /> <span className="hidden sm:inline">Supprimer ce produit</span><span className="sm:hidden">Supprimer</span>
           </button>
         ) : <span />}
-        <button type="submit" disabled={saving || uploading} className="bg-green-primary text-white px-6 py-3 font-medium uppercase tracking-widest text-[11px] hover:bg-green-dark transition-colors disabled:opacity-50 flex items-center gap-2">
+        <button type="submit" disabled={saving || uploading} className="bg-green-primary text-white px-6 py-3 font-medium uppercase tracking-widest text-[11px] hover:bg-green-dark transition-colors disabled:opacity-50 flex items-center gap-2 min-h-[44px]">
           {saving && <Loader2 size={14} className="animate-spin" />}
           {mode.kind === 'create' ? 'Créer le produit' : 'Enregistrer'}
         </button>
