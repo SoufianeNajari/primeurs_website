@@ -534,6 +534,10 @@ function OptionPrixRow({
 }) {
   const [value, setValue] = useState<string>(formatPrixInput(prix));
 
+  useEffect(() => {
+    setValue(formatPrixInput(prix));
+  }, [prix]);
+
   function handleBlur() {
     const parsed = parsePrixInput(value);
     setValue(formatPrixInput(parsed));

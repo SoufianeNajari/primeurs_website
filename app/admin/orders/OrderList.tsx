@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { triggerHaptic } from '@/lib/haptic'
 import { calcFourchette, type FourchetteBornes } from '@/lib/fourchette'
-import { Printer, Phone, Mail, Clock, MessageSquare } from 'lucide-react'
+import { Printer, Phone, Mail, Clock, MessageSquare, Undo2 } from 'lucide-react'
 import { useToast } from '@/components/admin/Toast'
 import { statutBadgeCls, statutLabel } from '@/lib/orderStatus'
 
@@ -161,16 +161,10 @@ export default function OrderList({
     'retirée': orders.filter(o => o.statut === 'retirée').length,
   }
 
-  const updateStatus = async (id: string, currentStatus: string) => {
-    let newStatus = 'reçue'
-    if (currentStatus === 'reçue') newStatus = 'prête'
-    else if (currentStatus === 'prête') newStatus = 'retirée'
-    else return;
-
+  const setStatusWithToast = async (id: string, newStatus: string, currentStatus: string, label: string, withUndo = false) => {
     triggerHaptic();
     setLoadingIds(prev => new Set(prev).add(id))
     setOrders(prev => prev.map(o => o.id === id ? { ...o, statut: newStatus } : o))
-
     try {
       const res = await fetch(`/api/orders/${id}`, {
         method: 'PATCH',
@@ -178,19 +172,38 @@ export default function OrderList({
         body: JSON.stringify({ statut: newStatus })
       })
       if (!res.ok) throw new Error('Erreur')
-      const label = newStatus === 'prête' ? 'Commande prête' : newStatus === 'retirée' ? 'Commande retirée' : 'Statut mis à jour'
-      toast.success(label)
+      if (withUndo) {
+        toast.success(label, {
+          durationMs: 30000,
+          action: {
+            label: 'Annuler',
+            onClick: () => { setStatusWithToast(id, currentStatus, newStatus, 'Statut restauré') }
+          }
+        })
+      } else {
+        toast.success(label)
+      }
     } catch (e) {
       console.error(e)
       setOrders(prev => prev.map(o => o.id === id ? { ...o, statut: currentStatus } : o))
       toast.error('Erreur lors de la mise à jour')
     } finally {
-      setLoadingIds(prev => {
-        const next = new Set(prev)
-        next.delete(id)
-        return next
-      })
+      setLoadingIds(prev => { const next = new Set(prev); next.delete(id); return next })
     }
+  }
+
+  const updateStatus = async (id: string, currentStatus: string) => {
+    let newStatus = 'reçue'
+    if (currentStatus === 'reçue') newStatus = 'prête'
+    else if (currentStatus === 'prête') newStatus = 'retirée'
+    else return;
+
+    const label = newStatus === 'prête' ? 'Commande prête' : newStatus === 'retirée' ? 'Commande retirée' : 'Statut mis à jour'
+    await setStatusWithToast(id, newStatus, currentStatus, label, newStatus === 'retirée')
+  }
+
+  const restoreOrder = async (id: string) => {
+    await setStatusWithToast(id, 'prête', 'retirée', 'Commande restaurée en « Prête »', false)
   }
 
   const togglePrep = (orderId: string, lineKey: string) => {
@@ -484,12 +497,25 @@ export default function OrderList({
         <div className="space-y-2 pt-8 border-t border-neutral-200 opacity-60 hover:opacity-100 transition-opacity no-print">
           <h3 className="text-[11px] uppercase tracking-widest font-medium text-neutral-500 border-b border-neutral-200 pb-2">Commandes retirées ({completedOrders.length})</h3>
           {completedOrders.map(order => (
-            <div key={order.id} className="bg-neutral-50 border border-neutral-200 p-3 flex justify-between items-center text-sm">
-              <div className="flex items-center gap-3">
+            <div key={order.id} className="bg-neutral-50 border border-neutral-200 p-3 flex flex-wrap justify-between items-center gap-2 text-sm">
+              <div className="flex items-center gap-3 min-w-0">
                 <span className="font-mono text-xs text-neutral-500">{shortId(order.id)}</span>
-                <span className="font-serif text-neutral-700">{order.client_nom}</span>
+                <span className="font-serif text-neutral-700 truncate">{order.client_nom}</span>
               </div>
-              <span className={`text-[10px] uppercase tracking-widest font-semibold px-2 py-1 ${statutBadgeCls('retirée')}`}>{statutLabel('retirée')}</span>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className={`text-[10px] uppercase tracking-widest font-semibold px-2 py-1 ${statutBadgeCls('retirée')}`}>{statutLabel('retirée')}</span>
+                <button
+                  type="button"
+                  onClick={() => restoreOrder(order.id)}
+                  disabled={loadingIds.has(order.id)}
+                  className="inline-flex items-center gap-1.5 px-2.5 min-h-[36px] border border-neutral-300 text-neutral-700 hover:border-neutral-500 hover:text-neutral-900 transition-colors text-[10px] uppercase tracking-widest font-medium disabled:opacity-50"
+                  title="Restaurer la commande en « Prête »"
+                  aria-label="Restaurer la commande"
+                >
+                  <Undo2 size={13} />
+                  <span className="hidden sm:inline">Restaurer</span>
+                </button>
+              </div>
             </div>
           ))}
         </div>
