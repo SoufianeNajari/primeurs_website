@@ -230,31 +230,29 @@ export default function OrderList({
   return (
     <div className="space-y-8">
       <style jsx global>{`
+        #print-portal { display: none; }
         @media print {
           @page { size: A4; margin: 8mm; }
-          .no-print { display: none !important; }
-          body { background: white !important; font-size: 10pt; }
-          .order-card { break-inside: avoid; page-break-inside: avoid; box-shadow: none !important; }
-
-          /* Impression d'une commande unique : masquer tout sauf la cible */
-          body.printing-one .order-card:not([data-print-target='true']) { display: none !important; }
-          body.printing-one section > h3 { display: none !important; }
-          body.printing-one .order-card[data-print-target='true'] {
-            font-size: 9.5pt;
+          html, body { background: white !important; }
+          body.printing-one * { visibility: hidden !important; }
+          body.printing-one #print-portal,
+          body.printing-one #print-portal * { visibility: visible !important; }
+          body.printing-one #print-portal {
+            display: block !important;
+            position: absolute !important;
+            left: 0; top: 0; right: 0;
+            width: 100%;
             padding: 0 !important;
-            border: none !important;
+            margin: 0 !important;
           }
-          body.printing-one .order-card[data-print-target='true'] * {
-            margin-top: 0 !important;
-            margin-bottom: 2mm !important;
-            padding-top: 1mm !important;
-            padding-bottom: 1mm !important;
-          }
-          body.printing-one .order-card[data-print-target='true'] h4 { font-size: 13pt; }
-          body.printing-one .order-card[data-print-target='true'] li { padding: 0.5mm 1.5mm !important; }
         }
       `}</style>
       <PrintModeToggler active={printingOrderId !== null} />
+      {printingOrderId && (() => {
+        const target = orders.find((o) => o.id === printingOrderId)
+        if (!target) return null
+        return <PrintableTicket order={target} prixActuels={prixActuels} fourchette={fourchette} />
+      })()}
 
       <div className="flex flex-wrap gap-2 mb-2 no-print">
         {filterTabs.map(tab => (
@@ -291,7 +289,6 @@ export default function OrderList({
             return (
               <article
                 key={order.id}
-                data-print-target={printingOrderId === order.id ? 'true' : undefined}
                 className={`order-card bg-white border p-4 sm:p-5 ${order.statut === 'prête' ? 'border-green-primary shadow-sm' : 'border-neutral-200'}`}
               >
                 {/* HEADER */}
@@ -404,17 +401,27 @@ export default function OrderList({
                                   {incertain ? 'À calibrer' : euro.format(sousTotal!)}
                                 </span>
                               </div>
-                              {prixActuelDifferent && (
-                                <div className="sm:hidden mt-1 text-[11px] text-orange-700 font-medium">
-                                  Prix aujourd&apos;hui : {euro.format(prixActuel!)} / {ligne.libelle}
+                              {!incertain && prixActuel != null && (
+                                <div className={`sm:hidden mt-0.5 text-[11px] font-medium ${prixActuelDifferent ? 'text-orange-700' : 'text-neutral-400'}`}>
+                                  Aujourd&apos;hui : {euro.format(prixActuel)} {prixActuelDifferent ? '⚠️' : ''}
+                                </div>
+                              )}
+                              {!incertain && prixActuel == null && (
+                                <div className="sm:hidden mt-0.5 text-[11px] text-neutral-400 italic">
+                                  Aujourd&apos;hui : à la remise
                                 </div>
                               )}
                             </div>
                             <div className={`hidden sm:block text-right text-sm ${incertain ? 'text-amber-700 font-medium' : 'text-neutral-600'} ${isChecked ? 'line-through' : ''}`}>
                               {incertain ? 'À peser' : `${euro.format(Number(ligne.prix))}`}
-                              {prixActuelDifferent && (
-                                <div className="text-[10px] text-orange-700 font-medium mt-0.5">
-                                  Auj. {euro.format(prixActuel!)}
+                              {!incertain && prixActuel != null && (
+                                <div className={`text-[10px] mt-0.5 font-medium ${prixActuelDifferent ? 'text-orange-700' : 'text-neutral-400'}`}>
+                                  Auj. {euro.format(prixActuel)}
+                                </div>
+                              )}
+                              {!incertain && prixActuel == null && (
+                                <div className="text-[10px] mt-0.5 text-neutral-400 italic">
+                                  Auj. à la remise
                                 </div>
                               )}
                             </div>
@@ -503,4 +510,101 @@ function PrintModeToggler({ active }: { active: boolean }) {
     }
   }, [active])
   return null
+}
+
+function PrintableTicket({
+  order,
+  prixActuels,
+  fourchette,
+}: {
+  order: Order
+  prixActuels: Record<string, number | null>
+  fourchette: FourchetteBornes
+}) {
+  const tot = totalEstime(order.lignes)
+  const dateRetrait = order.date_retrait_souhaite || order.created_at.slice(0, 10)
+  return (
+    <div id="print-portal" style={{ fontFamily: 'system-ui, sans-serif', color: '#000', fontSize: '10pt' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: '2px solid #000', paddingBottom: '4px', marginBottom: '8px' }}>
+        <div>
+          <div style={{ fontSize: '15pt', fontWeight: 700 }}>{order.client_nom}</div>
+          <div style={{ fontSize: '10pt' }}>{order.client_telephone}{order.client_email ? ` · ${order.client_email}` : ''}</div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontFamily: 'monospace', fontSize: '11pt' }}>{shortId(order.id)}</div>
+          <div style={{ fontSize: '9pt', textTransform: 'uppercase' }}>{order.statut}</div>
+        </div>
+      </div>
+
+      <div style={{ marginBottom: '6px', fontSize: '10pt' }}>
+        <strong>Retrait :</strong> {formatDateLongue(dateRetrait)}
+        {order.jour_retrait && <span> · {order.jour_retrait}</span>}
+        {order.creneau && <span> · {order.creneau}</span>}
+      </div>
+
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9.5pt', marginBottom: '6px' }}>
+        <thead>
+          <tr style={{ borderBottom: '1px solid #000' }}>
+            <th style={{ textAlign: 'left', padding: '2px 4px', width: '30px' }}>☐</th>
+            <th style={{ textAlign: 'left', padding: '2px 4px' }}>Produit</th>
+            <th style={{ textAlign: 'right', padding: '2px 4px', width: '60px' }}>Qté</th>
+            <th style={{ textAlign: 'right', padding: '2px 4px', width: '70px' }}>Prix cmd.</th>
+            <th style={{ textAlign: 'right', padding: '2px 4px', width: '70px' }}>Auj.</th>
+            <th style={{ textAlign: 'right', padding: '2px 4px', width: '70px' }}>Sous-tot.</th>
+          </tr>
+        </thead>
+        <tbody>
+          {order.lignes.map((ligne, idx) => {
+            const incertain = ligne.prix == null
+            const sousTotal = incertain ? null : Number(ligne.prix) * ligne.quantite
+            const prixActuel = prixActuels[`${ligne.produitId}:${ligne.optionId}`]
+            const prixDiff = !incertain && prixActuel != null && Math.abs(prixActuel - Number(ligne.prix)) > 0.001
+            return (
+              <tr key={idx} style={{ borderBottom: '1px dashed #999' }}>
+                <td style={{ padding: '3px 4px' }}>☐</td>
+                <td style={{ padding: '3px 4px' }}>
+                  <div><strong>{ligne.nom}</strong> <span style={{ fontStyle: 'italic', color: '#555' }}>{ligne.libelle}</span></div>
+                </td>
+                <td style={{ padding: '3px 4px', textAlign: 'right', fontWeight: 700 }}>{ligne.quantite}</td>
+                <td style={{ padding: '3px 4px', textAlign: 'right' }}>
+                  {incertain ? '— peser' : `${Number(ligne.prix).toFixed(2)}€`}
+                </td>
+                <td style={{ padding: '3px 4px', textAlign: 'right', color: prixDiff ? '#c2410c' : '#666', fontWeight: prixDiff ? 700 : 400 }}>
+                  {prixActuel == null ? '— rem.' : `${prixActuel.toFixed(2)}€`}
+                  {prixDiff && ' ⚠'}
+                </td>
+                <td style={{ padding: '3px 4px', textAlign: 'right', fontWeight: 700 }}>
+                  {incertain ? '—' : `${sousTotal!.toFixed(2)}€`}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+
+      {tot.total != null && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #000', paddingTop: '4px', fontSize: '11pt' }}>
+          <span>Total estimé client</span>
+          <strong>{tot.total.toFixed(2)}€</strong>
+        </div>
+      )}
+      {tot.total != null && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9pt', color: '#c2410c' }}>
+          <span>Borne haute (+{Math.round((fourchette.max - 1) * 100)}%) — appeler client si dépassée</span>
+          <span>{calcFourchette(tot.total, fourchette).max.toFixed(2)}€</span>
+        </div>
+      )}
+      {tot.allIncertain && (
+        <div style={{ fontSize: '10pt', fontStyle: 'italic', borderTop: '1px solid #000', paddingTop: '4px' }}>
+          Tous les articles à tarifer à la pesée.
+        </div>
+      )}
+
+      {order.message && (
+        <div style={{ marginTop: '8px', borderLeft: '3px solid #000', paddingLeft: '6px', fontSize: '9.5pt' }}>
+          <strong>Message client :</strong> <em>{order.message}</em>
+        </div>
+      )}
+    </div>
+  )
 }

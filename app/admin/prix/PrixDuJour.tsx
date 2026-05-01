@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, useTransition } from 'react';
-import { Check, Loader2, CheckCheck, Search, X } from 'lucide-react';
+import { Check, Loader2, CheckCheck, Search, X, Filter } from 'lucide-react';
 import type { ProduitOption } from '@/lib/produit';
 import { useToast } from '@/components/admin/Toast';
 import { useConfirm } from '@/components/admin/ConfirmModal';
@@ -65,6 +65,7 @@ export default function PrixDuJour({ initialProduits }: { initialProduits: Produ
   const [filtre, setFiltre] = useState<Filtre>('tous');
   const [search, setSearch] = useState('');
   const [selectedCats, setSelectedCats] = useState<Set<string>>(new Set());
+  const [showCats, setShowCats] = useState(false);
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [savedKey, setSavedKey] = useState<string | null>(null);
   const [errorKey, setErrorKey] = useState<string | null>(null);
@@ -83,7 +84,10 @@ export default function PrixDuJour({ initialProduits }: { initialProduits: Produ
       const cats = localStorage.getItem(CATEGORIES_STORAGE_KEY);
       if (cats) {
         const parsed = JSON.parse(cats);
-        if (Array.isArray(parsed)) setSelectedCats(new Set(parsed));
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setSelectedCats(new Set(parsed));
+          setShowCats(true);
+        }
       }
     } catch {
       /* localStorage indisponible */
@@ -265,29 +269,44 @@ export default function PrixDuJour({ initialProduits }: { initialProduits: Produ
 
   return (
     <div>
-      <div className="sticky top-[60px] z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 bg-neutral-50/95 backdrop-blur border-b border-neutral-200 mb-4 space-y-2">
-        <div className="relative">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Rechercher un produit…"
-            className="w-full h-10 pl-10 pr-10 border border-neutral-300 bg-white text-sm focus:outline-none focus:border-green-primary"
-          />
-          {search && (
-            <button
-              type="button"
-              onClick={() => setSearch('')}
-              aria-label="Effacer la recherche"
-              className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center text-neutral-400 hover:text-neutral-700"
-            >
-              <X size={14} />
-            </button>
-          )}
+      <div className="sticky top-[60px] z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 py-1.5 bg-neutral-50/95 backdrop-blur border-b border-neutral-200 mb-3 space-y-1.5">
+        <div className="flex gap-1.5 items-center">
+          <div className="relative flex-1 min-w-0">
+            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Rechercher…"
+              className="w-full h-9 pl-8 pr-8 border border-neutral-300 bg-white text-sm focus:outline-none focus:border-green-primary"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                aria-label="Effacer"
+                className="absolute right-1 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center text-neutral-400 hover:text-neutral-700"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowCats((v) => !v)}
+            aria-expanded={showCats}
+            className={`shrink-0 inline-flex items-center gap-1 h-9 px-2.5 text-[11px] uppercase tracking-widest font-medium border transition-colors ${
+              selectedCats.size > 0 || showCats
+                ? 'bg-green-primary text-white border-green-primary'
+                : 'bg-white text-neutral-700 border-neutral-300'
+            }`}
+          >
+            <Filter size={13} />
+            {selectedCats.size > 0 ? `${selectedCats.size}` : 'Cat.'}
+          </button>
         </div>
 
-        <div className="flex gap-2 overflow-x-auto">
+        <div className="flex gap-1.5 overflow-x-auto">
           <FilterTab active={filtre === 'tous'} onClick={() => changeFiltre('tous')} label="Tous" count={counts.tous} />
           <FilterTab
             active={filtre === 'a_actualiser'}
@@ -305,36 +324,38 @@ export default function PrixDuJour({ initialProduits }: { initialProduits: Produ
           />
         </div>
 
-        <div className="flex gap-1.5 overflow-x-auto pb-1">
-          <button
-            type="button"
-            onClick={clearCats}
-            className={`shrink-0 inline-flex items-center px-3 h-8 text-[11px] uppercase tracking-widest font-medium border transition-colors ${
-              selectedCats.size === 0
-                ? 'bg-neutral-800 text-white border-neutral-800'
-                : 'bg-white text-neutral-600 border-neutral-300'
-            }`}
-          >
-            Toutes catégories
-          </button>
-          {allCategories.map((cat) => {
-            const active = selectedCats.has(cat);
-            return (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => toggleCat(cat)}
-                className={`shrink-0 inline-flex items-center px-3 h-8 text-[11px] uppercase tracking-widest font-medium border transition-colors ${
-                  active
-                    ? 'bg-green-primary text-white border-green-primary'
-                    : 'bg-white text-neutral-700 border-neutral-300 hover:border-green-primary'
-                }`}
-              >
-                {cat}
-              </button>
-            );
-          })}
-        </div>
+        {showCats && (
+          <div className="flex gap-1.5 overflow-x-auto pb-1 pt-0.5 border-t border-neutral-200">
+            <button
+              type="button"
+              onClick={clearCats}
+              className={`shrink-0 inline-flex items-center px-2.5 h-7 text-[10px] uppercase tracking-widest font-medium border transition-colors ${
+                selectedCats.size === 0
+                  ? 'bg-neutral-800 text-white border-neutral-800'
+                  : 'bg-white text-neutral-600 border-neutral-300'
+              }`}
+            >
+              Toutes
+            </button>
+            {allCategories.map((cat) => {
+              const active = selectedCats.has(cat);
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => toggleCat(cat)}
+                  className={`shrink-0 inline-flex items-center px-2.5 h-7 text-[10px] uppercase tracking-widest font-medium border transition-colors ${
+                    active
+                      ? 'bg-green-primary text-white border-green-primary'
+                      : 'bg-white text-neutral-700 border-neutral-300'
+                  }`}
+                >
+                  {cat}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div className="flex items-center justify-between mb-3 px-1">
