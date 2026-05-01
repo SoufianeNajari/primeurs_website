@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { triggerHaptic } from '@/lib/haptic'
 import { calcFourchette, type FourchetteBornes } from '@/lib/fourchette'
 import { Printer, Phone, Mail, Clock, MessageSquare } from 'lucide-react'
@@ -233,26 +234,25 @@ export default function OrderList({
         #print-portal { display: none; }
         @media print {
           @page { size: A4; margin: 8mm; }
-          html, body { background: white !important; }
-          body.printing-one * { visibility: hidden !important; }
-          body.printing-one #print-portal,
-          body.printing-one #print-portal * { visibility: visible !important; }
+          html, body { background: white !important; height: auto !important; }
+          body.printing-one > *:not(#print-portal) { display: none !important; }
           body.printing-one #print-portal {
             display: block !important;
-            position: absolute !important;
-            left: 0; top: 0; right: 0;
-            width: 100%;
-            padding: 0 !important;
+            position: static !important;
+            width: 100% !important;
             margin: 0 !important;
+            padding: 0 !important;
           }
         }
       `}</style>
       <PrintModeToggler active={printingOrderId !== null} />
-      {printingOrderId && (() => {
-        const target = orders.find((o) => o.id === printingOrderId)
-        if (!target) return null
-        return <PrintableTicket order={target} prixActuels={prixActuels} fourchette={fourchette} />
-      })()}
+      <PrintPortal>
+        {printingOrderId && (() => {
+          const target = orders.find((o) => o.id === printingOrderId)
+          if (!target) return null
+          return <PrintableTicket order={target} prixActuels={prixActuels} fourchette={fourchette} />
+        })()}
+      </PrintPortal>
 
       <div className="flex flex-wrap gap-2 mb-2 no-print">
         {filterTabs.map(tab => (
@@ -510,6 +510,15 @@ function PrintModeToggler({ active }: { active: boolean }) {
     }
   }, [active])
   return null
+}
+
+function PrintPortal({ children }: { children: React.ReactNode }) {
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+  if (!mounted) return null
+  return createPortal(<>{children}</>, document.body)
 }
 
 function PrintableTicket({
