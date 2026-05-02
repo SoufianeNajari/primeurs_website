@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { triggerHaptic } from '@/lib/haptic'
 import { calcFourchette, type FourchetteBornes } from '@/lib/fourchette'
-import { Printer, Phone, Mail, Clock, MessageSquare, Undo2 } from 'lucide-react'
+import { Printer, Phone, Mail, Clock, MessageSquare, Undo2, ChevronDown, ChevronUp } from 'lucide-react'
 import { useToast } from '@/components/admin/Toast'
 import { statutBadgeCls, statutLabel } from '@/lib/orderStatus'
 
@@ -134,7 +134,16 @@ export default function OrderList({
   })
   const [prepStates, setPrepStates] = useState<Record<string, Set<string>>>({})
   const [printingOrderId, setPrintingOrderId] = useState<string | null>(null)
+  const [expandedRetired, setExpandedRetired] = useState<Set<string>>(new Set())
   const toast = useToast()
+
+  const toggleRetiredExpand = (id: string) => {
+    setExpandedRetired(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
 
   const updatePrixFinal = async (id: string, value: number | null) => {
     setOrders(prev => prev.map(o => o.id === id ? { ...o, prix_final: value } : o))
@@ -160,9 +169,28 @@ export default function OrderList({
     return () => window.removeEventListener('afterprint', onAfterPrint)
   }, [])
 
+  // Trigger print after the portal+body class are committed to the DOM.
+  // setTimeout(50) was racy on mobile — the system print dialog snapshotted
+  // the page before the portal had mounted, printing every order.
+  useEffect(() => {
+    if (!printingOrderId) return
+    let cancelled = false
+    const id1 = requestAnimationFrame(() => {
+      const id2 = requestAnimationFrame(() => {
+        if (!cancelled) window.print()
+      })
+      ;(window as unknown as { __printRaf2?: number }).__printRaf2 = id2
+    })
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(id1)
+      const id2 = (window as unknown as { __printRaf2?: number }).__printRaf2
+      if (id2) cancelAnimationFrame(id2)
+    }
+  }, [printingOrderId])
+
   function printOrder(orderId: string) {
     setPrintingOrderId(orderId)
-    setTimeout(() => window.print(), 50)
   }
 
   useEffect(() => {
@@ -423,7 +451,17 @@ export default function OrderList({
         {tot.allIncertain ? (
           <div className="bg-amber-50 border border-amber-200 p-3 mb-3">
             <div className="text-[10px] uppercase tracking-widest text-amber-800 font-semibold mb-1">Total à calculer à la pesée</div>
-            <div className="text-sm text-amber-900">Tous les articles de cette commande seront tarifés à la remise.</div>
+            <div className="text-sm text-amber-900">Tous les articles de cette commande seront tarifés à la remise — aucun montant n&apos;a été annoncé au client.</div>
+          </div>
+        ) : tot.hasIncertain && tot.total != null ? (
+          <div className="bg-amber-50 border border-amber-200 p-3 mb-3 space-y-1">
+            <div className="text-[10px] uppercase tracking-widest text-amber-800 font-semibold">Pas de total annoncé au client</div>
+            <div className="text-sm text-amber-900">
+              Cette commande contient des articles à peser/calibrer (lignes jaunes) : aucun total n&apos;a été communiqué au client.
+            </div>
+            <div className="text-xs text-amber-800 pt-1 border-t border-amber-200 mt-2">
+              Sous-total des articles avec prix (interne, non communiqué) : <span className="font-semibold">{euro.format(tot.total)}</span>
+            </div>
           </div>
         ) : tot.total != null && (
           <div className="space-y-2 mb-3">
@@ -438,11 +476,6 @@ export default function OrderList({
             <div className="bg-orange-50 border border-orange-200 px-3 py-2 text-xs text-orange-900">
               ⚠️ Si dépassement de la borne haute, prévenir le client au <a href={`tel:${order.client_telephone}`} className="font-semibold underline">{order.client_telephone}</a>
             </div>
-            {tot.hasIncertain && (
-              <div className="text-xs text-amber-700 italic">
-                Note : certaines lignes (jaune) sont à peser/calibrer — total estimé hors ces lignes.
-              </div>
-            )}
           </div>
         )}
 
@@ -534,30 +567,37 @@ export default function OrderList({
       ))}
 
       {completedOrders.length > 0 && (
-        <div className="space-y-2 pt-8 border-t border-neutral-200 opacity-60 hover:opacity-100 transition-opacity no-print">
+        <div className="space-y-2 pt-8 border-t border-neutral-200 no-print">
           <h3 className="text-[11px] uppercase tracking-widest font-medium text-neutral-500 border-b border-neutral-200 pb-2">Commandes retirées ({completedOrders.length})</h3>
-          {completedOrders.map(order => (
-            <div key={order.id} className="bg-neutral-50 border border-neutral-200 p-3 flex flex-wrap justify-between items-center gap-2 text-sm">
-              <div className="flex items-center gap-3 min-w-0">
-                <span className="font-mono text-xs text-neutral-500">{shortId(order.id)}</span>
-                <span className="font-serif text-neutral-700 truncate">{order.client_nom}</span>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <span className={`text-[10px] uppercase tracking-widest font-semibold px-2 py-1 ${statutBadgeCls('retirée')}`}>{statutLabel('retirée')}</span>
+          {completedOrders.map(order => {
+            const isOpen = expandedRetired.has(order.id)
+            return (
+              <div key={order.id} className="border border-neutral-200">
                 <button
                   type="button"
-                  onClick={() => restoreOrder(order.id)}
-                  disabled={loadingIds.has(order.id)}
-                  className="inline-flex items-center gap-1.5 px-2.5 min-h-[36px] border border-neutral-300 text-neutral-700 hover:border-neutral-500 hover:text-neutral-900 transition-colors text-[10px] uppercase tracking-widest font-medium disabled:opacity-50"
-                  title="Restaurer la commande en « Prête »"
-                  aria-label="Restaurer la commande"
+                  onClick={() => toggleRetiredExpand(order.id)}
+                  aria-expanded={isOpen}
+                  aria-controls={`retired-${order.id}`}
+                  className="w-full bg-neutral-50 hover:bg-neutral-100 transition-colors p-3 flex flex-wrap justify-between items-center gap-2 text-sm text-left"
                 >
-                  <Undo2 size={13} />
-                  <span className="hidden sm:inline">Restaurer</span>
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    {isOpen ? <ChevronUp size={16} className="text-neutral-500 shrink-0" /> : <ChevronDown size={16} className="text-neutral-500 shrink-0" />}
+                    <span className="font-mono text-xs text-neutral-500">{shortId(order.id)}</span>
+                    <span className="font-serif text-neutral-700 truncate">{order.client_nom}</span>
+                    <span className="text-xs text-neutral-400 hidden sm:inline">{order.lignes.length} article{order.lignes.length > 1 ? 's' : ''}</span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={`text-[10px] uppercase tracking-widest font-semibold px-2 py-1 ${statutBadgeCls('retirée')}`}>{statutLabel('retirée')}</span>
+                  </div>
                 </button>
+                {isOpen && (
+                  <div id={`retired-${order.id}`} className="p-2 sm:p-3 bg-white border-t border-neutral-200">
+                    {renderOrderArticle(order, { dimmed: true })}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>
