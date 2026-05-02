@@ -161,29 +161,70 @@ export default function OrderList({
     }
   }
 
-  useEffect(() => {
-    function onAfterPrint() {
-      setPrintingOrderId(null)
-    }
-    window.addEventListener('afterprint', onAfterPrint)
-    return () => window.removeEventListener('afterprint', onAfterPrint)
-  }, [])
-
-  // Trigger print after the portal+body class are committed to the DOM.
-  // setTimeout(50) was racy on mobile — the system print dialog snapshotted
-  // the page before the portal had mounted, printing every order.
+  // Print via hidden iframe: bulletproof on mobile.
+  // Le hack body.printing-one + display:none n'est pas fiable sur Chrome
+  // Android / Safari iOS (le dialogue système capture toute la page).
   useEffect(() => {
     if (!printingOrderId) return
-    let cancelled = false
-    const id1 = requestAnimationFrame(() => {
-      const id2 = requestAnimationFrame(() => {
-        if (!cancelled) window.print()
+    let cleaned = false
+    const raf1 = requestAnimationFrame(() => {
+      const raf2 = requestAnimationFrame(() => {
+        const ticket = document.getElementById('print-portal')
+        if (!ticket) { setPrintingOrderId(null); return }
+
+        const iframe = document.createElement('iframe')
+        iframe.setAttribute('aria-hidden', 'true')
+        iframe.style.position = 'fixed'
+        iframe.style.right = '0'
+        iframe.style.bottom = '0'
+        iframe.style.width = '0'
+        iframe.style.height = '0'
+        iframe.style.border = '0'
+        iframe.style.visibility = 'hidden'
+        document.body.appendChild(iframe)
+
+        const doc = iframe.contentDocument
+        const win = iframe.contentWindow
+        if (!doc || !win) {
+          iframe.remove()
+          setPrintingOrderId(null)
+          return
+        }
+
+        const cleanup = () => {
+          if (cleaned) return
+          cleaned = true
+          try { iframe.remove() } catch { /* noop */ }
+          setPrintingOrderId(null)
+        }
+
+        doc.open()
+        doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Commande</title><style>
+@page { size: A4; margin: 8mm; }
+html, body { margin: 0; padding: 0; background: white; color: #000; font-family: system-ui, sans-serif; }
+</style></head><body>${ticket.outerHTML.replace('id="print-portal"', '')}</body></html>`)
+        doc.close()
+
+        win.onafterprint = cleanup
+        // Mobile browsers ne déclenchent pas toujours afterprint → fallback timeout.
+        const fallback = window.setTimeout(cleanup, 8000)
+        const origCleanup = cleanup
+        win.onafterprint = () => { window.clearTimeout(fallback); origCleanup() }
+
+        requestAnimationFrame(() => {
+          try {
+            win.focus()
+            win.print()
+          } catch (e) {
+            console.error('print failed', e)
+            cleanup()
+          }
+        })
       })
-      ;(window as unknown as { __printRaf2?: number }).__printRaf2 = id2
+      ;(window as unknown as { __printRaf2?: number }).__printRaf2 = raf2
     })
     return () => {
-      cancelled = true
-      cancelAnimationFrame(id1)
+      cancelAnimationFrame(raf1)
       const id2 = (window as unknown as { __printRaf2?: number }).__printRaf2
       if (id2) cancelAnimationFrame(id2)
     }
@@ -512,20 +553,7 @@ export default function OrderList({
     <div className="space-y-8">
       <style jsx global>{`
         #print-portal { display: none; }
-        @media print {
-          @page { size: A4; margin: 8mm; }
-          html, body { background: white !important; height: auto !important; }
-          body.printing-one > *:not(#print-portal) { display: none !important; }
-          body.printing-one #print-portal {
-            display: block !important;
-            position: static !important;
-            width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-          }
-        }
       `}</style>
-      <PrintModeToggler active={printingOrderId !== null} />
       <PrintPortal>
         {printingOrderId && (() => {
           const target = orders.find((o) => o.id === printingOrderId)
@@ -602,17 +630,6 @@ export default function OrderList({
       )}
     </div>
   )
-}
-
-function PrintModeToggler({ active }: { active: boolean }) {
-  useEffect(() => {
-    if (active) document.body.classList.add('printing-one')
-    else document.body.classList.remove('printing-one')
-    return () => {
-      document.body.classList.remove('printing-one')
-    }
-  }, [active])
-  return null
 }
 
 function PrintPortal({ children }: { children: React.ReactNode }) {
