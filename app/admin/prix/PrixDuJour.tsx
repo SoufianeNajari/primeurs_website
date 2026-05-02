@@ -83,10 +83,13 @@ export default function PrixDuJour({ initialProduits }: { initialProduits: Produ
     router.refresh();
   }, [router]);
 
+  const savingRef = useRef(false);
+  useEffect(() => { savingRef.current = savingKey !== null; }, [savingKey]);
+
   useEffect(() => {
-    if (savingKey) return;
+    if (savingRef.current) return;
     setProduits(initialProduits);
-  }, [initialProduits, savingKey]);
+  }, [initialProduits]);
 
   // Charger filtre + catégories persistés
   useEffect(() => {
