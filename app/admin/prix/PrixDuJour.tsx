@@ -5,6 +5,7 @@ import { Check, Loader2, CheckCheck, Search, X, Filter } from 'lucide-react';
 import type { ProduitOption } from '@/lib/produit';
 import { useToast } from '@/components/admin/Toast';
 import { useConfirm } from '@/components/admin/ConfirmModal';
+import { adminMutate } from '@/lib/admin/offline-queue';
 
 type ProduitPrix = {
   id: string;
@@ -192,14 +193,39 @@ export default function PrixDuJour({ initialProduits }: { initialProduits: Produ
     );
 
     try {
-      const res = await fetch(`/api/admin/produits/${produitId}/prix`, {
+      const result = await adminMutate({
+        endpoint: `/api/admin/produits/${produitId}/prix`,
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ options: [{ id: optionId, prix: newPrix }] }),
+        body: { options: [{ id: optionId, prix: newPrix }] },
+        dedupKey: `prix:${produitId}:${optionId}`,
       });
-      if (!res.ok) throw new Error('save failed');
+
+      if (!result.ok) {
+        setErrorKey(key);
+        setProduits((prev) =>
+          prev.map((p) =>
+            p.id === produitId
+              ? {
+                  ...p,
+                  options: p.options.map((o) =>
+                    o.id === optionId ? { ...o, prix: previousPrix } : o,
+                  ),
+                }
+              : p,
+          ),
+        );
+        toast.error('Échec de la sauvegarde');
+        return;
+      }
+
       setSavedKey(key);
       setTimeout(() => setSavedKey((k) => (k === key ? null : k)), 1500);
+
+      if (result.queued) {
+        toast.info('Sauvé hors ligne — sera envoyé au retour du réseau');
+        return;
+      }
+
       if (isUndo) {
         toast.success(newPrix == null ? 'Annulé : prix remis à la remise' : `Annulé : prix remis à ${newPrix}€`);
       } else {
@@ -214,22 +240,6 @@ export default function PrixDuJour({ initialProduits }: { initialProduits: Produ
           },
         });
       }
-    } catch (err) {
-      console.error(err);
-      setErrorKey(key);
-      setProduits((prev) =>
-        prev.map((p) =>
-          p.id === produitId
-            ? {
-                ...p,
-                options: p.options.map((o) =>
-                  o.id === optionId ? { ...o, prix: previousPrix } : o,
-                ),
-              }
-            : p,
-        ),
-      );
-      toast.error('Échec de la sauvegarde');
     } finally {
       setSavingKey((k) => (k === key ? null : k));
     }
@@ -241,20 +251,25 @@ export default function PrixDuJour({ initialProduits }: { initialProduits: Produ
 
     setProduits((prev) => prev.map((p) => (p.id === produitId ? { ...p, disponible: next } : p)));
 
-    try {
-      const res = await fetch('/api/toggle', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: produitId, disponible: next }),
-      });
-      if (!res.ok) throw new Error('toggle failed');
-      toast.success(next ? 'Produit disponible' : 'Produit indisponible');
-    } catch (err) {
-      console.error(err);
+    const result = await adminMutate({
+      endpoint: '/api/toggle',
+      method: 'PATCH',
+      body: { id: produitId, disponible: next },
+      dedupKey: `toggle:${produitId}`,
+    });
+
+    if (!result.ok) {
       setProduits((prev) =>
         prev.map((p) => (p.id === produitId ? { ...p, disponible: previous } : p)),
       );
       toast.error('Échec de la mise à jour');
+      return;
+    }
+
+    if (result.queued) {
+      toast.info(next ? 'Disponible (hors ligne)' : 'Indisponible (hors ligne)');
+    } else {
+      toast.success(next ? 'Produit disponible' : 'Produit indisponible');
     }
   }
 
@@ -527,6 +542,18 @@ function DispoToggle({ disponible, onChange }: { disponible: boolean; onChange: 
   );
 }
 
+function focusSiblingPrixInput(current: HTMLInputElement, direction: 1 | -1 = 1): boolean {
+  const all = Array.from(document.querySelectorAll<HTMLInputElement>('[data-prix-input="1"]'));
+  const idx = all.indexOf(current);
+  if (idx < 0) return false;
+  const target = all[idx + direction];
+  if (!target) return false;
+  target.focus();
+  // Sélection du contenu pour saisie immédiate.
+  setTimeout(() => target.select(), 0);
+  return true;
+}
+
 function OptionPrixRow({
   libelle,
   prix,
@@ -554,6 +581,21 @@ function OptionPrixRow({
     onSave(parsed);
   }
 
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      // focus() déclenche le blur de l'input courant → handleBlur sauvegarde.
+      const moved = focusSiblingPrixInput(e.currentTarget, 1);
+      if (!moved) e.currentTarget.blur();
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      focusSiblingPrixInput(e.currentTarget, 1);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      focusSiblingPrixInput(e.currentTarget, -1);
+    }
+  }
+
   return (
     <div className="flex items-center gap-3 px-4 py-2.5 border-t border-neutral-100 first:border-t-0">
       <div className="flex-1 min-w-0">
@@ -563,13 +605,12 @@ function OptionPrixRow({
         <input
           type="text"
           inputMode="decimal"
-          enterKeyHint="done"
+          enterKeyHint="next"
+          data-prix-input="1"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onBlur={handleBlur}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
-          }}
+          onKeyDown={handleKeyDown}
           placeholder="à la remise"
           className={`w-[110px] h-10 pr-8 pl-2 text-right border text-sm tabular-nums focus:outline-none focus:border-green-primary ${
             hasError ? 'border-red-400 bg-red-50' : 'border-neutral-300 bg-white'

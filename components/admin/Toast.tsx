@@ -11,6 +11,7 @@ type ToastCtx = {
   show: (message: string, kind?: ToastKind, options?: ToastOptions) => void
   success: (message: string, options?: ToastOptions) => void
   error: (message: string, options?: ToastOptions) => void
+  info: (message: string, options?: ToastOptions) => void
 }
 
 const Ctx = createContext<ToastCtx | null>(null)
@@ -39,6 +40,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     show,
     success: (m, opts) => show(m, 'success', opts),
     error: (m, opts) => show(m, 'error', opts),
+    info: (m, opts) => show(m, 'info', opts),
   }
 
   return (

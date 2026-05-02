@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { triggerHaptic } from '@/lib/haptic'
 import { useToast } from '@/components/admin/Toast'
+import { adminMutate } from '@/lib/admin/offline-queue'
 
 type Product = {
   id: string
@@ -32,16 +33,23 @@ export default function AdminToggleList({ initialProducts }: Props) {
     setLoadingIds((prev) => new Set(prev).add(id))
 
     try {
-      const res = await fetch('/api/toggle', {
+      const result = await adminMutate({
+        endpoint: '/api/toggle',
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, disponible: newStatus }),
+        body: { id, disponible: newStatus },
+        dedupKey: `toggle:${id}`,
       })
 
-      if (!res.ok) throw new Error('Erreur réseau')
+      if (!result.ok) {
+        setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, disponible: currentStatus } : p)))
+        toast.error('Erreur de mise à jour')
+        return
+      }
 
-      const data = await res.json()
-      if (!data.success) throw new Error('Erreur API')
+      if (result.queued) {
+        toast.info(`${productName} ${newStatus ? 'dispo' : 'indispo'} (hors ligne)`)
+        return
+      }
 
       if (isUndo) {
         toast.success(`Annulé : ${productName} ${newStatus ? 'redisponible' : 'remis indispo'}`)
@@ -56,10 +64,6 @@ export default function AdminToggleList({ initialProducts }: Props) {
           },
         })
       }
-    } catch (err) {
-      console.error(err)
-      setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, disponible: currentStatus } : p)))
-      toast.error('Erreur de mise à jour')
     } finally {
       setLoadingIds((prev) => {
         const next = new Set(prev)
