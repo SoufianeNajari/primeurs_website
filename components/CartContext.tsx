@@ -1,9 +1,10 @@
 'use client'
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { ProduitOption } from '@/lib/produit';
 import CartDrawer from './CartDrawer';
+import CartAddedToast from './CartAddedToast';
 
 export type CartItem = {
   produitId: string;
@@ -19,6 +20,8 @@ export function cartKey(produitId: string, optionId: string): string {
   return `${produitId}:${optionId}`;
 }
 
+type LastAddedSignal = { nom: string; libelle: string; signal: number };
+
 type CartContextType = {
   cart: Record<string, CartItem>;
   addToCart: (args: { produitId: string; optionId: string; nom: string; categorie: string; libelle: string; prix?: number | null; quantite?: number }) => void;
@@ -30,6 +33,7 @@ type CartContextType = {
   totalEstime: number | null;
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
+  lastAdded: LastAddedSignal | null;
 };
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -40,6 +44,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<Record<string, CartItem>>({});
   const [isLoaded, setIsLoaded] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [lastAdded, setLastAdded] = useState<LastAddedSignal | null>(null);
+  const addSignalRef = useRef(0);
 
   // Charger le panier depuis localStorage au démarrage
   useEffect(() => {
@@ -167,7 +173,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           },
         };
       });
-      setIsCartOpen(true);
+      // Signal pour le mini-toast « Ajouté » (au lieu d'ouvrir le drawer
+      // automatiquement, qui forçait l'utilisateur à le fermer pour continuer
+      // à parcourir).
+      addSignalRef.current += 1;
+      setLastAdded({ nom, libelle, signal: addSignalRef.current });
     },
     [],
   );
@@ -218,9 +228,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   })();
 
   return (
-    <CartContext.Provider value={{ cart, addToCart, removeFromCart, updateQuantity, clearCart, restoreCart, totalItems, totalEstime, isCartOpen, setIsCartOpen }}>
+    <CartContext.Provider value={{ cart, addToCart, removeFromCart, updateQuantity, clearCart, restoreCart, totalItems, totalEstime, isCartOpen, setIsCartOpen, lastAdded }}>
       {children}
       <CartDrawer />
+      <CartAddedToast />
     </CartContext.Provider>
   );
 }
