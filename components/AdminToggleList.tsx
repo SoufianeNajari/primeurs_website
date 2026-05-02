@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { triggerHaptic } from '@/lib/haptic'
+import { useToast } from '@/components/admin/Toast'
 
 type Product = {
   id: string
@@ -15,46 +16,52 @@ type Props = {
 }
 
 export default function AdminToggleList({ initialProducts }: Props) {
-  // On aplatit les produits pour gérer un seul état local
   const flatProducts = Object.values(initialProducts).flat()
   const [products, setProducts] = useState<Product[]>(flatProducts)
   const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set())
-  const [toast, setToast] = useState<string | null>(null)
+  const toast = useToast()
 
-  const showToast = (message: string) => {
-    setToast(message)
-    setTimeout(() => setToast(null), 3000)
-  }
-
-  const handleToggle = async (id: string, currentStatus: boolean) => {
-    triggerHaptic();
+  const applyToggle = async (id: string, currentStatus: boolean, isUndo: boolean) => {
     if (loadingIds.has(id)) return
 
     const newStatus = !currentStatus
+    const product = products.find((p) => p.id === id)
+    const productName = product?.nom ?? 'Produit'
 
-    // Optimistic update : on change l'état tout de suite
-    setProducts(prev => prev.map(p => p.id === id ? { ...p, disponible: newStatus } : p))
-    setLoadingIds(prev => new Set(prev).add(id))
+    setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, disponible: newStatus } : p)))
+    setLoadingIds((prev) => new Set(prev).add(id))
 
     try {
       const res = await fetch('/api/toggle', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, disponible: newStatus })
+        body: JSON.stringify({ id, disponible: newStatus }),
       })
 
       if (!res.ok) throw new Error('Erreur réseau')
-      
+
       const data = await res.json()
       if (!data.success) throw new Error('Erreur API')
 
+      if (isUndo) {
+        toast.success(`Annulé : ${productName} ${newStatus ? 'redisponible' : 'remis indispo'}`)
+      } else {
+        toast.success(`${productName} ${newStatus ? 'disponible' : 'indisponible'}`, {
+          durationMs: 30000,
+          action: {
+            label: 'Annuler',
+            onClick: () => {
+              applyToggle(id, newStatus, true)
+            },
+          },
+        })
+      }
     } catch (err) {
-      console.error(err);
-      // Rollback en cas d'erreur
-      setProducts(prev => prev.map(p => p.id === id ? { ...p, disponible: currentStatus } : p))
-      showToast("Erreur de mise à jour")
+      console.error(err)
+      setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, disponible: currentStatus } : p)))
+      toast.error('Erreur de mise à jour')
     } finally {
-      setLoadingIds(prev => {
+      setLoadingIds((prev) => {
         const next = new Set(prev)
         next.delete(id)
         return next
@@ -62,7 +69,11 @@ export default function AdminToggleList({ initialProducts }: Props) {
     }
   }
 
-  // Regrouper à nouveau pour l'affichage selon l'état actuel
+  const handleToggle = (id: string, currentStatus: boolean) => {
+    triggerHaptic()
+    applyToggle(id, currentStatus, false)
+  }
+
   const grouped = products.reduce((acc, p) => {
     if (!acc[p.categorie]) acc[p.categorie] = []
     acc[p.categorie].push(p)
@@ -75,14 +86,6 @@ export default function AdminToggleList({ initialProducts }: Props) {
 
   return (
     <div className="space-y-6 pb-10">
-      {toast && (
-        <div className="fixed bottom-6 left-0 right-0 flex justify-center z-50 pointer-events-none">
-          <div className="bg-neutral-800 text-white px-5 py-3 text-sm font-medium shadow-md animate-fade-in-up pointer-events-auto">
-            {toast}
-          </div>
-        </div>
-      )}
-
       {Object.entries(grouped).map(([categorie, items]) => (
         <div key={categorie} className="bg-white border border-neutral-200 overflow-hidden">
           <h2 className="bg-neutral-50 px-4 py-3 text-lg font-serif text-neutral-800 border-b border-neutral-200">
@@ -107,7 +110,7 @@ export default function AdminToggleList({ initialProducts }: Props) {
                     )}
                   </div>
                 </div>
-                
+
                 <button
                   type="button"
                   onClick={() => handleToggle(produit.id, produit.disponible)}
@@ -118,9 +121,9 @@ export default function AdminToggleList({ initialProducts }: Props) {
                   aria-label={`Disponibilité de ${produit.nom}`}
                 >
                   <div className={`relative inline-flex h-8 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-primary focus:ring-offset-2 ${produit.disponible ? 'bg-green-primary' : 'bg-neutral-300'} ${loadingIds.has(produit.id) ? 'opacity-50' : ''}`}>
-                    <span 
-                      aria-hidden="true" 
-                      className={`pointer-events-none inline-block h-7 w-7 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${produit.disponible ? 'translate-x-6' : 'translate-x-0'}`} 
+                    <span
+                      aria-hidden="true"
+                      className={`pointer-events-none inline-block h-7 w-7 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${produit.disponible ? 'translate-x-6' : 'translate-x-0'}`}
                     />
                   </div>
                 </button>

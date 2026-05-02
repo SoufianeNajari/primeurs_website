@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
 import { Check, Loader2, CheckCheck, Search, X, Filter } from 'lucide-react';
 import type { ProduitOption } from '@/lib/produit';
 import { useToast } from '@/components/admin/Toast';
@@ -74,15 +73,11 @@ export default function PrixDuJour({ initialProduits }: { initialProduits: Produ
   const [, startTransition] = useTransition();
   const toast = useToast();
   const confirm = useConfirm();
-  const router = useRouter();
   const produitsRef = useRef<ProduitPrix[]>(initialProduits);
   useEffect(() => { produitsRef.current = produits; }, [produits]);
 
-  // Bypass router cache : refetch au mount + resync state quand le serveur renvoie de nouvelles données
-  useEffect(() => {
-    router.refresh();
-  }, [router]);
-
+  // Resync state quand le RSC renvoie de nouvelles données (cf. AdminRouterRefresh).
+  // Skip pendant un save en cours pour ne pas écraser l'optimistic update.
   const savingRef = useRef(false);
   useEffect(() => { savingRef.current = savingKey !== null; }, [savingKey]);
 
