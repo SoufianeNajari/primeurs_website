@@ -1,6 +1,7 @@
 'use client'
 
 import { useCart, CartItem, cartKey } from './CartContext';
+import CartItemNote from './CartItemNote';
 import { X, ShoppingBag, Minus, Plus, Trash2, RotateCcw, Loader2, Sparkles } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -295,6 +296,7 @@ export default function CartDrawer() {
                         <Plus size={16} strokeWidth={1.5} />
                       </button>
                     </div>
+                    <CartItemNote itemKey={key} />
                   </li>
                 );
               })}

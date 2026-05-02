@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart, cartKey } from '@/components/CartContext';
+import CartItemNote from '@/components/CartItemNote';
 import { Loader2, ArrowLeft, ShoppingBag, AlertTriangle, Trash2, Info } from 'lucide-react';
 import Link from 'next/link';
 import { JOURS_RETRAIT } from '@/lib/creneaux';
@@ -175,32 +176,35 @@ export default function OrderPage() {
               const key = cartKey(item.produitId, item.optionId);
               const prix = formatPrixMontant(item.prix ?? null);
               return (
-                <li key={key} className="py-5 flex justify-between items-center gap-3">
-                  <div className="min-w-0">
-                    <span className="font-serif text-lg text-neutral-800 block truncate">{item.nom}</span>
-                    <span className="text-[10px] uppercase tracking-widest text-neutral-400 font-medium">{item.categorie}</span>
-                    <span className="block text-sm text-green-dark font-medium mt-1">
-                      {item.libelle}
-                      {isPoidsIncertain(item) ? (
-                        <span className="text-neutral-500 font-normal italic"> · Prix à la remise</span>
-                      ) : prix ? (
-                        <span className="text-neutral-500 font-normal"> · {prix}</span>
-                      ) : null}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <div className="bg-neutral-50 px-4 py-2 border border-neutral-200 font-medium text-neutral-700 text-sm">
-                      x {item.quantite}
+                <li key={key} className="py-5 flex flex-col gap-2">
+                  <div className="flex justify-between items-center gap-3">
+                    <div className="min-w-0">
+                      <span className="font-serif text-lg text-neutral-800 block truncate">{item.nom}</span>
+                      <span className="text-[10px] uppercase tracking-widest text-neutral-400 font-medium">{item.categorie}</span>
+                      <span className="block text-sm text-green-dark font-medium mt-1">
+                        {item.libelle}
+                        {isPoidsIncertain(item) ? (
+                          <span className="text-neutral-500 font-normal italic"> · Prix à la remise</span>
+                        ) : prix ? (
+                          <span className="text-neutral-500 font-normal"> · {prix}</span>
+                        ) : null}
+                      </span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => removeFromCart(key)}
-                      className="text-neutral-400 hover:text-red-text transition-colors p-2 -mr-2"
-                      aria-label={`Retirer ${item.nom} du panier`}
-                    >
-                      <Trash2 size={18} strokeWidth={1.5} />
-                    </button>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <div className="bg-neutral-50 px-4 py-2 border border-neutral-200 font-medium text-neutral-700 text-sm">
+                        x {item.quantite}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeFromCart(key)}
+                        className="text-neutral-400 hover:text-red-text transition-colors p-2 -mr-2"
+                        aria-label={`Retirer ${item.nom} du panier`}
+                      >
+                        <Trash2 size={18} strokeWidth={1.5} />
+                      </button>
+                    </div>
                   </div>
+                  <CartItemNote itemKey={key} />
                 </li>
               );
             })}

@@ -21,6 +21,7 @@ export type LigneCommande = {
   libelle: string;
   prix?: number | null;
   quantite: number;
+  commentaire?: string;
 };
 
 const BRAND = {
@@ -152,6 +153,21 @@ function LignesTable({ lignes, lockPrices = false }: { lignes: LigneCommande[]; 
               <td style={tdStyle}>
                 <div><strong>{l.nom}</strong></div>
                 <div style={{ color: BRAND.muted, fontSize: '12px' }}>{l.libelle}</div>
+                {l.commentaire && (
+                  <div
+                    style={{
+                      backgroundColor: BRAND.alertBg,
+                      borderLeft: `3px solid ${BRAND.alertBorder}`,
+                      color: BRAND.alertText,
+                      fontSize: '12px',
+                      padding: '4px 8px',
+                      marginTop: '6px',
+                      fontStyle: 'italic',
+                    }}
+                  >
+                    Note client : {l.commentaire}
+                  </div>
+                )}
                 {incertain && (
                   <div
                     style={{

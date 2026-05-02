@@ -14,7 +14,16 @@ export type CartItem = {
   libelle: string;
   prix?: number | null;
   quantite: number;
+  commentaire?: string;
 };
+
+export const COMMENTAIRE_MAX = 80;
+
+export function sanitizeCommentaire(raw: string | null | undefined): string | undefined {
+  if (raw == null) return undefined;
+  const trimmed = raw.replace(/\s+/g, ' ').trim().slice(0, COMMENTAIRE_MAX);
+  return trimmed === '' ? undefined : trimmed;
+}
 
 export function cartKey(produitId: string, optionId: string): string {
   return `${produitId}:${optionId}`;
@@ -27,6 +36,7 @@ type CartContextType = {
   addToCart: (args: { produitId: string; optionId: string; nom: string; categorie: string; libelle: string; prix?: number | null; quantite?: number }) => void;
   removeFromCart: (key: string) => void;
   updateQuantity: (key: string, quantite: number) => void;
+  setItemCommentaire: (key: string, commentaire: string | null) => void;
   clearCart: () => void;
   restoreCart: (items: CartItem[]) => void;
   totalItems: number;
@@ -202,13 +212,30 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const setItemCommentaire = React.useCallback((key: string, commentaire: string | null) => {
+    const sanitized = sanitizeCommentaire(commentaire);
+    setCart((prev) => {
+      const item = prev[key];
+      if (!item) return prev;
+      if (sanitized === item.commentaire) return prev;
+      const next = { ...item };
+      if (sanitized === undefined) delete next.commentaire;
+      else next.commentaire = sanitized;
+      return { ...prev, [key]: next };
+    });
+  }, []);
+
   const clearCart = React.useCallback(() => setCart({}), []);
 
   const restoreCart = React.useCallback((items: CartItem[]) => {
     const newCart: Record<string, CartItem> = {};
     items.forEach((item) => {
       if (item.produitId && item.optionId) {
-        newCart[cartKey(item.produitId, item.optionId)] = item;
+        // Strip commentaire : une ancienne note (« avocats pas trop mûrs »)
+        // n'a pas de sens sur la nouvelle commande.
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { commentaire: _, ...rest } = item;
+        newCart[cartKey(item.produitId, item.optionId)] = rest;
       }
     });
     setCart(newCart);
@@ -228,7 +255,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   })();
 
   return (
-    <CartContext.Provider value={{ cart, addToCart, removeFromCart, updateQuantity, clearCart, restoreCart, totalItems, totalEstime, isCartOpen, setIsCartOpen, lastAdded }}>
+    <CartContext.Provider value={{ cart, addToCart, removeFromCart, updateQuantity, setItemCommentaire, clearCart, restoreCart, totalItems, totalEstime, isCartOpen, setIsCartOpen, lastAdded }}>
       {children}
       <CartDrawer />
       <CartAddedToast />

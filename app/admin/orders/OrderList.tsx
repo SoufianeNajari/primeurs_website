@@ -25,6 +25,7 @@ type Ligne = {
   libelle: string;
   prix?: number | null;
   quantite: number;
+  commentaire?: string;
 }
 
 type Order = {
@@ -212,6 +213,8 @@ export default function OrderList({
       if (normalizeText(o.client_nom).includes(qText)) return true
       if (qDigits.length >= 2 && digitsOnly(o.client_telephone).includes(qDigits)) return true
       if (qText.length >= 3 && shortId(o.id).toLowerCase().includes(qText)) return true
+      // Match commentaires de ligne (« avocat mûr », « pas trop gros »…)
+      if (qText.length >= 3 && o.lignes.some(l => l.commentaire && normalizeText(l.commentaire).includes(qText))) return true
       return false
     })
   }, [orders, search])
@@ -419,6 +422,12 @@ export default function OrderList({
                         <span className="font-medium text-neutral-800">{ligne.nom}</span>
                         <span className="italic text-sm text-neutral-500">{ligne.libelle}</span>
                       </div>
+                      {ligne.commentaire && (
+                        <div className="mt-1 inline-flex items-start gap-1.5 bg-orange-50 border-l-2 border-orange-500 px-2 py-1 text-[12px] font-semibold text-orange-900 max-w-full">
+                          <span aria-hidden>📝</span>
+                          <span className="not-italic">{ligne.commentaire}</span>
+                        </div>
+                      )}
                       {ligne.categorie && (
                         <span className="inline-block mt-1 text-[9px] uppercase tracking-widest text-neutral-400 border border-neutral-200 px-1.5 py-0.5">{ligne.categorie}</span>
                       )}

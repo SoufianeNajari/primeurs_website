@@ -16,7 +16,16 @@ type PanierItem = {
   libelle: string;
   prix?: number | null;
   quantite: number;
+  commentaire?: string | null;
 };
+
+const COMMENTAIRE_MAX = 80;
+
+function sanitizeCommentaireServer(raw: unknown): string | undefined {
+  if (typeof raw !== 'string') return undefined;
+  const trimmed = raw.replace(/\s+/g, ' ').trim().slice(0, COMMENTAIRE_MAX);
+  return trimmed === '' ? undefined : trimmed;
+}
 
 export async function POST(request: Request) {
   try {
@@ -95,7 +104,8 @@ export async function POST(request: Request) {
       if (!db || !db.disponible || !option) {
         nomsIndisponibles.push(item.nom);
       }
-      return {
+      const commentaire = sanitizeCommentaireServer(item.commentaire);
+      const ligne: LigneCommande = {
         produitId: item.produitId,
         optionId: item.optionId,
         nom: item.nom,
@@ -104,6 +114,8 @@ export async function POST(request: Request) {
         prix: option?.prix ?? null,
         quantite: item.quantite,
       };
+      if (commentaire) ligne.commentaire = commentaire;
+      return ligne;
     });
 
     if (nomsIndisponibles.length > 0) {

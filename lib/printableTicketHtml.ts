@@ -8,6 +8,7 @@ type Ligne = {
   libelle: string
   prix?: number | null
   quantite: number
+  commentaire?: string
 }
 
 export type TicketOrder = {
@@ -73,18 +74,22 @@ export function renderTicketHtml(
     const sousTotal = incertain ? null : Number(ligne.prix) * ligne.quantite
     const prixActuel = prixActuels[`${ligne.produitId}:${ligne.optionId}`]
     const prixDiff = !incertain && prixActuel != null && Math.abs(prixActuel - Number(ligne.prix)) > 0.001
+    const noteHtml = ligne.commentaire
+      ? `<div style="margin-top:2px;background:#fff7e6;border-left:3px solid #c2410c;padding:2px 6px;font-size:9pt;font-weight:700;color:#7c2d12">📝 ${esc(ligne.commentaire)}</div>`
+      : ''
     return `
       <tr style="border-bottom:1px dashed #999">
-        <td style="padding:3px 4px">☐</td>
+        <td style="padding:3px 4px;vertical-align:top">☐</td>
         <td style="padding:3px 4px">
           <div><strong>${esc(ligne.nom)}</strong> <span style="font-style:italic;color:#555">${esc(ligne.libelle)}</span></div>
+          ${noteHtml}
         </td>
-        <td style="padding:3px 4px;text-align:right;font-weight:700">${ligne.quantite}</td>
-        <td style="padding:3px 4px;text-align:right">${incertain ? '— peser' : `${Number(ligne.prix).toFixed(2)}€`}</td>
-        <td style="padding:3px 4px;text-align:right;color:${prixDiff ? '#c2410c' : '#666'};font-weight:${prixDiff ? 700 : 400}">
+        <td style="padding:3px 4px;text-align:right;font-weight:700;vertical-align:top">${ligne.quantite}</td>
+        <td style="padding:3px 4px;text-align:right;vertical-align:top">${incertain ? '— peser' : `${Number(ligne.prix).toFixed(2)}€`}</td>
+        <td style="padding:3px 4px;text-align:right;color:${prixDiff ? '#c2410c' : '#666'};font-weight:${prixDiff ? 700 : 400};vertical-align:top">
           ${prixActuel == null ? '— rem.' : `${prixActuel.toFixed(2)}€`}${prixDiff ? ' ⚠' : ''}
         </td>
-        <td style="padding:3px 4px;text-align:right;font-weight:700">${incertain ? '—' : `${sousTotal!.toFixed(2)}€`}</td>
+        <td style="padding:3px 4px;text-align:right;font-weight:700;vertical-align:top">${incertain ? '—' : `${sousTotal!.toFixed(2)}€`}</td>
       </tr>`
   }).join('')
 
