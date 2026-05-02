@@ -30,6 +30,7 @@ type Order = {
   date_retrait_souhaite?: string | null;
   jour_retrait?: string | null;
   creneau?: string | null;
+  prix_final?: number | null;
 }
 
 type StatusFilter = 'tous' | 'reçue' | 'prête' | 'retirée';
@@ -134,6 +135,22 @@ export default function OrderList({
   const [prepStates, setPrepStates] = useState<Record<string, Set<string>>>({})
   const [printingOrderId, setPrintingOrderId] = useState<string | null>(null)
   const toast = useToast()
+
+  const updatePrixFinal = async (id: string, value: number | null) => {
+    setOrders(prev => prev.map(o => o.id === id ? { ...o, prix_final: value } : o))
+    try {
+      const res = await fetch(`/api/orders/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prix_final: value }),
+      })
+      if (!res.ok) throw new Error('Erreur')
+      toast.success(value == null ? 'Prix final effacé' : `Prix final enregistré : ${value.toFixed(2)}€`)
+    } catch (e) {
+      console.error(e)
+      toast.error('Échec sauvegarde prix final')
+    }
+  }
 
   useEffect(() => {
     function onAfterPrint() {
@@ -242,6 +259,222 @@ export default function OrderList({
     { value: 'retirée', label: 'Retirées' },
   ]
 
+  const renderOrderArticle = (order: Order, opts: { dimmed?: boolean } = {}) => {
+    const tot = totalEstime(order.lignes)
+    const prepSet = prepStates[order.id] || new Set()
+    const allPrepped = order.lignes.length > 0 && order.lignes.every((_, i) => prepSet.has(`${order.id}-${i}`))
+    const showPrixFinal = order.statut === 'prête' || order.statut === 'retirée'
+    return (
+      <article
+        key={order.id}
+        className={`order-card bg-white border p-4 sm:p-5 ${opts.dimmed ? 'opacity-75' : ''} ${order.statut === 'prête' ? 'border-green-primary shadow-sm' : 'border-neutral-200'}`}
+      >
+        {/* HEADER */}
+        <div className="flex flex-wrap items-start justify-between gap-3 mb-4 pb-4 border-b border-neutral-100">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap mb-1">
+              <span className="font-mono text-sm font-bold text-neutral-700 bg-neutral-100 px-2 py-0.5">{shortId(order.id)}</span>
+              <span className={`text-[10px] uppercase tracking-widest font-semibold px-2 py-1 ${statutBadgeCls(order.statut)}`}>{statutLabel(order.statut)}</span>
+              <span className="text-xs text-neutral-400 inline-flex items-center gap-1"><Clock size={12} />{formatRelativeTime(order.created_at)}</span>
+            </div>
+            <h4 className="font-serif text-xl text-neutral-800 leading-tight">{order.client_nom}</h4>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1.5 text-sm">
+              <a href={`tel:${order.client_telephone}`} className="inline-flex items-center gap-1.5 text-green-primary font-semibold hover:underline">
+                <Phone size={14} /> {order.client_telephone}
+              </a>
+              {order.client_email && (
+                <a href={`mailto:${order.client_email}`} className="inline-flex items-center gap-1.5 text-neutral-500 hover:text-neutral-800 hover:underline text-xs">
+                  <Mail size={12} /> {order.client_email}
+                </a>
+              )}
+            </div>
+          </div>
+          <div className="flex gap-2 no-print">
+            <button
+              onClick={() => printOrder(order.id)}
+              title="Imprimer cette commande"
+              aria-label="Imprimer cette commande"
+              className="inline-flex items-center gap-1.5 px-3 min-h-[40px] border border-neutral-300 text-neutral-700 hover:border-neutral-500 hover:text-neutral-900 transition-colors text-[11px] uppercase tracking-widest font-medium"
+            >
+              <Printer size={16} />
+              <span className="hidden sm:inline">Imprimer</span>
+            </button>
+            {order.statut !== 'retirée' ? (
+              <button
+                disabled={loadingIds.has(order.id)}
+                onClick={() => updateStatus(order.id, order.statut)}
+                className={`px-4 py-2 text-[11px] uppercase tracking-widest font-semibold transition-colors disabled:opacity-50
+                  ${order.statut === 'reçue' ? 'bg-amber-100 text-amber-800 border border-amber-200 hover:bg-amber-200'
+                  : 'bg-green-primary text-white border border-green-primary hover:bg-green-dark'}
+                `}
+              >
+                {order.statut === 'reçue' ? '→ Prête' : '→ Retirée'}
+              </button>
+            ) : (
+              <button
+                disabled={loadingIds.has(order.id)}
+                onClick={() => restoreOrder(order.id)}
+                className="inline-flex items-center gap-1.5 px-3 min-h-[40px] border border-neutral-300 text-neutral-700 hover:border-neutral-500 hover:text-neutral-900 transition-colors text-[11px] uppercase tracking-widest font-medium disabled:opacity-50"
+                title="Restaurer en « Prête »"
+              >
+                <Undo2 size={14} />
+                <span className="hidden sm:inline">Restaurer</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* RETRAIT */}
+        <div className="bg-green-primary/5 border border-green-primary/20 p-3 mb-4">
+          <div className="text-[10px] uppercase tracking-widest text-green-primary font-semibold mb-1">À préparer pour</div>
+          <div className="font-serif text-base text-neutral-800 capitalize">
+            {order.date_retrait_souhaite ? formatDateLongue(order.date_retrait_souhaite) : `Date de commande : ${formatDateLongue(order.created_at.slice(0, 10))}`}
+          </div>
+          {(order.jour_retrait || order.creneau) && (
+            <div className="text-xs text-neutral-600 mt-0.5">
+              {order.jour_retrait}{order.creneau ? ` — ${order.creneau}` : ''}
+            </div>
+          )}
+        </div>
+
+        {/* LIGNES */}
+        <div className="border border-neutral-200 mb-4">
+          <div className="hidden sm:grid grid-cols-[40px_1fr_140px_110px] gap-2 px-3 py-2 bg-neutral-50 border-b border-neutral-200 text-[10px] uppercase tracking-widest text-neutral-500 font-medium">
+            <div></div>
+            <div>Produit</div>
+            <div className="text-right">Prix unitaire</div>
+            <div className="text-right">Sous-total</div>
+          </div>
+          <ul className="divide-y divide-neutral-100">
+            {order.lignes.map((ligne, idx) => {
+              const lineKey = `${order.id}-${idx}`
+              const isChecked = prepSet.has(lineKey)
+              const incertain = ligne.prix == null
+              const sousTotal = incertain ? null : Number(ligne.prix) * ligne.quantite
+              const prixActuel = prixActuels[`${ligne.produitId}:${ligne.optionId}`]
+              const prixActuelDifferent =
+                !incertain &&
+                prixActuel != null &&
+                Math.abs(prixActuel - Number(ligne.prix)) > 0.001
+              return (
+                <li key={idx} className={`px-3 py-3 ${incertain ? 'bg-yellow-50' : ''} ${isChecked ? 'opacity-50' : ''}`}>
+                  <div className="grid grid-cols-[40px_1fr] sm:grid-cols-[40px_1fr_140px_110px] gap-2 items-center">
+                    <label className="flex items-center justify-center cursor-pointer no-print">
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => togglePrep(order.id, lineKey)}
+                        className="w-5 h-5 accent-green-primary cursor-pointer"
+                        aria-label="Marquer comme préparé"
+                      />
+                    </label>
+                    <div className={`min-w-0 ${isChecked ? 'line-through' : ''}`}>
+                      <div className="flex items-baseline gap-2 flex-wrap">
+                        <span className="font-bold text-base text-neutral-800">{ligne.quantite}×</span>
+                        <span className="font-medium text-neutral-800">{ligne.nom}</span>
+                        <span className="italic text-sm text-neutral-500">{ligne.libelle}</span>
+                      </div>
+                      {ligne.categorie && (
+                        <span className="inline-block mt-1 text-[9px] uppercase tracking-widest text-neutral-400 border border-neutral-200 px-1.5 py-0.5">{ligne.categorie}</span>
+                      )}
+                      <div className="sm:hidden mt-1 flex justify-between text-sm">
+                        <span className={incertain ? 'text-amber-700 font-medium' : 'text-neutral-500'}>
+                          {incertain ? 'À peser' : `${euro.format(Number(ligne.prix))} / ${ligne.libelle}`}
+                        </span>
+                        <span className={`font-semibold ${incertain ? 'text-amber-700' : 'text-neutral-800'}`}>
+                          {incertain ? 'À calibrer' : euro.format(sousTotal!)}
+                        </span>
+                      </div>
+                      {!incertain && prixActuel != null && (
+                        <div className={`sm:hidden mt-0.5 text-[11px] font-medium ${prixActuelDifferent ? 'text-orange-700' : 'text-neutral-400'}`}>
+                          Aujourd&apos;hui : {euro.format(prixActuel)} {prixActuelDifferent ? '⚠️' : ''}
+                        </div>
+                      )}
+                      {!incertain && prixActuel == null && (
+                        <div className="sm:hidden mt-0.5 text-[11px] text-neutral-400 italic">
+                          Aujourd&apos;hui : à la remise
+                        </div>
+                      )}
+                    </div>
+                    <div className={`hidden sm:block text-right text-sm ${incertain ? 'text-amber-700 font-medium' : 'text-neutral-600'} ${isChecked ? 'line-through' : ''}`}>
+                      {incertain ? 'À peser' : `${euro.format(Number(ligne.prix))}`}
+                      {!incertain && prixActuel != null && (
+                        <div className={`text-[10px] mt-0.5 font-medium ${prixActuelDifferent ? 'text-orange-700' : 'text-neutral-400'}`}>
+                          Auj. {euro.format(prixActuel)}
+                        </div>
+                      )}
+                      {!incertain && prixActuel == null && (
+                        <div className="text-[10px] mt-0.5 text-neutral-400 italic">
+                          Auj. à la remise
+                        </div>
+                      )}
+                    </div>
+                    <div className={`hidden sm:block text-right font-semibold ${incertain ? 'text-amber-700' : 'text-neutral-800'} ${isChecked ? 'line-through' : ''}`}>
+                      {incertain ? 'À calibrer' : euro.format(sousTotal!)}
+                    </div>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+
+        {/* TOTAUX */}
+        {tot.allIncertain ? (
+          <div className="bg-amber-50 border border-amber-200 p-3 mb-3">
+            <div className="text-[10px] uppercase tracking-widest text-amber-800 font-semibold mb-1">Total à calculer à la pesée</div>
+            <div className="text-sm text-amber-900">Tous les articles de cette commande seront tarifés à la remise.</div>
+          </div>
+        ) : tot.total != null && (
+          <div className="space-y-2 mb-3">
+            <div className="flex justify-between items-baseline border-t border-neutral-200 pt-3">
+              <span className="text-sm text-neutral-600">Total estimé annoncé client</span>
+              <span className="font-serif text-xl text-neutral-800">{euro.format(tot.total)}</span>
+            </div>
+            <div className="flex justify-between items-baseline">
+              <span className="text-xs text-orange-700">Borne haute (+{Math.round((fourchette.max - 1) * 100)}%)</span>
+              <span className="font-semibold text-orange-700">{euro.format(calcFourchette(tot.total, fourchette).max)}</span>
+            </div>
+            <div className="bg-orange-50 border border-orange-200 px-3 py-2 text-xs text-orange-900">
+              ⚠️ Si dépassement de la borne haute, prévenir le client au <a href={`tel:${order.client_telephone}`} className="font-semibold underline">{order.client_telephone}</a>
+            </div>
+            {tot.hasIncertain && (
+              <div className="text-xs text-amber-700 italic">
+                Note : certaines lignes (jaune) sont à peser/calibrer — total estimé hors ces lignes.
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* PRIX FINAL TICKET */}
+        {showPrixFinal && (
+          <PrixFinalRow
+            orderId={order.id}
+            initial={order.prix_final ?? null}
+            estime={tot.total}
+            onSave={(v) => updatePrixFinal(order.id, v)}
+          />
+        )}
+
+        {/* MESSAGE CLIENT */}
+        {order.message && (
+          <div className="bg-neutral-50 border-l-4 border-neutral-300 px-3 py-2 mb-1">
+            <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-neutral-500 font-semibold mb-1">
+              <MessageSquare size={11} /> Message du client
+            </div>
+            <p className="text-sm italic text-neutral-700 whitespace-pre-wrap">{order.message}</p>
+          </div>
+        )}
+
+        {allPrepped && order.statut === 'reçue' && (
+          <div className="text-xs text-green-primary font-medium mt-2 no-print">
+            ✓ Toutes les lignes sont préparées — pensez à passer la commande en « Prête »
+          </div>
+        )}
+      </article>
+    )
+  }
+
   return (
     <div className="space-y-8">
       <style jsx global>{`
@@ -296,200 +529,7 @@ export default function OrderList({
             <span className="text-neutral-400 ml-auto text-xs">{group.orders.length} commande{group.orders.length > 1 ? 's' : ''}</span>
           </h3>
 
-          {group.orders.map(order => {
-            const tot = totalEstime(order.lignes)
-            const prepSet = prepStates[order.id] || new Set()
-            const allPrepped = order.lignes.length > 0 && order.lignes.every((_, i) => prepSet.has(`${order.id}-${i}`))
-            return (
-              <article
-                key={order.id}
-                className={`order-card bg-white border p-4 sm:p-5 ${order.statut === 'prête' ? 'border-green-primary shadow-sm' : 'border-neutral-200'}`}
-              >
-                {/* HEADER */}
-                <div className="flex flex-wrap items-start justify-between gap-3 mb-4 pb-4 border-b border-neutral-100">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <span className="font-mono text-sm font-bold text-neutral-700 bg-neutral-100 px-2 py-0.5">{shortId(order.id)}</span>
-                      <span className={`text-[10px] uppercase tracking-widest font-semibold px-2 py-1 ${statutBadgeCls(order.statut)}`}>{statutLabel(order.statut)}</span>
-                      <span className="text-xs text-neutral-400 inline-flex items-center gap-1"><Clock size={12} />{formatRelativeTime(order.created_at)}</span>
-                    </div>
-                    <h4 className="font-serif text-xl text-neutral-800 leading-tight">{order.client_nom}</h4>
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1.5 text-sm">
-                      <a href={`tel:${order.client_telephone}`} className="inline-flex items-center gap-1.5 text-green-primary font-semibold hover:underline">
-                        <Phone size={14} /> {order.client_telephone}
-                      </a>
-                      {order.client_email && (
-                        <a href={`mailto:${order.client_email}`} className="inline-flex items-center gap-1.5 text-neutral-500 hover:text-neutral-800 hover:underline text-xs">
-                          <Mail size={12} /> {order.client_email}
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex gap-2 no-print">
-                    <button
-                      onClick={() => printOrder(order.id)}
-                      title="Imprimer cette commande"
-                      aria-label="Imprimer cette commande"
-                      className="inline-flex items-center gap-1.5 px-3 min-h-[40px] border border-neutral-300 text-neutral-700 hover:border-neutral-500 hover:text-neutral-900 transition-colors text-[11px] uppercase tracking-widest font-medium"
-                    >
-                      <Printer size={16} />
-                      <span className="hidden sm:inline">Imprimer</span>
-                    </button>
-                    {order.statut !== 'retirée' && (
-                      <button
-                        disabled={loadingIds.has(order.id)}
-                        onClick={() => updateStatus(order.id, order.statut)}
-                        className={`px-4 py-2 text-[11px] uppercase tracking-widest font-semibold transition-colors disabled:opacity-50
-                          ${order.statut === 'reçue' ? 'bg-amber-100 text-amber-800 border border-amber-200 hover:bg-amber-200'
-                          : 'bg-green-primary text-white border border-green-primary hover:bg-green-dark'}
-                        `}
-                      >
-                        {order.statut === 'reçue' ? '→ Prête' : '→ Retirée'}
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* RETRAIT */}
-                <div className="bg-green-primary/5 border border-green-primary/20 p-3 mb-4">
-                  <div className="text-[10px] uppercase tracking-widest text-green-primary font-semibold mb-1">À préparer pour</div>
-                  <div className="font-serif text-base text-neutral-800 capitalize">
-                    {order.date_retrait_souhaite ? formatDateLongue(order.date_retrait_souhaite) : `Date de commande : ${formatDateLongue(order.created_at.slice(0, 10))}`}
-                  </div>
-                  {(order.jour_retrait || order.creneau) && (
-                    <div className="text-xs text-neutral-600 mt-0.5">
-                      {order.jour_retrait}{order.creneau ? ` — ${order.creneau}` : ''}
-                    </div>
-                  )}
-                </div>
-
-                {/* LIGNES */}
-                <div className="border border-neutral-200 mb-4">
-                  <div className="hidden sm:grid grid-cols-[40px_1fr_140px_110px] gap-2 px-3 py-2 bg-neutral-50 border-b border-neutral-200 text-[10px] uppercase tracking-widest text-neutral-500 font-medium">
-                    <div></div>
-                    <div>Produit</div>
-                    <div className="text-right">Prix unitaire</div>
-                    <div className="text-right">Sous-total</div>
-                  </div>
-                  <ul className="divide-y divide-neutral-100">
-                    {order.lignes.map((ligne, idx) => {
-                      const lineKey = `${order.id}-${idx}`
-                      const isChecked = prepSet.has(lineKey)
-                      const incertain = ligne.prix == null
-                      const sousTotal = incertain ? null : Number(ligne.prix) * ligne.quantite
-                      const prixActuel = prixActuels[`${ligne.produitId}:${ligne.optionId}`]
-                      const prixActuelDifferent =
-                        !incertain &&
-                        prixActuel != null &&
-                        Math.abs(prixActuel - Number(ligne.prix)) > 0.001
-                      return (
-                        <li key={idx} className={`px-3 py-3 ${incertain ? 'bg-yellow-50' : ''} ${isChecked ? 'opacity-50' : ''}`}>
-                          <div className="grid grid-cols-[40px_1fr] sm:grid-cols-[40px_1fr_140px_110px] gap-2 items-center">
-                            <label className="flex items-center justify-center cursor-pointer no-print">
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={() => togglePrep(order.id, lineKey)}
-                                className="w-5 h-5 accent-green-primary cursor-pointer"
-                                aria-label="Marquer comme préparé"
-                              />
-                            </label>
-                            <div className={`min-w-0 ${isChecked ? 'line-through' : ''}`}>
-                              <div className="flex items-baseline gap-2 flex-wrap">
-                                <span className="font-bold text-base text-neutral-800">{ligne.quantite}×</span>
-                                <span className="font-medium text-neutral-800">{ligne.nom}</span>
-                                <span className="italic text-sm text-neutral-500">{ligne.libelle}</span>
-                              </div>
-                              {ligne.categorie && (
-                                <span className="inline-block mt-1 text-[9px] uppercase tracking-widest text-neutral-400 border border-neutral-200 px-1.5 py-0.5">{ligne.categorie}</span>
-                              )}
-                              <div className="sm:hidden mt-1 flex justify-between text-sm">
-                                <span className={incertain ? 'text-amber-700 font-medium' : 'text-neutral-500'}>
-                                  {incertain ? 'À peser' : `${euro.format(Number(ligne.prix))} / ${ligne.libelle}`}
-                                </span>
-                                <span className={`font-semibold ${incertain ? 'text-amber-700' : 'text-neutral-800'}`}>
-                                  {incertain ? 'À calibrer' : euro.format(sousTotal!)}
-                                </span>
-                              </div>
-                              {!incertain && prixActuel != null && (
-                                <div className={`sm:hidden mt-0.5 text-[11px] font-medium ${prixActuelDifferent ? 'text-orange-700' : 'text-neutral-400'}`}>
-                                  Aujourd&apos;hui : {euro.format(prixActuel)} {prixActuelDifferent ? '⚠️' : ''}
-                                </div>
-                              )}
-                              {!incertain && prixActuel == null && (
-                                <div className="sm:hidden mt-0.5 text-[11px] text-neutral-400 italic">
-                                  Aujourd&apos;hui : à la remise
-                                </div>
-                              )}
-                            </div>
-                            <div className={`hidden sm:block text-right text-sm ${incertain ? 'text-amber-700 font-medium' : 'text-neutral-600'} ${isChecked ? 'line-through' : ''}`}>
-                              {incertain ? 'À peser' : `${euro.format(Number(ligne.prix))}`}
-                              {!incertain && prixActuel != null && (
-                                <div className={`text-[10px] mt-0.5 font-medium ${prixActuelDifferent ? 'text-orange-700' : 'text-neutral-400'}`}>
-                                  Auj. {euro.format(prixActuel)}
-                                </div>
-                              )}
-                              {!incertain && prixActuel == null && (
-                                <div className="text-[10px] mt-0.5 text-neutral-400 italic">
-                                  Auj. à la remise
-                                </div>
-                              )}
-                            </div>
-                            <div className={`hidden sm:block text-right font-semibold ${incertain ? 'text-amber-700' : 'text-neutral-800'} ${isChecked ? 'line-through' : ''}`}>
-                              {incertain ? 'À calibrer' : euro.format(sousTotal!)}
-                            </div>
-                          </div>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                </div>
-
-                {/* TOTAUX */}
-                {tot.allIncertain ? (
-                  <div className="bg-amber-50 border border-amber-200 p-3 mb-3">
-                    <div className="text-[10px] uppercase tracking-widest text-amber-800 font-semibold mb-1">Total à calculer à la pesée</div>
-                    <div className="text-sm text-amber-900">Tous les articles de cette commande seront tarifés à la remise.</div>
-                  </div>
-                ) : tot.total != null && (
-                  <div className="space-y-2 mb-3">
-                    <div className="flex justify-between items-baseline border-t border-neutral-200 pt-3">
-                      <span className="text-sm text-neutral-600">Total estimé annoncé client</span>
-                      <span className="font-serif text-xl text-neutral-800">{euro.format(tot.total)}</span>
-                    </div>
-                    <div className="flex justify-between items-baseline">
-                      <span className="text-xs text-orange-700">Borne haute (+{Math.round((fourchette.max - 1) * 100)}%)</span>
-                      <span className="font-semibold text-orange-700">{euro.format(calcFourchette(tot.total, fourchette).max)}</span>
-                    </div>
-                    <div className="bg-orange-50 border border-orange-200 px-3 py-2 text-xs text-orange-900">
-                      ⚠️ Si dépassement de la borne haute, prévenir le client au <a href={`tel:${order.client_telephone}`} className="font-semibold underline">{order.client_telephone}</a>
-                    </div>
-                    {tot.hasIncertain && (
-                      <div className="text-xs text-amber-700 italic">
-                        Note : certaines lignes (jaune) sont à peser/calibrer — total estimé hors ces lignes.
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* MESSAGE CLIENT */}
-                {order.message && (
-                  <div className="bg-neutral-50 border-l-4 border-neutral-300 px-3 py-2 mb-1">
-                    <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-neutral-500 font-semibold mb-1">
-                      <MessageSquare size={11} /> Message du client
-                    </div>
-                    <p className="text-sm italic text-neutral-700 whitespace-pre-wrap">{order.message}</p>
-                  </div>
-                )}
-
-                {allPrepped && order.statut === 'reçue' && (
-                  <div className="text-xs text-green-primary font-medium mt-2 no-print">
-                    ✓ Toutes les lignes sont préparées — pensez à passer la commande en « Prête »
-                  </div>
-                )}
-              </article>
-            )
-          })}
+          {group.orders.map(order => renderOrderArticle(order))}
         </section>
       ))}
 
@@ -637,6 +677,112 @@ function PrintableTicket({
           <strong>Message client :</strong> <em>{order.message}</em>
         </div>
       )}
+    </div>
+  )
+}
+
+function PrixFinalRow({
+  orderId,
+  initial,
+  estime,
+  onSave,
+}: {
+  orderId: string
+  initial: number | null
+  estime: number | null
+  onSave: (value: number | null) => Promise<void>
+}) {
+  const [value, setValue] = useState<string>(initial == null ? '' : initial.toFixed(2))
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    setValue(initial == null ? '' : initial.toFixed(2))
+  }, [initial, orderId])
+
+  const parsed = (() => {
+    if (value.trim() === '') return null
+    const n = Number(value.replace(',', '.'))
+    if (Number.isNaN(n) || n < 0 || n > 99999.99) return undefined
+    return Math.round(n * 100) / 100
+  })()
+  const invalid = parsed === undefined
+  const dirty = (initial ?? null) !== (parsed ?? null)
+
+  const ecart = estime != null && parsed != null && parsed > 0
+    ? { abs: parsed - estime, pct: ((parsed - estime) / estime) * 100 }
+    : null
+
+  const handleSave = async () => {
+    if (invalid || !dirty) return
+    setSaving(true)
+    try {
+      await onSave(parsed ?? null)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleClear = async () => {
+    if (initial == null && value === '') return
+    setSaving(true)
+    try {
+      await onSave(null)
+      setValue('')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="border-t border-neutral-200 pt-3 mb-3 no-print">
+      <div className="text-[10px] uppercase tracking-widest text-neutral-500 font-semibold mb-2">Prix final ticket de caisse</div>
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative">
+          <input
+            type="text"
+            inputMode="decimal"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder="0.00"
+            disabled={saving}
+            aria-label="Prix final"
+            className={`w-32 min-h-[40px] px-3 pr-7 border text-right font-mono text-base ${invalid ? 'border-red-text bg-red-soft' : 'border-neutral-300'} focus:outline-none focus:border-green-primary disabled:opacity-50`}
+          />
+          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-neutral-500 pointer-events-none">€</span>
+        </div>
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={invalid || !dirty || saving}
+          className="px-4 min-h-[40px] bg-green-primary text-white text-[11px] uppercase tracking-widest font-semibold hover:bg-green-dark disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {saving ? '…' : 'Enregistrer'}
+        </button>
+        {initial != null && (
+          <button
+            type="button"
+            onClick={handleClear}
+            disabled={saving}
+            className="px-3 min-h-[40px] border border-neutral-300 text-neutral-600 hover:border-neutral-500 hover:text-neutral-900 text-[11px] uppercase tracking-widest font-medium disabled:opacity-50"
+          >
+            Effacer
+          </button>
+        )}
+        {ecart && (
+          <span
+            className={`text-xs font-medium ${
+              Math.abs(ecart.pct) < 2 ? 'text-neutral-500'
+              : ecart.abs > 0 ? 'text-orange-700'
+              : 'text-green-primary'
+            }`}
+          >
+            {ecart.abs >= 0 ? '+' : ''}{ecart.abs.toFixed(2)}€ ({ecart.pct >= 0 ? '+' : ''}{ecart.pct.toFixed(1)}%) vs estimé
+          </span>
+        )}
+        {invalid && (
+          <span className="text-xs text-red-text">Valeur invalide (0 – 99999.99)</span>
+        )}
+      </div>
     </div>
   )
 }

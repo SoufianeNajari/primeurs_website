@@ -9,11 +9,33 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     }
 
     const { id } = params;
-    const { statut } = await request.json();
+    const body = await request.json();
+    const update: Record<string, unknown> = {};
+
+    if (typeof body.statut === 'string') {
+      update.statut = body.statut;
+    }
+
+    if ('prix_final' in body) {
+      const v = body.prix_final;
+      if (v === null || v === '') {
+        update.prix_final = null;
+      } else {
+        const n = Number(v);
+        if (Number.isNaN(n) || n < 0 || n > 99999.99) {
+          return NextResponse.json({ error: 'Prix final invalide' }, { status: 400 });
+        }
+        update.prix_final = Math.round(n * 100) / 100;
+      }
+    }
+
+    if (Object.keys(update).length === 0) {
+      return NextResponse.json({ error: 'Aucun champ à mettre à jour' }, { status: 400 });
+    }
 
     const { error } = await supabaseAdmin
       .from('commandes')
-      .update({ statut })
+      .update(update)
       .eq('id', id);
 
     if (error) throw error;
