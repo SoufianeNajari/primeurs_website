@@ -3,9 +3,19 @@
 import { useState, useEffect, useMemo } from 'react'
 import { triggerHaptic } from '@/lib/haptic'
 import { calcFourchette, type FourchetteBornes } from '@/lib/fourchette'
-import { Printer, Phone, Mail, Clock, MessageSquare, Undo2, ChevronDown, ChevronUp } from 'lucide-react'
+import { Printer, Phone, Mail, Clock, MessageSquare, Undo2, ChevronDown, ChevronUp, Search, X } from 'lucide-react'
 import { useToast } from '@/components/admin/Toast'
 import { statutBadgeCls, statutLabel } from '@/lib/orderStatus'
+
+const SEARCH_STORAGE_KEY = 'orders_search'
+
+function normalizeText(s: string): string {
+  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+}
+
+function digitsOnly(s: string): string {
+  return s.replace(/\D/g, '')
+}
 
 type Ligne = {
   produitId: string;
@@ -131,9 +141,30 @@ export default function OrderList({
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(() => {
     return initialOrders.some(o => o.statut === 'reçue') ? 'reçue' : 'tous'
   })
+  const [search, setSearch] = useState('')
   const [prepStates, setPrepStates] = useState<Record<string, Set<string>>>({})
   const [expandedRetired, setExpandedRetired] = useState<Set<string>>(new Set())
   const toast = useToast()
+
+  // Recherche persistée (tape une fois, retrouve la même au retour).
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(SEARCH_STORAGE_KEY)
+      if (saved) setSearch(saved)
+    } catch {
+      /* */
+    }
+  }, [])
+
+  function changeSearch(v: string) {
+    setSearch(v)
+    try {
+      if (v) localStorage.setItem(SEARCH_STORAGE_KEY, v)
+      else localStorage.removeItem(SEARCH_STORAGE_KEY)
+    } catch {
+      /* */
+    }
+  }
 
   const toggleRetiredExpand = (id: string) => {
     setExpandedRetired(prev => {
@@ -172,12 +203,25 @@ export default function OrderList({
     setPrepStates(map)
   }, [initialOrders])
 
-  const counts = {
-    tous: orders.length,
-    'reçue': orders.filter(o => o.statut === 'reçue').length,
-    'prête': orders.filter(o => o.statut === 'prête').length,
-    'retirée': orders.filter(o => o.statut === 'retirée').length,
-  }
+  const filteredBySearch = useMemo(() => {
+    const q = search.trim()
+    if (!q) return orders
+    const qText = normalizeText(q)
+    const qDigits = digitsOnly(q)
+    return orders.filter(o => {
+      if (normalizeText(o.client_nom).includes(qText)) return true
+      if (qDigits.length >= 2 && digitsOnly(o.client_telephone).includes(qDigits)) return true
+      if (qText.length >= 3 && shortId(o.id).toLowerCase().includes(qText)) return true
+      return false
+    })
+  }, [orders, search])
+
+  const counts = useMemo(() => ({
+    tous: filteredBySearch.length,
+    'reçue': filteredBySearch.filter(o => o.statut === 'reçue').length,
+    'prête': filteredBySearch.filter(o => o.statut === 'prête').length,
+    'retirée': filteredBySearch.filter(o => o.statut === 'retirée').length,
+  }), [filteredBySearch])
 
   const setStatusWithToast = async (id: string, newStatus: string, currentStatus: string, label: string, withUndo = false) => {
     triggerHaptic();
@@ -235,7 +279,7 @@ export default function OrderList({
     })
   }
 
-  const visibleOrders = statusFilter === 'tous' ? orders : orders.filter(o => o.statut === statusFilter)
+  const visibleOrders = statusFilter === 'tous' ? filteredBySearch : filteredBySearch.filter(o => o.statut === statusFilter)
   const activeOrders = visibleOrders.filter(o => o.statut !== 'retirée')
   const completedOrders = visibleOrders.filter(o => o.statut === 'retirée')
 
@@ -481,23 +525,60 @@ export default function OrderList({
     )
   }
 
+  const hasActiveSearch = search.trim().length > 0
+
   return (
     <div className="space-y-8">
-      <div className="flex flex-wrap gap-2 mb-2 no-print">
-        {filterTabs.map(tab => (
-          <button
-            key={tab.value}
-            onClick={() => setStatusFilter(tab.value)}
-            className={`text-[11px] uppercase tracking-widest font-medium px-3 py-2 border transition-colors ${
-              statusFilter === tab.value
-                ? 'border-green-primary text-green-primary bg-green-primary/5'
-                : 'border-neutral-200 text-neutral-500 hover:border-neutral-400 hover:text-neutral-800'
-            }`}
-          >
-            {tab.label} <span className="text-neutral-400 ml-1">({counts[tab.value]})</span>
-          </button>
-        ))}
+      <div className="space-y-2 mb-2 no-print">
+        <div className="relative">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => changeSearch(e.target.value)}
+            placeholder="Nom client, téléphone, #commande…"
+            className="w-full h-10 pl-9 pr-9 border border-neutral-300 bg-white text-sm focus:outline-none focus:border-green-primary"
+            aria-label="Rechercher une commande"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => changeSearch('')}
+              aria-label="Effacer la recherche"
+              className="absolute right-1 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-neutral-400 hover:text-neutral-700"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {filterTabs.map(tab => (
+            <button
+              key={tab.value}
+              onClick={() => setStatusFilter(tab.value)}
+              className={`text-[11px] uppercase tracking-widest font-medium px-3 py-2 border transition-colors ${
+                statusFilter === tab.value
+                  ? 'border-green-primary text-green-primary bg-green-primary/5'
+                  : 'border-neutral-200 text-neutral-500 hover:border-neutral-400 hover:text-neutral-800'
+              }`}
+            >
+              {tab.label} <span className="text-neutral-400 ml-1">({counts[tab.value]})</span>
+            </button>
+          ))}
+          {hasActiveSearch && (
+            <span className="text-xs text-neutral-500 ml-auto tabular-nums">
+              {filteredBySearch.length} / {orders.length}
+            </span>
+          )}
+        </div>
       </div>
+
+      {hasActiveSearch && filteredBySearch.length === 0 && (
+        <div className="text-center text-neutral-500 py-12 font-serif text-base border border-neutral-200 bg-white">
+          Aucune commande ne correspond à « {search} ».
+        </div>
+      )}
 
       {groupedActive.map(([key, group]) => (
         <section key={key} className="space-y-4">

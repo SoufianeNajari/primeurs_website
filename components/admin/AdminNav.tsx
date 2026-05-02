@@ -3,8 +3,10 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
+import { CloudOff, Loader2 } from 'lucide-react'
 import { logout } from '@/app/admin/actions'
 import { useRouter } from 'next/navigation'
+import { useOfflineQueue } from './useOfflineQueue'
 
 const LINKS = [
   { href: '/admin/dashboard', label: 'Stats' },
@@ -16,6 +18,33 @@ const LINKS = [
   { href: '/admin/articles', label: 'Articles' },
   { href: '/admin/clients', label: 'Clients' },
 ]
+
+function NetworkBadge() {
+  const { online, pending } = useOfflineQueue()
+  if (online && pending === 0) return null
+  if (!online) {
+    return (
+      <span
+        className="inline-flex items-center gap-1 bg-amber-500 text-white text-[10px] uppercase tracking-widest font-semibold px-1.5 py-0.5 ml-2"
+        aria-label={`Hors ligne, ${pending} en attente`}
+        title={`Hors ligne — ${pending} changement(s) en attente`}
+      >
+        <CloudOff size={11} />
+        {pending > 0 ? pending : 'Off'}
+      </span>
+    )
+  }
+  return (
+    <span
+      className="inline-flex items-center gap-1 bg-neutral-800 text-white text-[10px] uppercase tracking-widest font-semibold px-1.5 py-0.5 ml-2"
+      aria-label={`Synchronisation, ${pending} restant(s)`}
+      title={`Synchronisation — ${pending} restant(s)`}
+    >
+      <Loader2 size={11} className="animate-spin" />
+      {pending}
+    </span>
+  )
+}
 
 export default function AdminNav() {
   const pathname = usePathname()
@@ -47,7 +76,10 @@ export default function AdminNav() {
           )}
         </button>
         <div className="flex flex-col items-center leading-tight">
-          <span className="font-serif text-base text-neutral-800">Admin</span>
+          <span className="font-serif text-base text-neutral-800 inline-flex items-center">
+            Admin
+            <NetworkBadge />
+          </span>
           <span className="text-[10px] uppercase tracking-widest text-green-primary">{currentLabel}</span>
         </div>
         <button
@@ -88,6 +120,7 @@ export default function AdminNav() {
           <span className="text-[10px] uppercase tracking-widest text-green-primary bg-green-primary/10 px-2 py-1">
             Connecté
           </span>
+          <NetworkBadge />
         </div>
         <div className="flex gap-6 flex-wrap items-center">
           {LINKS.map((l) => {

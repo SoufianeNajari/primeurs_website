@@ -33,9 +33,13 @@ export default function OfflineBanner() {
 
   if (online && pending === 0) return null;
 
+  // Bandeau non-sticky : il occupe sa place dans le flow et se laisse
+  // scroller. La visibilité permanente est assurée par le badge dans
+  // AdminNav. Évite la collision z-index avec les filter bars sticky des
+  // pages enfants (PrixDuJour, OrderList).
   if (!online) {
     return (
-      <div className="sticky top-[60px] md:top-[68px] z-40 bg-amber-500 text-white px-4 py-2 text-xs uppercase tracking-widest font-medium flex items-center justify-center gap-2">
+      <div className="bg-amber-500 text-white px-4 py-2 text-xs uppercase tracking-widest font-medium flex items-center justify-center gap-2">
         <CloudOff size={14} />
         <span>
           Hors ligne{pending > 0 ? ` — ${pending} en attente` : ''}
@@ -46,7 +50,7 @@ export default function OfflineBanner() {
 
   // online, pending > 0 → en cours de flush
   return (
-    <div className="sticky top-[60px] md:top-[68px] z-40 bg-neutral-800 text-white px-4 py-2 text-xs uppercase tracking-widest font-medium flex items-center justify-center gap-2">
+    <div className="bg-neutral-800 text-white px-4 py-2 text-xs uppercase tracking-widest font-medium flex items-center justify-center gap-2">
       <Loader2 size={14} className="animate-spin" />
       <span>Synchronisation… {pending} restant(s)</span>
     </div>
