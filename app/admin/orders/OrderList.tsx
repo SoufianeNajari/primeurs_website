@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { createPortal } from 'react-dom'
 import { triggerHaptic } from '@/lib/haptic'
 import { calcFourchette, type FourchetteBornes } from '@/lib/fourchette'
 import { Printer, Phone, Mail, Clock, MessageSquare, Undo2, ChevronDown, ChevronUp } from 'lucide-react'
@@ -133,7 +132,6 @@ export default function OrderList({
     return initialOrders.some(o => o.statut === 'reçue') ? 'reçue' : 'tous'
   })
   const [prepStates, setPrepStates] = useState<Record<string, Set<string>>>({})
-  const [printingOrderId, setPrintingOrderId] = useState<string | null>(null)
   const [expandedRetired, setExpandedRetired] = useState<Set<string>>(new Set())
   const toast = useToast()
 
@@ -161,77 +159,11 @@ export default function OrderList({
     }
   }
 
-  // Print via hidden iframe: bulletproof on mobile.
-  // Le hack body.printing-one + display:none n'est pas fiable sur Chrome
-  // Android / Safari iOS (le dialogue système capture toute la page).
-  useEffect(() => {
-    if (!printingOrderId) return
-    let cleaned = false
-    const raf1 = requestAnimationFrame(() => {
-      const raf2 = requestAnimationFrame(() => {
-        const ticket = document.getElementById('print-portal')
-        if (!ticket) { setPrintingOrderId(null); return }
-
-        const iframe = document.createElement('iframe')
-        iframe.setAttribute('aria-hidden', 'true')
-        iframe.style.position = 'fixed'
-        iframe.style.right = '0'
-        iframe.style.bottom = '0'
-        iframe.style.width = '0'
-        iframe.style.height = '0'
-        iframe.style.border = '0'
-        iframe.style.visibility = 'hidden'
-        document.body.appendChild(iframe)
-
-        const doc = iframe.contentDocument
-        const win = iframe.contentWindow
-        if (!doc || !win) {
-          iframe.remove()
-          setPrintingOrderId(null)
-          return
-        }
-
-        const cleanup = () => {
-          if (cleaned) return
-          cleaned = true
-          try { iframe.remove() } catch { /* noop */ }
-          setPrintingOrderId(null)
-        }
-
-        doc.open()
-        doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Commande</title><style>
-@page { size: A4; margin: 8mm; }
-html, body { margin: 0; padding: 0; background: white; color: #000; font-family: system-ui, sans-serif; }
-</style></head><body>${ticket.outerHTML.replace('id="print-portal"', '')}</body></html>`)
-        doc.close()
-
-        win.onafterprint = cleanup
-        // Mobile browsers ne déclenchent pas toujours afterprint → fallback timeout.
-        const fallback = window.setTimeout(cleanup, 8000)
-        const origCleanup = cleanup
-        win.onafterprint = () => { window.clearTimeout(fallback); origCleanup() }
-
-        requestAnimationFrame(() => {
-          try {
-            win.focus()
-            win.print()
-          } catch (e) {
-            console.error('print failed', e)
-            cleanup()
-          }
-        })
-      })
-      ;(window as unknown as { __printRaf2?: number }).__printRaf2 = raf2
-    })
-    return () => {
-      cancelAnimationFrame(raf1)
-      const id2 = (window as unknown as { __printRaf2?: number }).__printRaf2
-      if (id2) cancelAnimationFrame(id2)
-    }
-  }, [printingOrderId])
-
+  // Print : ouverture d'une page autonome (hors shell React) qui auto-print.
+  // Cette route renvoie un HTML self-contained → fiable sur tous les
+  // navigateurs mobiles (Chrome Android, Safari iOS).
   function printOrder(orderId: string) {
-    setPrintingOrderId(orderId)
+    window.open(`/api/print/order/${orderId}`, '_blank')
   }
 
   useEffect(() => {
@@ -551,17 +483,6 @@ html, body { margin: 0; padding: 0; background: white; color: #000; font-family:
 
   return (
     <div className="space-y-8">
-      <style jsx global>{`
-        #print-portal { display: none; }
-      `}</style>
-      <PrintPortal>
-        {printingOrderId && (() => {
-          const target = orders.find((o) => o.id === printingOrderId)
-          if (!target) return null
-          return <PrintableTicket order={target} prixActuels={prixActuels} fourchette={fourchette} />
-        })()}
-      </PrintPortal>
-
       <div className="flex flex-wrap gap-2 mb-2 no-print">
         {filterTabs.map(tab => (
           <button
@@ -632,111 +553,6 @@ html, body { margin: 0; padding: 0; background: white; color: #000; font-family:
   )
 }
 
-function PrintPortal({ children }: { children: React.ReactNode }) {
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-  if (!mounted) return null
-  return createPortal(<>{children}</>, document.body)
-}
-
-function PrintableTicket({
-  order,
-  prixActuels,
-  fourchette,
-}: {
-  order: Order
-  prixActuels: Record<string, number | null>
-  fourchette: FourchetteBornes
-}) {
-  const tot = totalEstime(order.lignes)
-  const dateRetrait = order.date_retrait_souhaite || order.created_at.slice(0, 10)
-  return (
-    <div id="print-portal" style={{ fontFamily: 'system-ui, sans-serif', color: '#000', fontSize: '10pt' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: '2px solid #000', paddingBottom: '4px', marginBottom: '8px' }}>
-        <div>
-          <div style={{ fontSize: '15pt', fontWeight: 700 }}>{order.client_nom}</div>
-          <div style={{ fontSize: '10pt' }}>{order.client_telephone}{order.client_email ? ` · ${order.client_email}` : ''}</div>
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontFamily: 'monospace', fontSize: '11pt' }}>{shortId(order.id)}</div>
-          <div style={{ fontSize: '9pt', textTransform: 'uppercase' }}>{order.statut}</div>
-        </div>
-      </div>
-
-      <div style={{ marginBottom: '6px', fontSize: '10pt' }}>
-        <strong>Retrait :</strong> {formatDateLongue(dateRetrait)}
-        {order.jour_retrait && <span> · {order.jour_retrait}</span>}
-        {order.creneau && <span> · {order.creneau}</span>}
-      </div>
-
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9.5pt', marginBottom: '6px' }}>
-        <thead>
-          <tr style={{ borderBottom: '1px solid #000' }}>
-            <th style={{ textAlign: 'left', padding: '2px 4px', width: '30px' }}>☐</th>
-            <th style={{ textAlign: 'left', padding: '2px 4px' }}>Produit</th>
-            <th style={{ textAlign: 'right', padding: '2px 4px', width: '60px' }}>Qté</th>
-            <th style={{ textAlign: 'right', padding: '2px 4px', width: '70px' }}>Prix cmd.</th>
-            <th style={{ textAlign: 'right', padding: '2px 4px', width: '70px' }}>Auj.</th>
-            <th style={{ textAlign: 'right', padding: '2px 4px', width: '70px' }}>Sous-tot.</th>
-          </tr>
-        </thead>
-        <tbody>
-          {order.lignes.map((ligne, idx) => {
-            const incertain = ligne.prix == null
-            const sousTotal = incertain ? null : Number(ligne.prix) * ligne.quantite
-            const prixActuel = prixActuels[`${ligne.produitId}:${ligne.optionId}`]
-            const prixDiff = !incertain && prixActuel != null && Math.abs(prixActuel - Number(ligne.prix)) > 0.001
-            return (
-              <tr key={idx} style={{ borderBottom: '1px dashed #999' }}>
-                <td style={{ padding: '3px 4px' }}>☐</td>
-                <td style={{ padding: '3px 4px' }}>
-                  <div><strong>{ligne.nom}</strong> <span style={{ fontStyle: 'italic', color: '#555' }}>{ligne.libelle}</span></div>
-                </td>
-                <td style={{ padding: '3px 4px', textAlign: 'right', fontWeight: 700 }}>{ligne.quantite}</td>
-                <td style={{ padding: '3px 4px', textAlign: 'right' }}>
-                  {incertain ? '— peser' : `${Number(ligne.prix).toFixed(2)}€`}
-                </td>
-                <td style={{ padding: '3px 4px', textAlign: 'right', color: prixDiff ? '#c2410c' : '#666', fontWeight: prixDiff ? 700 : 400 }}>
-                  {prixActuel == null ? '— rem.' : `${prixActuel.toFixed(2)}€`}
-                  {prixDiff && ' ⚠'}
-                </td>
-                <td style={{ padding: '3px 4px', textAlign: 'right', fontWeight: 700 }}>
-                  {incertain ? '—' : `${sousTotal!.toFixed(2)}€`}
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
-
-      {tot.total != null && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #000', paddingTop: '4px', fontSize: '11pt' }}>
-          <span>Total estimé client</span>
-          <strong>{tot.total.toFixed(2)}€</strong>
-        </div>
-      )}
-      {tot.total != null && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9pt', color: '#c2410c' }}>
-          <span>Borne haute (+{Math.round((fourchette.max - 1) * 100)}%) — appeler client si dépassée</span>
-          <span>{calcFourchette(tot.total, fourchette).max.toFixed(2)}€</span>
-        </div>
-      )}
-      {tot.allIncertain && (
-        <div style={{ fontSize: '10pt', fontStyle: 'italic', borderTop: '1px solid #000', paddingTop: '4px' }}>
-          Tous les articles à tarifer à la pesée.
-        </div>
-      )}
-
-      {order.message && (
-        <div style={{ marginTop: '8px', borderLeft: '3px solid #000', paddingLeft: '6px', fontSize: '9.5pt' }}>
-          <strong>Message client :</strong> <em>{order.message}</em>
-        </div>
-      )}
-    </div>
-  )
-}
 
 function PrixFinalRow({
   orderId,
