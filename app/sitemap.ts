@@ -24,6 +24,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .from('produits')
       .select('slug, created_at')
       .eq('disponible', true)
+      .eq('masque_boutique', false)
       .not('slug', 'is', null);
 
     productRoutes = (data || [])

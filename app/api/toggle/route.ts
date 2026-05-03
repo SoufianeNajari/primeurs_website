@@ -9,15 +9,28 @@ export async function PATCH(request: Request) {
     }
 
     const body = await request.json();
-    const { id, disponible } = body;
+    const { id, disponible, masque_boutique } = body as {
+      id?: string;
+      disponible?: boolean;
+      masque_boutique?: boolean;
+    };
 
-    if (!id || typeof disponible !== 'boolean') {
+    if (!id || (typeof disponible !== 'boolean' && typeof masque_boutique !== 'boolean')) {
       return NextResponse.json({ error: 'Données invalides' }, { status: 400 });
+    }
+
+    const update: { disponible?: boolean; masque_boutique?: boolean } = {};
+    if (typeof disponible === 'boolean') update.disponible = disponible;
+    if (typeof masque_boutique === 'boolean') {
+      update.masque_boutique = masque_boutique;
+      // Couplage : un produit masqué est forcément indispo (cohérence visuelle
+      // côté admin et garantie côté boutique).
+      if (masque_boutique === true) update.disponible = false;
     }
 
     const { error } = await supabaseAdmin
       .from('produits')
-      .update({ disponible })
+      .update(update)
       .eq('id', id);
 
     if (error) {

@@ -48,7 +48,7 @@ type CartContextType = {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-type DbProduit = { id: string; disponible: boolean; options: ProduitOption[] | null };
+type DbProduit = { id: string; disponible: boolean; masque_boutique: boolean | null; options: ProduitOption[] | null };
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<Record<string, CartItem>>({});
@@ -71,7 +71,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           if (productIds.length > 0) {
             const { data: produitsDb, error } = await supabase
               .from('produits')
-              .select('id, disponible, options')
+              .select('id, disponible, masque_boutique, options')
               .in('id', productIds);
 
             if (!error && produitsDb) {
@@ -81,6 +81,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
               for (const item of items) {
                 const dbProduct = dbMap.get(item.produitId);
                 if (dbProduct?.disponible !== true) continue;
+                if (dbProduct?.masque_boutique === true) continue;
                 const freshOption = (dbProduct.options || []).find((o) => o.id === item.optionId);
                 if (!freshOption) continue; // option supprimée → on retire du panier
                 const key = cartKey(item.produitId, item.optionId);
@@ -127,7 +128,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'produits' },
         (payload) => {
-          const row = payload.new as { id: string; disponible: boolean; options: ProduitOption[] | null };
+          const row = payload.new as { id: string; disponible: boolean; masque_boutique: boolean | null; options: ProduitOption[] | null };
           setCart((prev) => {
             const next: Record<string, CartItem> = {};
             let changed = false;
@@ -136,7 +137,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
                 next[key] = item;
                 continue;
               }
-              if (row.disponible === false) {
+              if (row.disponible === false || row.masque_boutique === true) {
                 changed = true;
                 continue;
               }

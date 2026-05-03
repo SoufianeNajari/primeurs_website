@@ -9,7 +9,7 @@ export default async function AdminPage() {
   // Fetch tous les produits via service role (admin) pour être sûr de tout voir
   const { data: produits, error } = await supabaseAdmin
     .from('produits')
-    .select('id, nom, categorie, disponible')
+    .select('id, nom, categorie, disponible, masque_boutique')
     .order('categorie')
     .order('nom')
 

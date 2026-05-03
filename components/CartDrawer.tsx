@@ -62,6 +62,7 @@ export default function CartDrawer() {
             .from('produits')
             .select('id, nom, categorie, disponible, options')
             .eq('disponible', true)
+            .eq('masque_boutique', false)
             .limit(50);
 
           if (data) {

@@ -24,6 +24,7 @@ async function getProductBySlug(slug: string): Promise<Product | null> {
     .limit(1)
     .maybeSingle();
   if (error || !data) return null;
+  if ((data as Product).masque_boutique) return null;
   return data as Product;
 }
 
@@ -31,6 +32,7 @@ export async function generateStaticParams() {
   const { data, error } = await supabaseAdmin
     .from('produits')
     .select('slug')
+    .eq('masque_boutique', false)
     .not('slug', 'is', null);
   if (error) {
     console.warn('[fiche produit] generateStaticParams — migration slug non appliquée ?', error.message);

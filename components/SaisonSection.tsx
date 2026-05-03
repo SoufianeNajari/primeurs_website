@@ -9,6 +9,7 @@ export default async function SaisonSection() {
     .from('produits')
     .select('id, nom, slug, categorie, options, image_url, mois_debut, mois_fin, disponible')
     .eq('disponible', true)
+    .eq('masque_boutique', false)
     .not('mois_debut', 'is', null)
     .not('mois_fin', 'is', null)
     .not('slug', 'is', null);

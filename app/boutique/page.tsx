@@ -29,6 +29,7 @@ export default async function BoutiquePage() {
     supabaseAdmin
       .from('produits')
       .select('*')
+      .eq('masque_boutique', false)
       .order('disponible', { ascending: false })
       .order('ordre', { ascending: true })
       .order('nom', { ascending: true }),

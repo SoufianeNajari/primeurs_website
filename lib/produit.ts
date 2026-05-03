@@ -9,6 +9,7 @@ export type Product = {
   nom: string;
   categorie: string;
   disponible: boolean;
+  masque_boutique?: boolean | null;
   slug?: string | null;
   image_url?: string | null;
   images?: string[] | null;
