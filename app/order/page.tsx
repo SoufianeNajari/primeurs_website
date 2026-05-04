@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart, cartKey } from '@/components/CartContext';
 import CartItemNote from '@/components/CartItemNote';
@@ -14,14 +14,40 @@ import { useFourchetteBornes } from '@/lib/use-fourchette';
 // JS getDay() : 0=dim, 1=lun, 2=mar, …, 6=sam
 const JOUR_INDEX_TO_KEY = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'] as const;
 
+const DRAFT_KEY = 'primeur_order_draft';
+// Brouillon expiré au-delà de 7 jours : un panier réutilisé après une semaine
+// est probablement un autre besoin, on évite de pré-remplir un vieux nom/tel.
+const DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+type Draft = {
+  prenom: string;
+  nom: string;
+  email: string;
+  telephone: string;
+  dateRetrait: string;
+  creneau: string;
+  message: string;
+};
+
+const EMPTY_DRAFT: Draft = {
+  prenom: '', nom: '', email: '', telephone: '',
+  dateRetrait: '', creneau: '', message: '',
+};
+
 export default function OrderPage() {
   const { cart, totalItems, totalEstime, removeFromCart } = useCart();
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [dateRetrait, setDateRetrait] = useState('');
+  const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
+  const dateRetrait = draft.dateRetrait;
   const bornes = useFourchetteBornes();
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const updateDraft = (patch: Partial<Draft>) => {
+    setDraft((prev) => ({ ...prev, ...patch }));
+  };
 
   // On dérive le jour de retrait (libellé "Mardi" / …) depuis la date choisie :
   // un seul champ visible côté client. Le lundi (getDay() === 1) renvoie null
@@ -45,19 +71,78 @@ export default function OrderPage() {
   // Bornes du date picker : J+1 → J+14, en évitant le lundi (boutique fermée).
   // L'attribut HTML5 `min`/`max` ne peut pas exclure les lundis ; on valide
   // côté client + côté API.
-  const { dateMin, dateMax } = useMemo(() => {
+  const { dateMin, dateMax, dateDefault } = useMemo(() => {
     const today = new Date();
     const min = new Date(today);
     min.setDate(min.getDate() + 1);
     const max = new Date(today);
     max.setDate(max.getDate() + 14);
-    const fmt = (d: Date) => d.toISOString().slice(0, 10);
-    return { dateMin: fmt(min), dateMax: fmt(max) };
+    // Pré-remplissage : J+1, sauf si lundi (getDay()===1) → J+2.
+    const def = new Date(min);
+    if (def.getDay() === 1) def.setDate(def.getDate() + 1);
+    const fmt = (d: Date) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
+    return { dateMin: fmt(min), dateMax: fmt(max), dateDefault: fmt(def) };
   }, []);
 
   useEffect(() => {
     setIsMounted(true);
-  }, []);
+    let restored: Partial<Draft> = {};
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as { savedAt?: number; data?: Partial<Draft> };
+        if (!parsed?.savedAt || Date.now() - parsed.savedAt > DRAFT_TTL_MS) {
+          localStorage.removeItem(DRAFT_KEY);
+        } else {
+          const data = parsed.data ?? {};
+          // Si la date sauvegardée est avant J+1, on ne la restaure pas (passée).
+          if (data.dateRetrait) {
+            const minDate = new Date();
+            minDate.setHours(0, 0, 0, 0);
+            minDate.setDate(minDate.getDate() + 1);
+            if (new Date(data.dateRetrait + 'T00:00:00') < minDate) {
+              data.dateRetrait = '';
+              data.creneau = '';
+            }
+          }
+          restored = data;
+        }
+      }
+    } catch {
+      localStorage.removeItem(DRAFT_KEY);
+    }
+    setDraft({
+      ...EMPTY_DRAFT,
+      ...restored,
+      dateRetrait: restored.dateRetrait || dateDefault,
+    });
+  }, [dateDefault]);
+
+  // Sauvegarde debounced du brouillon (300 ms) — évite d'écrire à chaque touche.
+  useEffect(() => {
+    if (!isMounted) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      const hasContent = Object.values(draft).some((v) => v && v.trim() !== '');
+      if (!hasContent) {
+        localStorage.removeItem(DRAFT_KEY);
+        return;
+      }
+      try {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({ savedAt: Date.now(), data: draft }));
+      } catch {
+        // quota exceeded, ignore
+      }
+    }, 300);
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
+  }, [draft, isMounted]);
 
   useEffect(() => {
     if (isMounted && totalItems === 0) {
@@ -82,16 +167,15 @@ export default function OrderPage() {
     setError('');
     setIsSubmitting(true);
 
-    const formData = new FormData(e.currentTarget);
     const client = {
-      prenom: formData.get('prenom') as string,
-      nom: formData.get('nom') as string,
-      telephone: formData.get('telephone') as string,
-      email: formData.get('email') as string,
+      prenom: draft.prenom.trim(),
+      nom: draft.nom.trim(),
+      telephone: draft.telephone.trim(),
+      email: draft.email.trim(),
     };
-    const dateRetraitSouhaite = (formData.get('dateRetraitSouhaite') as string) || '';
-    const creneau = (formData.get('creneau') as string) || null;
-    const message = formData.get('message') as string;
+    const dateRetraitSouhaite = draft.dateRetrait;
+    const creneau = draft.creneau || null;
+    const message = draft.message;
 
     if (!dateRetraitSouhaite) {
       setError('Choisis une date de retrait.');
@@ -141,6 +225,8 @@ export default function OrderPage() {
 
       // Sauvegarde du panier pour la fonctionnalité "Historique magique"
       localStorage.setItem('primeur_last_order', JSON.stringify(cartItems));
+      // Le brouillon a rempli son rôle.
+      localStorage.removeItem(DRAFT_KEY);
 
       const params = new URLSearchParams({ jour: jourRetrait });
       if (creneau) params.set('creneau', creneau);
@@ -255,32 +341,44 @@ export default function OrderPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <label htmlFor="prenom" className="block text-xs uppercase tracking-wider text-neutral-600">Prénom *</label>
-              <input 
-                type="text" id="prenom" name="prenom" required 
+              <input
+                type="text" id="prenom" name="prenom" required
+                autoComplete="given-name"
+                value={draft.prenom}
+                onChange={(e) => updateDraft({ prenom: e.target.value })}
                 className="w-full px-4 py-3 border border-neutral-300 rounded-sm focus:ring-1 focus:ring-green-primary focus:border-green-primary outline-none transition-colors"
               />
             </div>
-            
+
             <div className="space-y-2">
               <label htmlFor="nom" className="block text-xs uppercase tracking-wider text-neutral-600">Nom *</label>
-              <input 
-                type="text" id="nom" name="nom" required 
+              <input
+                type="text" id="nom" name="nom" required
+                autoComplete="family-name"
+                value={draft.nom}
+                onChange={(e) => updateDraft({ nom: e.target.value })}
                 className="w-full px-4 py-3 border border-neutral-300 rounded-sm focus:ring-1 focus:ring-green-primary focus:border-green-primary outline-none transition-colors"
               />
             </div>
 
             <div className="space-y-2">
               <label htmlFor="email" className="block text-xs uppercase tracking-wider text-neutral-600">E-mail *</label>
-              <input 
-                type="email" id="email" name="email" required 
+              <input
+                type="email" id="email" name="email" required
+                autoComplete="email"
+                value={draft.email}
+                onChange={(e) => updateDraft({ email: e.target.value })}
                 className="w-full px-4 py-3 border border-neutral-300 rounded-sm focus:ring-1 focus:ring-green-primary focus:border-green-primary outline-none transition-colors"
               />
             </div>
 
             <div className="space-y-2">
               <label htmlFor="telephone" className="block text-xs uppercase tracking-wider text-neutral-600">Téléphone *</label>
-              <input 
-                type="tel" id="telephone" name="telephone" required 
+              <input
+                type="tel" id="telephone" name="telephone" required
+                autoComplete="tel"
+                value={draft.telephone}
+                onChange={(e) => updateDraft({ telephone: e.target.value })}
                 className="w-full px-4 py-3 border border-neutral-300 rounded-sm focus:ring-1 focus:ring-green-primary focus:border-green-primary outline-none transition-colors"
               />
             </div>
@@ -293,7 +391,7 @@ export default function OrderPage() {
                 type="date" id="dateRetraitSouhaite" name="dateRetraitSouhaite" required
                 min={dateMin} max={dateMax}
                 value={dateRetrait}
-                onChange={(e) => setDateRetrait(e.target.value)}
+                onChange={(e) => updateDraft({ dateRetrait: e.target.value, creneau: '' })}
                 className="w-full px-4 py-3 border border-neutral-300 rounded-sm focus:ring-1 focus:ring-green-primary focus:border-green-primary outline-none transition-colors bg-white font-medium text-neutral-700"
               />
               {isDateInvalid ? (
@@ -311,6 +409,8 @@ export default function OrderPage() {
               <select
                 id="creneau" name="creneau" required
                 disabled={!jourFromDate}
+                value={draft.creneau}
+                onChange={(e) => updateDraft({ creneau: e.target.value })}
                 className="w-full px-4 py-3 border border-neutral-300 rounded-sm focus:ring-1 focus:ring-green-primary focus:border-green-primary outline-none transition-colors bg-white font-medium text-neutral-700 disabled:bg-neutral-100 disabled:text-neutral-400"
               >
                 <option value="">{jourFromDate ? 'Choisissez un créneau…' : 'Choisis d\'abord une date'}</option>
@@ -323,8 +423,10 @@ export default function OrderPage() {
 
           <div className="space-y-2 pt-2">
             <label htmlFor="message" className="block text-xs uppercase tracking-wider text-neutral-600">Commentaire (optionnel)</label>
-            <textarea 
+            <textarea
               id="message" name="message" rows={3}
+              value={draft.message}
+              onChange={(e) => updateDraft({ message: e.target.value })}
               className="w-full px-4 py-3 border border-neutral-300 rounded-sm focus:ring-1 focus:ring-green-primary focus:border-green-primary outline-none transition-colors resize-none"
             ></textarea>
           </div>

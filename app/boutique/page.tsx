@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { supabaseAdmin } from '@/lib/supabase';
 import ProductGrid from '@/components/ProductGrid';
 import StickyCartButton from '@/components/StickyCartButton';
+import ScrollToTopButton from '@/components/ScrollToTopButton';
 import BoutiqueFermee from '@/components/BoutiqueFermee';
 import { isCommandesBloquees } from '@/lib/parametres';
 import { listCategoriesAdmin } from '@/lib/categories';
@@ -57,7 +58,8 @@ export default async function BoutiquePage() {
       </div>
 
       <ProductGrid products={sortedProducts} />
-      
+
+      <ScrollToTopButton />
       <StickyCartButton />
     </main>
   );

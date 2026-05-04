@@ -18,6 +18,7 @@ type Suggestion = {
   id: string;
   nom: string;
   categorie: string;
+  slug: string | null;
   disponible: boolean;
   options: ProduitOption[] | null;
 };
@@ -29,6 +30,7 @@ export default function CartDrawer() {
   const [lastOrder, setLastOrder] = useState<CartItem[] | null>(null);
   const [isRestoring, setIsRestoring] = useState(false);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
 
   const cartItems = Object.values(cart);
   const bornes = useFourchetteBornes();
@@ -55,12 +57,13 @@ export default function CartDrawer() {
   // Charger des suggestions (Cross-selling)
   useEffect(() => {
     if (isCartOpen && cartItems.length > 0) {
+      setSuggestionsLoading(true);
       const fetchSuggestions = async () => {
         try {
           const cartIds = Array.from(new Set(cartItems.map((item) => item.produitId)));
           const { data } = await supabase
             .from('produits')
-            .select('id, nom, categorie, disponible, options')
+            .select('id, nom, categorie, slug, disponible, options')
             .eq('disponible', true)
             .eq('masque_boutique', false)
             .limit(50);
@@ -91,11 +94,14 @@ export default function CartDrawer() {
           }
         } catch (e) {
           console.error(e);
+        } finally {
+          setSuggestionsLoading(false);
         }
       };
       fetchSuggestions();
     } else {
       setSuggestions([]);
+      setSuggestionsLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCartOpen, cartItems.length]);
@@ -170,8 +176,7 @@ export default function CartDrawer() {
     // Si plusieurs options, on redirige vers la fiche pour laisser le choix
     if (opts.length > 1) {
       setIsCartOpen(false);
-      // Pas de slug fourni ici ; on ouvre simplement la boutique
-      router.push('/boutique');
+      router.push(s.slug ? `/boutique/${s.slug}` : '/boutique');
       return;
     }
     const opt = opts[0];
@@ -280,10 +285,10 @@ export default function CartDrawer() {
                         <Trash2 size={18} strokeWidth={1.5} />
                       </button>
                     </div>
-                    <div className="flex items-center justify-between border border-neutral-300 p-1 w-36 bg-neutral-50">
+                    <div className="flex items-center justify-between border border-neutral-300 p-1 w-40 bg-neutral-50">
                       <button
                         onClick={() => { triggerHaptic(); updateQuantity(key, item.quantite - 1); }}
-                        className="w-9 h-9 flex items-center justify-center text-neutral-600 hover:bg-neutral-200 transition-colors"
+                        className="w-11 h-11 flex items-center justify-center text-neutral-600 hover:bg-neutral-200 transition-colors"
                         aria-label="Diminuer la quantité"
                       >
                         <Minus size={16} strokeWidth={1.5} />
@@ -291,7 +296,7 @@ export default function CartDrawer() {
                       <span className="font-medium text-neutral-800 text-sm w-10 text-center">{item.quantite}</span>
                       <button
                         onClick={() => { triggerHaptic(); updateQuantity(key, item.quantite + 1); }}
-                        className="w-9 h-9 flex items-center justify-center text-neutral-600 hover:bg-neutral-200 transition-colors"
+                        className="w-11 h-11 flex items-center justify-center text-neutral-600 hover:bg-neutral-200 transition-colors"
                         aria-label="Augmenter la quantité"
                       >
                         <Plus size={16} strokeWidth={1.5} />
@@ -302,6 +307,26 @@ export default function CartDrawer() {
                 );
               })}
             </ul>
+          )}
+
+          {cartItems.length > 0 && suggestionsLoading && suggestions.length === 0 && (
+            <div className="mt-8 pt-6 border-t border-neutral-200">
+              <h3 className="text-[11px] uppercase tracking-widest font-medium text-neutral-500 mb-4 flex items-center gap-2">
+                <Sparkles size={14} className="text-green-primary" strokeWidth={1.5} />
+                S&apos;accorde parfaitement avec
+              </h3>
+              <ul className="space-y-4" aria-busy="true" aria-label="Chargement des suggestions">
+                {Array.from({ length: 2 }).map((_, i) => (
+                  <li key={i} className="flex items-center justify-between bg-neutral-50 border border-neutral-200 p-3">
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <div className="h-4 w-2/3 bg-neutral-200 animate-pulse" />
+                      <div className="h-2.5 w-1/3 bg-neutral-100 animate-pulse" />
+                    </div>
+                    <div className="w-10 h-10 bg-neutral-100 animate-pulse ml-3" />
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
 
           {cartItems.length > 0 && suggestions.length > 0 && (

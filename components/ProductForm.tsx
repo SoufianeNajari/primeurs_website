@@ -30,10 +30,15 @@ function initialOptionRows(initial?: Partial<Product>): OptionRow[] {
   return [{ id: genOptionId(), libelle: 'au kg', prix: '' }];
 }
 
+const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
 export default function ProductForm({ mode, initial, categories }: { mode: Mode; initial?: Partial<Product>; categories: string[] }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Validation visuelle activée seulement après une première tentative de
+  // soumission, pour ne pas marquer en rouge un formulaire vierge.
+  const [attempted, setAttempted] = useState(false);
 
   const [nom, setNom] = useState(initial?.nom || '');
   const [categorie, setCategorie] = useState(initial?.categorie || categories[0] || '');
@@ -58,6 +63,17 @@ export default function ProductForm({ mode, initial, categories }: { mode: Mode;
 
   const autoSlug = slugify(nom);
   const effectiveSlug = slugTouched ? slugValue : autoSlug;
+
+  const errors = {
+    nom: nom.trim() === '',
+    categorie: categorie.trim() === '',
+    slug: effectiveSlug.trim() === '' || !SLUG_REGEX.test(effectiveSlug),
+    options: options.map((o) => ({
+      libelle: o.libelle.trim() === '',
+      prix: o.prix !== '' && (Number.isNaN(Number(o.prix)) || Number(o.prix) < 0),
+    })),
+  };
+  const showInvalid = (cond: boolean) => attempted && cond;
 
   function updateOption(idx: number, patch: Partial<OptionRow>) {
     setOptions((prev) => prev.map((o, i) => (i === idx ? { ...o, ...patch } : o)));
@@ -94,24 +110,27 @@ export default function ProductForm({ mode, initial, categories }: { mode: Mode;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setSaving(true);
+    setAttempted(true);
     setError(null);
 
-    // Valide les options localement
-    const cleanedOptions: ProduitOption[] = [];
-    for (const o of options) {
-      const lib = o.libelle.trim();
-      if (!lib) {
-        setError('Chaque option doit avoir un libellé.');
-        setSaving(false);
-        return;
-      }
-      cleanedOptions.push({
-        id: o.id,
-        libelle: lib,
-        prix: o.prix === '' ? null : Number(o.prix),
+    if (errors.nom || errors.categorie || errors.slug || errors.options.some((o) => o.libelle || o.prix)) {
+      setError('Corrigez les champs indiqués en rouge.');
+      // Scroll vers le premier champ invalide
+      requestAnimationFrame(() => {
+        const el = document.querySelector<HTMLElement>('[aria-invalid="true"]');
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el?.focus();
       });
+      return;
     }
+
+    setSaving(true);
+
+    const cleanedOptions: ProduitOption[] = options.map((o) => ({
+      id: o.id,
+      libelle: o.libelle.trim(),
+      prix: o.prix === '' ? null : Number(o.prix),
+    }));
 
     const payload = {
       nom,
@@ -187,28 +206,40 @@ export default function ProductForm({ mode, initial, categories }: { mode: Mode;
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Field label="Nom *">
-          <input required value={nom} onChange={(e) => setNom(e.target.value)} className={inputCls} />
+        <Field label="Nom *" error={showInvalid(errors.nom) ? 'Le nom est requis.' : null}>
+          <input
+            required
+            value={nom}
+            onChange={(e) => setNom(e.target.value)}
+            aria-invalid={showInvalid(errors.nom) || undefined}
+            className={inputClsFor(showInvalid(errors.nom))}
+          />
         </Field>
-        <Field label="Catégorie *" hint={<>Pour ajouter une catégorie, <Link href="/admin/categories" className="underline text-green-primary">gérer les catégories</Link>.</>}>
+        <Field label="Catégorie *" hint={<>Pour ajouter une catégorie, <Link href="/admin/categories" className="underline text-green-primary">gérer les catégories</Link>.</>} error={showInvalid(errors.categorie) ? 'Sélectionnez une catégorie.' : null}>
           <select
             required
             value={categorie}
             onChange={(e) => setCategorie(e.target.value)}
-            className={inputCls}
+            aria-invalid={showInvalid(errors.categorie) || undefined}
+            className={inputClsFor(showInvalid(errors.categorie))}
           >
             {categories.length === 0 && <option value="">— aucune catégorie —</option>}
             {categories.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </Field>
-        <Field label="Slug (URL)" hint={`Sera : /boutique/${effectiveSlug || '…'}`}>
+        <Field
+          label="Slug (URL)"
+          hint={`Sera : /boutique/${effectiveSlug || '…'}`}
+          error={showInvalid(errors.slug) ? 'Slug invalide (lettres minuscules, chiffres et tirets).' : null}
+        >
           <input
             value={slugTouched ? slugValue : autoSlug}
             onChange={(e) => {
               setSlugTouched(true);
               setSlugValue(e.target.value);
             }}
-            className={inputCls}
+            aria-invalid={showInvalid(errors.slug) || undefined}
+            className={inputClsFor(showInvalid(errors.slug))}
             placeholder={autoSlug}
           />
         </Field>
@@ -260,7 +291,11 @@ export default function ProductForm({ mode, initial, categories }: { mode: Mode;
         </datalist>
 
         <ul className="space-y-2">
-          {options.map((opt, idx) => (
+          {options.map((opt, idx) => {
+            const optErr = errors.options[idx];
+            const showLibErr = showInvalid(optErr.libelle);
+            const showPrixErr = showInvalid(optErr.prix);
+            return (
             <li key={opt.id} className="flex items-center gap-2 bg-white border border-neutral-200 p-2">
               <GripVertical size={14} className="text-neutral-300 shrink-0" />
               <input
@@ -268,7 +303,10 @@ export default function ProductForm({ mode, initial, categories }: { mode: Mode;
                 value={opt.libelle}
                 onChange={(e) => updateOption(idx, { libelle: e.target.value })}
                 placeholder="ex : au kg, à la pièce, la barquette…"
-                className="flex-1 min-w-0 border border-neutral-300 px-2 py-2 text-sm focus:outline-none focus:border-green-primary"
+                aria-invalid={showLibErr || undefined}
+                className={`flex-1 min-w-0 border px-2 py-2 text-sm focus:outline-none ${
+                  showLibErr ? 'border-red-text bg-red-50 focus:border-red-text' : 'border-neutral-300 focus:border-green-primary'
+                }`}
                 required
                 maxLength={40}
               />
@@ -280,7 +318,10 @@ export default function ProductForm({ mode, initial, categories }: { mode: Mode;
                   value={opt.prix}
                   onChange={(e) => updateOption(idx, { prix: e.target.value })}
                   placeholder="Prix"
-                  className="w-24 border border-neutral-300 px-2 py-2 text-sm focus:outline-none focus:border-green-primary"
+                  aria-invalid={showPrixErr || undefined}
+                  className={`w-24 border px-2 py-2 text-sm focus:outline-none ${
+                    showPrixErr ? 'border-red-text bg-red-50 focus:border-red-text' : 'border-neutral-300 focus:border-green-primary'
+                  }`}
                 />
                 <span className="text-sm text-neutral-500">€</span>
               </div>
@@ -294,7 +335,8 @@ export default function ProductForm({ mode, initial, categories }: { mode: Mode;
                 <Trash2 size={14} />
               </button>
             </li>
-          ))}
+            );
+          })}
         </ul>
       </div>
 
@@ -353,13 +395,22 @@ export default function ProductForm({ mode, initial, categories }: { mode: Mode;
 }
 
 const inputCls = 'w-full border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:border-green-primary focus:ring-1 focus:ring-green-primary';
+const inputClsInvalid = 'w-full border border-red-text bg-red-50 px-3 py-2 text-sm focus:outline-none focus:border-red-text focus:ring-1 focus:ring-red-text';
 
-function Field({ label, hint, children }: { label: string; hint?: React.ReactNode; children: React.ReactNode }) {
+function inputClsFor(invalid: boolean): string {
+  return invalid ? inputClsInvalid : inputCls;
+}
+
+function Field({ label, hint, error, children }: { label: string; hint?: React.ReactNode; error?: string | null; children: React.ReactNode }) {
   return (
     <label className="block">
       <span className="text-xs uppercase tracking-widest text-neutral-500 font-medium">{label}</span>
       <div className="mt-1">{children}</div>
-      {hint && <div className="text-xs text-neutral-400 mt-1">{hint}</div>}
+      {error ? (
+        <div className="text-xs text-red-text font-medium mt-1">{error}</div>
+      ) : (
+        hint && <div className="text-xs text-neutral-400 mt-1">{hint}</div>
+      )}
     </label>
   );
 }

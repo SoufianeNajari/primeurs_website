@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { triggerHaptic } from '@/lib/haptic'
 import { calcFourchette, type FourchetteBornes } from '@/lib/fourchette'
 import { Printer, Phone, Mail, Clock, MessageSquare, Undo2, ChevronDown, ChevronUp, Search, X } from 'lucide-react'
@@ -146,6 +147,41 @@ export default function OrderList({
   const [prepStates, setPrepStates] = useState<Record<string, Set<string>>>({})
   const [expandedRetired, setExpandedRetired] = useState<Set<string>>(new Set())
   const toast = useToast()
+  const router = useRouter()
+
+  // Auto-refresh des commandes quand l'onglet est visible.
+  // RLS bloque postgres_changes en anon → on rafraîchit le RSC à intervalle.
+  // Cap 30 s : assez réactif pour le suivi en boutique, sans surcharge.
+  useEffect(() => {
+    const REFRESH_MS = 30_000
+    let timer: ReturnType<typeof setInterval> | null = null
+    const start = () => {
+      if (timer) return
+      timer = setInterval(() => {
+        if (document.visibilityState === 'visible') router.refresh()
+      }, REFRESH_MS)
+    }
+    const stop = () => {
+      if (timer) {
+        clearInterval(timer)
+        timer = null
+      }
+    }
+    const onVis = () => {
+      if (document.visibilityState === 'visible') {
+        router.refresh()
+        start()
+      } else {
+        stop()
+      }
+    }
+    if (document.visibilityState === 'visible') start()
+    document.addEventListener('visibilitychange', onVis)
+    return () => {
+      stop()
+      document.removeEventListener('visibilitychange', onVis)
+    }
+  }, [router])
 
   // Recherche persistée (tape une fois, retrouve la même au retour).
   useEffect(() => {
@@ -202,6 +238,9 @@ export default function OrderList({
     const map: Record<string, Set<string>> = {}
     for (const o of initialOrders) map[o.id] = loadPrepState(o.id)
     setPrepStates(map)
+    // Sync de l'état local avec le RSC à chaque refresh : nouvelles commandes
+    // apparaissent automatiquement, statuts à jour côté boutique aussi.
+    setOrders(initialOrders)
   }, [initialOrders])
 
   const filteredBySearch = useMemo(() => {
