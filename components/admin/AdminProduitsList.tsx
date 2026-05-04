@@ -90,7 +90,10 @@ export default function AdminProduitsList({ produits: initial, categoriesOrder }
     return Array.from(out.entries()).filter(([, items]) => items.length > 0)
   }, [filtered, categoriesOrder])
 
-  const dndEnabled = search.trim() === '' && activeCat === 'Toutes'
+  // Le filtre catégorie n'enlève pas d'éléments à l'intérieur d'une catégorie
+  // (toutes les "Fruits" restent visibles si on filtre "Fruits"), donc le DnD
+  // y est OK. La recherche, elle, masque des items → ordre partiel = pas safe.
+  const dndEnabled = search.trim() === ''
 
   const persistOrder = async (categorie: string, ordered: Product[]) => {
     try {
@@ -197,7 +200,7 @@ export default function AdminProduitsList({ produits: initial, categoriesOrder }
 
       {!dndEnabled && (
         <p className="text-[11px] text-neutral-500 italic mb-3">
-          Réorganisation désactivée pendant la recherche ou un filtre catégorie.
+          Réorganisation désactivée pendant la recherche.
         </p>
       )}
 
