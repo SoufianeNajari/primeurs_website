@@ -35,7 +35,7 @@ const EMPTY_DRAFT: Draft = {
 };
 
 export default function OrderPage() {
-  const { cart, totalItems, totalEstime, removeFromCart } = useCart();
+  const { cart, totalItems, totalEstime, removeFromCart, isLoaded } = useCart();
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -145,12 +145,15 @@ export default function OrderPage() {
   }, [draft, isMounted]);
 
   useEffect(() => {
-    if (isMounted && totalItems === 0) {
+    // On attend l'hydratation du panier (lecture localStorage + check Supabase)
+    // avant de rediriger : sinon un refresh sur /order renvoie l'utilisateur à
+    // l'accueil même si son panier était bien rempli.
+    if (isMounted && isLoaded && totalItems === 0) {
       router.push('/');
     }
-  }, [isMounted, totalItems, router]);
+  }, [isMounted, isLoaded, totalItems, router]);
 
-  if (!isMounted || totalItems === 0) {
+  if (!isMounted || !isLoaded || totalItems === 0) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <Loader2 className="animate-spin text-green-primary" size={32} />

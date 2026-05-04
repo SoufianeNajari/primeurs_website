@@ -9,6 +9,7 @@ import { formatPrixResume } from '@/lib/produit'
 import { useToast } from '@/components/admin/Toast'
 
 const SEARCH_STORAGE_KEY = 'admin_produits_search'
+const CATEGORY_STORAGE_KEY = 'admin_produits_categorie'
 
 function normalize(text: string): string {
   return text
@@ -19,9 +20,18 @@ function normalize(text: string): string {
 
 type DragState = { categorie: string; from: number } | null
 
-export default function AdminProduitsList({ produits: initial }: { produits: Product[] }) {
+type Props = {
+  produits: Product[]
+  // Catégories ordonnées selon la table `categories.ordre`. Source de vérité
+  // pour l'affichage. Les catégories absentes (produit avec catégorie supprimée
+  // ou hors table) sont reléguées en fin de liste, ordre alphabétique.
+  categoriesOrder: string[]
+}
+
+export default function AdminProduitsList({ produits: initial, categoriesOrder }: Props) {
   const [produits, setProduits] = useState<Product[]>(initial)
   const [search, setSearch] = useState('')
+  const [activeCat, setActiveCat] = useState<string>('Toutes')
   const [drag, setDrag] = useState<DragState>(null)
   const [overIndex, setOverIndex] = useState<number | null>(null)
   const toast = useToast()
@@ -34,6 +44,8 @@ export default function AdminProduitsList({ produits: initial }: { produits: Pro
     try {
       const s = localStorage.getItem(SEARCH_STORAGE_KEY)
       if (s) setSearch(s)
+      const c = localStorage.getItem(CATEGORY_STORAGE_KEY)
+      if (c) setActiveCat(c)
     } catch {
       /* */
     }
@@ -48,20 +60,37 @@ export default function AdminProduitsList({ produits: initial }: { produits: Pro
     }
   }, [search])
 
+  useEffect(() => {
+    try {
+      if (activeCat !== 'Toutes') localStorage.setItem(CATEGORY_STORAGE_KEY, activeCat)
+      else localStorage.removeItem(CATEGORY_STORAGE_KEY)
+    } catch {
+      /* */
+    }
+  }, [activeCat])
+
   const filtered = useMemo(() => {
     const q = normalize(search.trim())
-    if (!q) return produits
-    return produits.filter((p) => normalize(p.nom).includes(q) || normalize(p.categorie).includes(q))
-  }, [produits, search])
+    return produits.filter((p) => {
+      if (activeCat !== 'Toutes' && p.categorie !== activeCat) return false
+      if (q && !normalize(p.nom).includes(q) && !normalize(p.categorie).includes(q)) return false
+      return true
+    })
+  }, [produits, search, activeCat])
 
+  // Regroupement en respectant `categoriesOrder` (Map → ordre d'insertion).
   const grouped = useMemo(() => {
-    return filtered.reduce<Record<string, Product[]>>((acc, p) => {
-      ;(acc[p.categorie] ||= []).push(p)
-      return acc
-    }, {})
-  }, [filtered])
+    const out = new Map<string, Product[]>()
+    for (const cat of categoriesOrder) out.set(cat, [])
+    for (const p of filtered) {
+      if (!out.has(p.categorie)) out.set(p.categorie, [])
+      out.get(p.categorie)!.push(p)
+    }
+    // Vire les groupes vides (ex: filtre catégorie actif)
+    return Array.from(out.entries()).filter(([, items]) => items.length > 0)
+  }, [filtered, categoriesOrder])
 
-  const dndEnabled = search.trim() === ''
+  const dndEnabled = search.trim() === '' && activeCat === 'Toutes'
 
   const persistOrder = async (categorie: string, ordered: Product[]) => {
     try {
@@ -74,7 +103,6 @@ export default function AdminProduitsList({ produits: initial }: { produits: Pro
       toast.success(`Ordre enregistré (${categorie})`)
     } catch {
       toast.error('Erreur — ordre non sauvegardé')
-      // Revert : on remet l'état initial
       setProduits(initial)
     }
   }
@@ -85,25 +113,47 @@ export default function AdminProduitsList({ produits: initial }: { produits: Pro
     const next = [...items]
     const [moved] = next.splice(drag.from, 1)
     next.splice(to, 0, moved)
-    // Mettre à jour produits global : remplacer la sous-liste de cette catégorie
     setProduits((prev) => {
       const others = prev.filter((p) => p.categorie !== categorie)
-      return [...others, ...next].sort((a, b) => {
-        // garder l'ordre par catégorie alphabétique pour l'affichage initial
-        if (a.categorie !== b.categorie) return a.categorie.localeCompare(b.categorie)
-        // dans la même catégorie, garder l'ordre du tableau next
-        if (a.categorie === categorie) {
-          return next.findIndex((x) => x.id === a.id) - next.findIndex((x) => x.id === b.id)
+      // On préserve l'ordre relatif des autres catégories dans `others` ; pour
+      // celle qu'on réorganise, on utilise `next`.
+      const merged: Product[] = []
+      for (const p of prev) {
+        if (p.categorie !== categorie) {
+          merged.push(others.find((o) => o.id === p.id)!)
         }
-        return 0
-      })
+      }
+      // Reconstruction propre : merge ordonné par catégoriesOrder
+      const byCat = new Map<string, Product[]>()
+      for (const p of merged) {
+        if (!byCat.has(p.categorie)) byCat.set(p.categorie, [])
+        byCat.get(p.categorie)!.push(p)
+      }
+      byCat.set(categorie, next)
+      const final: Product[] = []
+      for (const cat of categoriesOrder) {
+        const list = byCat.get(cat)
+        if (list) final.push(...list)
+        byCat.delete(cat)
+      }
+      // Catégories hors table à la fin
+      Array.from(byCat.values()).forEach((list) => final.push(...list))
+      return final
     })
     persistOrder(categorie, next)
   }
 
+  // Liste pour les chips : "Toutes" + categoriesOrder + catégories hors table
+  const chipCategories = useMemo(() => {
+    const fromProduits = new Set(produits.map((p) => p.categorie))
+    const ordered = categoriesOrder.filter((c) => fromProduits.has(c))
+    const extras = Array.from(fromProduits).filter((c) => !ordered.includes(c))
+    return ['Toutes', ...ordered, ...extras]
+  }, [produits, categoriesOrder])
+
   return (
     <>
-      <div className="relative mb-6">
+      <div className="relative mb-3">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
           <Search size={16} className="text-neutral-400" strokeWidth={1.5} />
         </div>
@@ -127,18 +177,38 @@ export default function AdminProduitsList({ produits: initial }: { produits: Pro
         )}
       </div>
 
+      <div className="flex flex-wrap gap-2 mb-4 overflow-x-auto">
+        {chipCategories.map((cat) => (
+          <button
+            key={cat}
+            type="button"
+            onClick={() => setActiveCat(cat)}
+            className={`text-[11px] uppercase tracking-widest font-medium px-3 py-1.5 border transition-colors whitespace-nowrap ${
+              activeCat === cat
+                ? 'border-green-primary text-green-primary bg-green-primary/5'
+                : 'border-neutral-200 text-neutral-500 hover:border-neutral-400 hover:text-neutral-800 bg-white'
+            }`}
+            aria-pressed={activeCat === cat}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
+
       {!dndEnabled && (
         <p className="text-[11px] text-neutral-500 italic mb-3">
-          Réorganisation désactivée pendant la recherche.
+          Réorganisation désactivée pendant la recherche ou un filtre catégorie.
         </p>
       )}
 
-      {Object.keys(grouped).length === 0 ? (
+      {grouped.length === 0 ? (
         <div className="border border-neutral-200 bg-white p-8 text-center text-neutral-500">
-          {search ? 'Aucun produit ne correspond à cette recherche.' : 'Aucun produit pour l’instant.'}
+          {search || activeCat !== 'Toutes'
+            ? 'Aucun produit ne correspond.'
+            : 'Aucun produit pour l’instant.'}
         </div>
       ) : (
-        Object.entries(grouped).map(([categorie, items]) => (
+        grouped.map(([categorie, items]) => (
           <section key={categorie} className="mb-8">
             <h2 className="text-xs uppercase tracking-widest text-neutral-500 font-medium mb-2">{categorie}</h2>
             <div className="bg-white border border-neutral-200 divide-y divide-neutral-200">

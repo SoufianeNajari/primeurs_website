@@ -44,6 +44,10 @@ type CartContextType = {
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
   lastAdded: LastAddedSignal | null;
+  // true une fois la lecture localStorage + check Supabase terminés.
+  // Permet aux pages dépendantes du panier (order) de ne pas rediriger
+  // tant que l'hydratation n'est pas faite.
+  isLoaded: boolean;
 };
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -256,7 +260,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   })();
 
   return (
-    <CartContext.Provider value={{ cart, addToCart, removeFromCart, updateQuantity, setItemCommentaire, clearCart, restoreCart, totalItems, totalEstime, isCartOpen, setIsCartOpen, lastAdded }}>
+    <CartContext.Provider value={{ cart, addToCart, removeFromCart, updateQuantity, setItemCommentaire, clearCart, restoreCart, totalItems, totalEstime, isCartOpen, setIsCartOpen, lastAdded, isLoaded }}>
       {children}
       <CartDrawer />
       <CartAddedToast />

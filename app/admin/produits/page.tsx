@@ -3,18 +3,33 @@ import { Plus, Upload } from 'lucide-react';
 import { supabaseAdmin } from '@/lib/supabase';
 import type { Product } from '@/lib/produit';
 import AdminProduitsList from '@/components/admin/AdminProduitsList';
+import { listCategoriesAdmin } from '@/lib/categories';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminProduitsPage() {
-  const { data } = await supabaseAdmin
-    .from('produits')
-    .select('*')
-    .order('categorie', { ascending: true })
-    .order('ordre', { ascending: true })
-    .order('nom', { ascending: true });
+  const [{ data }, categories] = await Promise.all([
+    supabaseAdmin
+      .from('produits')
+      .select('*')
+      .order('ordre', { ascending: true })
+      .order('nom', { ascending: true }),
+    listCategoriesAdmin(),
+  ]);
 
   const produits = (data || []) as Product[];
+  // Tri par ordre de catégorie (table categories.ordre), puis par produit.ordre
+  // déjà trié dans la requête. Catégories absentes de la table → fin de liste.
+  const catOrder = new Map<string, number>();
+  categories.forEach((c, i) => catOrder.set(c.nom, c.ordre ?? i));
+  const sortedProduits = [...produits].sort((a, b) => {
+    const oa = catOrder.get(a.categorie) ?? 999;
+    const ob = catOrder.get(b.categorie) ?? 999;
+    if (oa !== ob) return oa - ob;
+    if (a.categorie !== b.categorie) return a.categorie.localeCompare(b.categorie);
+    return 0;
+  });
+  const categoriesOrdered = Array.from(new Set(sortedProduits.map((p) => p.categorie)));
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-8">
@@ -33,7 +48,7 @@ export default async function AdminProduitsPage() {
         </div>
       </div>
 
-      <AdminProduitsList produits={produits} />
+      <AdminProduitsList produits={sortedProduits} categoriesOrder={categoriesOrdered} />
     </div>
   );
 }
