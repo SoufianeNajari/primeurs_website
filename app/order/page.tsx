@@ -10,6 +10,7 @@ import { JOURS_RETRAIT } from '@/lib/creneaux';
 import { formatPrixMontant, cartHasPoidsIncertain, isPoidsIncertain } from '@/lib/produit';
 import { calcFourchette, formatFourchette } from '@/lib/fourchette';
 import { useFourchetteBornes } from '@/lib/use-fourchette';
+import { CUSTOMER_MEMORY_KEY, type CustomerMemory } from '@/components/WelcomeBackBanner';
 
 // JS getDay() : 0=dim, 1=lun, 2=mar, …, 6=sam
 const JOUR_INDEX_TO_KEY = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'] as const;
@@ -116,6 +117,31 @@ export default function OrderPage() {
     } catch {
       localStorage.removeItem(DRAFT_KEY);
     }
+
+    // Fallback : si le brouillon n'a pas d'identité, on récupère depuis la
+    // mémoire client (TTL 90j) — utile pour un client revenant après une
+    // commande passée il y a plus de 7 jours.
+    const needsIdentity = !restored.prenom && !restored.nom && !restored.email && !restored.telephone;
+    if (needsIdentity) {
+      try {
+        const rawMem = localStorage.getItem(CUSTOMER_MEMORY_KEY);
+        if (rawMem) {
+          const mem = JSON.parse(rawMem) as CustomerMemory;
+          if (mem?.client && mem.savedAt && Date.now() - mem.savedAt < 90 * 24 * 60 * 60 * 1000) {
+            restored = {
+              ...restored,
+              prenom: mem.client.prenom || '',
+              nom: mem.client.nom || '',
+              email: mem.client.email || '',
+              telephone: mem.client.telephone || '',
+            };
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+
     setDraft({
       ...EMPTY_DRAFT,
       ...restored,
@@ -228,6 +254,26 @@ export default function OrderPage() {
 
       // Sauvegarde du panier pour la fonctionnalité "Historique magique"
       localStorage.setItem('primeur_last_order', JSON.stringify(cartItems));
+      // Mémoire client longue durée (90j) pour reprise commande + prefill
+      // formulaire au-delà du TTL brouillon (7j).
+      try {
+        const memory: CustomerMemory = {
+          savedAt: Date.now(),
+          client: {
+            prenom: client.prenom,
+            nom: client.nom,
+            email: client.email,
+            telephone: client.telephone,
+          },
+          lignes: cartItems,
+          jour: jourRetrait,
+          creneau: creneau || undefined,
+        };
+        localStorage.setItem(CUSTOMER_MEMORY_KEY, JSON.stringify(memory));
+        sessionStorage.removeItem('primeur_welcome_dismissed');
+      } catch {
+        // quota exceeded, on continue
+      }
       // Le brouillon a rempli son rôle.
       localStorage.removeItem(DRAFT_KEY);
 

@@ -4,6 +4,7 @@ import ProductGrid from '@/components/ProductGrid';
 import StickyCartButton from '@/components/StickyCartButton';
 import ScrollToTopButton from '@/components/ScrollToTopButton';
 import BoutiqueFermee from '@/components/BoutiqueFermee';
+import WelcomeBackBanner from '@/components/WelcomeBackBanner';
 import { isCommandesBloquees } from '@/lib/parametres';
 import { listCategoriesAdmin } from '@/lib/categories';
 
@@ -56,6 +57,8 @@ export default async function BoutiquePage() {
           <p className="text-neutral-500 font-medium text-lg uppercase tracking-widest text-[11px]">Découvrez notre sélection fraîche du jour</p>
         </div>
       </div>
+
+      <WelcomeBackBanner />
 
       <ProductGrid products={sortedProducts} />
 
