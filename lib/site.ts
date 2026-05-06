@@ -1,8 +1,9 @@
 export const SITE = {
-  name: 'Pontault Primeurs',
-  shortName: 'Pontault Primeurs',
+  name: 'Primeur Chez Vous',
+  fullName: 'Primeur Chez Vous · by Pontault Primeurs',
+  shortName: 'Primeur Chez Vous',
   description:
-    'Primeur de fruits, légumes et fromages affinés à Pontault-Combault. Sélection de saison, produits locaux et bio. Commande en ligne, retrait en boutique.',
+    'Livraison à domicile de fruits, légumes et fromages affinés autour de Pontault-Combault. Sélection minutieuse, livraison mardi et samedi, paiement à la réception.',
   url: process.env.NEXT_PUBLIC_SITE_URL || 'https://pontaultprimeurs.fr',
   locale: 'fr_FR',
   telephone: '+33160296298',

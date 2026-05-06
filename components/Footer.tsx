@@ -7,10 +7,12 @@ export default function Footer() {
       <div className="max-w-6xl mx-auto px-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10 pb-10 border-b border-neutral-700">
           <div>
-            <h2 className="text-2xl font-serif text-white mb-3 tracking-wide uppercase">
+            <h2 className="text-2xl font-serif text-white mb-1 tracking-wide uppercase">
               {SITE.name}
             </h2>
+            <p className="text-[10px] tracking-[0.25em] uppercase text-neutral-500 mb-3">by Pontault Primeurs</p>
             <p className="text-sm leading-relaxed">
+              Boutique d&apos;origine&nbsp;:<br />
               {SITE.address.street}
               <br />
               {SITE.address.postalCode} {SITE.address.city}
@@ -27,7 +29,7 @@ export default function Footer() {
 
           <div>
             <h3 className="text-white text-xs uppercase tracking-widest font-medium mb-4">
-              Boutique
+              Livraison
             </h3>
             <ul className="space-y-2 text-sm">
               <li>
@@ -38,6 +40,11 @@ export default function Footer() {
               <li>
                 <Link href="/order" className="hover:text-white transition-colors">
                   Passer commande
+                </Link>
+              </li>
+              <li>
+                <Link href="/zones-livrees" className="hover:text-white transition-colors">
+                  Zones desservies
                 </Link>
               </li>
               <li>

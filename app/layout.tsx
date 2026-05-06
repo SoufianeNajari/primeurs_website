@@ -14,7 +14,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 export const metadata: Metadata = {
   metadataBase: new URL(SITE.url),
   title: {
-    default: `${SITE.name} — Fruits, légumes et fromages frais à Pontault-Combault`,
+    default: `${SITE.name} — Livraison de fruits & légumes autour de Pontault-Combault`,
     template: `%s — ${SITE.name}`,
   },
   description: SITE.description,
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     locale: SITE.locale,
     url: SITE.url,
     siteName: SITE.name,
-    title: `${SITE.name} — Fruits, légumes et fromages frais`,
+    title: `${SITE.name} — Livraison de fruits, légumes et fromages frais`,
     description: SITE.description,
     images: [{ url: DEFAULT_OG_IMAGE, width: 1200, height: 630, alt: SITE.name }],
   },
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Pontault Primeurs",
+    title: "Primeur Chez Vous",
   },
   formatDetection: {
     telephone: false,
@@ -101,10 +101,10 @@ export default async function RootLayout({
   return (
     <html lang="fr">
       <head>
-        <meta name="application-name" content="Pontault Primeurs" />
+        <meta name="application-name" content="Primeur Chez Vous" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="Pontault Primeurs" />
+        <meta name="apple-mobile-web-app-title" content="Primeur Chez Vous" />
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#2C5530" />

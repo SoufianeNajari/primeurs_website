@@ -1,7 +1,7 @@
 {
-  "name": "Pontault Primeurs — Fruits & Légumes",
-  "short_name": "Pontault Primeurs",
-  "description": "Commandez vos fruits, légumes et fromages en ligne",
+  "name": "Primeur Chez Vous — Livraison à domicile",
+  "short_name": "Primeur Chez Vous",
+  "description": "Livraison à domicile de fruits, légumes et fromages affinés autour de Pontault-Combault.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

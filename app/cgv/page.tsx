@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function CgvPage() {
   return (
-    <LegalLayout title="Conditions générales de vente" lastUpdate="24 avril 2026">
+    <LegalLayout title="Conditions générales de vente" lastUpdate="6 mai 2026">
       <section>
         <h2>Article 1 — Objet</h2>
         <p>
@@ -20,9 +20,10 @@ export default function CgvPage() {
           «&nbsp;le Vendeur&nbsp;»), dont les coordonnées figurent dans les mentions légales.
         </p>
         <p>
-          Les commandes sont exclusivement destinées à un <strong>retrait en boutique</strong> à
-          l&apos;adresse suivante&nbsp;: {SITE.address.street}, {SITE.address.postalCode} {SITE.address.city}.
-          Aucune livraison n&apos;est proposée.
+          Les commandes sont exclusivement destinées à une <strong>livraison à domicile</strong> sur les
+          communes desservies (voir <a href="/zones-livrees">zones desservies</a>). La préparation est
+          réalisée depuis la boutique d&apos;origine située&nbsp;: {SITE.address.street}, {SITE.address.postalCode}{' '}
+          {SITE.address.city}.
         </p>
       </section>
 
@@ -50,42 +51,57 @@ export default function CgvPage() {
         </p>
         <p>
           Le montant affiché lors de la commande est une <strong>estimation</strong> calculée sur la base des
-          quantités demandées. Le prix définitif est arrêté lors du retrait en boutique, après pesée effective
-          des produits vendus au kilo.
+          quantités demandées. Le prix définitif est arrêté à la préparation, après pesée effective des
+          produits vendus au kilo, et communiqué au client à la livraison.
+        </p>
+        <p>
+          Des <strong>frais de livraison</strong> peuvent s&apos;appliquer selon la commune et la période. Le
+          montant éventuel est affiché clairement avant validation de la commande.
         </p>
       </section>
 
       <section>
         <h2>Article 4 — Commande</h2>
         <p>
-          La commande s&apos;effectue en ligne&nbsp;: sélection des produits, choix du jour et du créneau de
-          retrait, validation des informations client (nom, email, téléphone). Un email de confirmation est
-          adressé au client après validation.
+          La commande s&apos;effectue en ligne&nbsp;: sélection des produits, saisie de l&apos;adresse de
+          livraison, choix d&apos;un créneau de livraison parmi ceux proposés, validation des informations
+          client (nom, email, téléphone). Un email de confirmation est adressé au client après validation.
+        </p>
+        <p>
+          Un <strong>montant minimum de commande</strong> est exigé pour valider la livraison. Ce seuil est
+          affiché dans le récapitulatif du panier.
         </p>
         <p>
           Le Vendeur se réserve le droit de refuser ou d&apos;annuler toute commande qui présenterait un
-          caractère anormal (quantités manifestement excessives, coordonnées fantaisistes, etc.).
+          caractère anormal (quantités manifestement excessives, coordonnées fantaisistes, adresse hors zone, etc.).
         </p>
       </section>
 
       <section>
         <h2>Article 5 — Paiement</h2>
         <p>
-          Le paiement s&apos;effectue <strong>en boutique au moment du retrait</strong>, en espèces ou par
-          carte bancaire. Aucun paiement en ligne n&apos;est demandé à la commande.
+          Le paiement s&apos;effectue <strong>à la livraison</strong>, en espèces ou par carte bancaire.
+          Aucun paiement en ligne ni acompte ne sont demandés à la commande.
         </p>
       </section>
 
       <section>
-        <h2>Article 6 — Retrait en boutique</h2>
+        <h2>Article 6 — Livraison</h2>
         <p>
-          Le client s&apos;engage à venir retirer sa commande au jour et dans le créneau choisi. En cas
+          Les livraisons sont effectuées sur les communes listées dans la page{' '}
+          <a href="/zones-livrees">Zones desservies</a>, dans les créneaux annoncés (actuellement&nbsp;:
+          mardi 17h-19h et samedi 15h-19h). La date de cutoff est fixée à <strong>la veille du créneau,
+          18h</strong>&nbsp;: au-delà, seul le créneau suivant est proposé.
+        </p>
+        <p>
+          Le client s&apos;engage à être présent à l&apos;adresse indiquée pendant le créneau choisi. En cas
           d&apos;empêchement, il est invité à prévenir la boutique par téléphone au{' '}
           <a href={`tel:${SITE.telephone}`}>{SITE.telephoneDisplay}</a>.
         </p>
         <p>
-          Toute commande non retirée sans information préalable dans un délai raisonnable pourra être remise
-          en vente, les produits frais ne pouvant être conservés.
+          Toute commande non honorée par le client (absence à l&apos;adresse, absence de réponse) sans information
+          préalable pourra entraîner&nbsp;: (i) la remise en vente des produits frais, (ii) le refus de toute
+          nouvelle commande en cas de récidive.
         </p>
       </section>
 
@@ -98,9 +114,9 @@ export default function CgvPage() {
           site.
         </p>
         <p>
-          Toutefois, en cas de produit manifestement non conforme ou défectueux constaté lors du retrait,
-          le client peut le signaler immédiatement en boutique pour échange ou remboursement, sans préjudice
-          des garanties légales ci-dessous.
+          Toutefois, en cas de produit manifestement non conforme ou défectueux constaté à la livraison,
+          le client peut le signaler immédiatement au livreur ou au Vendeur pour échange ou remboursement,
+          sans préjudice des garanties légales ci-dessous.
         </p>
       </section>
 

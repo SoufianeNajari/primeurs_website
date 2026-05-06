@@ -36,7 +36,10 @@ export default function LandingPage() {
       {/* 4. Section "Infos pratiques" */}
       <section className="py-20 bg-white border-t border-neutral-200">
         <div className="max-w-5xl mx-auto px-4">
-          <h2 className="text-3xl md:text-4xl font-serif text-center text-neutral-800 mb-12">Infos pratiques</h2>
+          <h2 className="text-3xl md:text-4xl font-serif text-center text-neutral-800 mb-2">Notre boutique d&apos;origine</h2>
+          <p className="text-center text-neutral-500 mb-12 max-w-xl mx-auto">
+            Vos paniers sont préparés et expédiés depuis Pontault Primeurs. Pour le retrait sur place, suivez les horaires de la boutique.
+          </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
             {/* Horaires */}
             <div className="bg-neutral-50 p-10 border border-neutral-200">
