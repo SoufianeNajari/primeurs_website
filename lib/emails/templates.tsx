@@ -5,6 +5,7 @@ import {
   Heading,
   Hr,
   Html,
+  Link as EmailLink,
   Preview,
   Section,
   Text,
@@ -57,6 +58,10 @@ function formatPrice(n: number): string {
   return `${n.toFixed(2).replace('.', ',')} €`;
 }
 
+function formatPriceCents(c: number): string {
+  return formatPrice(c / 100);
+}
+
 function formatDateLong(iso: string | null | undefined): string | null {
   if (!iso) return null;
   const d = new Date(iso + 'T00:00:00');
@@ -67,6 +72,18 @@ function formatDateLong(iso: string | null | undefined): string | null {
     month: 'long',
     year: 'numeric',
   });
+}
+
+function buildAdresseFull(adresse: string, complementAdresse: string | null | undefined, codePostal: string, ville: string): string {
+  const parts = [adresse];
+  if (complementAdresse) parts.push(complementAdresse);
+  parts.push(`${codePostal} ${ville}`);
+  return parts.join(', ');
+}
+
+function buildMapsUrl(adresse: string, codePostal: string, ville: string): string {
+  const q = encodeURIComponent(`${adresse}, ${codePostal} ${ville}, France`);
+  return `https://www.google.com/maps/search/?api=1&query=${q}`;
 }
 
 const main = {
@@ -183,7 +200,7 @@ function LignesTable({ lignes, lockPrices = false }: { lignes: LigneCommande[]; 
               </td>
               <td style={{ ...tdStyle, textAlign: 'center' as const, fontWeight: 600 }}>{l.quantite}</td>
               <td style={{ ...tdStyle, textAlign: 'right' as const }}>
-                {incertain ? <span style={{ color: BRAND.muted, fontStyle: 'italic' }}>à la remise</span> : formatPrice(Number(l.prix))}
+                {incertain ? <span style={{ color: BRAND.muted, fontStyle: 'italic' }}>à la pesée</span> : formatPrice(Number(l.prix))}
               </td>
               <td style={{ ...tdStyle, textAlign: 'right' as const, fontWeight: 600 }}>
                 {sousTotal != null ? formatPrice(sousTotal) : '—'}
@@ -210,14 +227,21 @@ function Footer() {
   );
 }
 
-function ShopEmail(props: {
+type LivraisonInfos = {
+  adresse: string;
+  complementAdresse?: string | null;
+  ville: string;
+  codePostal: string;
+  creneauLabel: string;
+  dateLivraison: string;
+  fraisLivraisonCents: number;
+};
+
+function ShopEmail(props: LivraisonInfos & {
   prenom: string;
   nom: string;
   email: string;
   telephone: string;
-  jourRetrait: string;
-  creneau?: string | null;
-  dateRetraitSouhaite?: string | null;
   message?: string | null;
   lignes: LigneCommande[];
   orderId: string;
@@ -227,41 +251,43 @@ function ShopEmail(props: {
   const total = totalEstime(props.lignes);
   const incertain = hasIncertain(props.lignes);
   const borneMax = total != null ? Math.round(total * props.fourchetteMaxPct * 100) / 100 : null;
-  const dateLong = formatDateLong(props.dateRetraitSouhaite);
+  const dateLong = formatDateLong(props.dateLivraison);
+  const adresseFull = buildAdresseFull(props.adresse, props.complementAdresse, props.codePostal, props.ville);
+  const mapsUrl = buildMapsUrl(props.adresse, props.codePostal, props.ville);
 
   return (
     <Html>
       <Head />
-      <Preview>Commande {props.prenom} {props.nom} — retrait {dateLong || props.jourRetrait}</Preview>
+      <Preview>Livraison {props.prenom} {props.nom} — {dateLong || props.creneauLabel} — {props.ville}</Preview>
       <Body style={main}>
         <Container style={container}>
           <Heading as="h1" style={h1}>
-            Commande #{props.orderId.slice(0, 8).toUpperCase()}
+            Livraison #{props.orderId.slice(0, 8).toUpperCase()}
           </Heading>
           <Text style={muted}>Reçue le {props.date}</Text>
 
-          {dateLong ? (
-            <Section
+          <Section
+            style={{
+              backgroundColor: BRAND.bg,
+              border: `2px solid ${BRAND.green}`,
+              padding: '16px 20px',
+              margin: '16px 0 24px',
+              textAlign: 'center' as const,
+            }}
+          >
+            <Text
               style={{
-                backgroundColor: BRAND.bg,
-                border: `2px solid ${BRAND.green}`,
-                padding: '16px 20px',
-                margin: '16px 0 24px',
-                textAlign: 'center' as const,
+                color: BRAND.green,
+                fontSize: '11px',
+                letterSpacing: '2px',
+                textTransform: 'uppercase' as const,
+                margin: '0 0 6px',
+                fontWeight: 600,
               }}
             >
-              <Text
-                style={{
-                  color: BRAND.green,
-                  fontSize: '11px',
-                  letterSpacing: '2px',
-                  textTransform: 'uppercase' as const,
-                  margin: '0 0 6px',
-                  fontWeight: 600,
-                }}
-              >
-                Retrait souhaité
-              </Text>
+              Créneau livraison
+            </Text>
+            {dateLong && (
               <Text
                 style={{
                   fontFamily: 'Georgia, serif',
@@ -273,34 +299,33 @@ function ShopEmail(props: {
               >
                 {dateLong}
               </Text>
-              <Text style={{ fontSize: '15px', color: BRAND.green, margin: '6px 0 0' }}>
-                {props.jourRetrait}{props.creneau && <> · {props.creneau}</>}
-              </Text>
-            </Section>
-          ) : (
-            <Section
-              style={{
-                backgroundColor: BRAND.bg,
-                border: `1px solid ${BRAND.border}`,
-                padding: '12px 16px',
-                margin: '16px 0 24px',
-              }}
-            >
-              <Text style={{ ...paragraph, fontSize: '17px', color: BRAND.green, margin: 0 }}>
-                <strong>Retrait : {props.jourRetrait}</strong>
-                {props.creneau && <> · {props.creneau}</>}
-              </Text>
-            </Section>
+            )}
+            <Text style={{ fontSize: '15px', color: BRAND.green, margin: '6px 0 0' }}>
+              {props.creneauLabel}
+            </Text>
+          </Section>
+
+          <Heading as="h2" style={h2}>Adresse de livraison</Heading>
+          <Text style={{ ...paragraph, fontSize: '17px', margin: '0 0 6px' }}>
+            <strong>{adresseFull}</strong>
+          </Text>
+          {props.complementAdresse && (
+            <Text style={muted}>Complément : {props.complementAdresse}</Text>
           )}
+          <Text style={paragraph}>
+            <EmailLink href={mapsUrl} style={{ color: BRAND.green, fontWeight: 600 }}>
+              📍 Ouvrir dans Google Maps
+            </EmailLink>
+          </Text>
 
           <Heading as="h2" style={h2}>Client</Heading>
           <Text style={paragraph}>
             <strong>{props.prenom} {props.nom}</strong>
           </Text>
           <Text style={{ ...paragraph, fontSize: '17px' }}>
-            📞 <a href={`tel:${props.telephone.replace(/\s+/g, '')}`} style={{ color: BRAND.green, textDecoration: 'none' }}>
+            📞 <EmailLink href={`tel:${props.telephone.replace(/\s+/g, '')}`} style={{ color: BRAND.green, textDecoration: 'none' }}>
               <strong>{props.telephone}</strong>
-            </a>
+            </EmailLink>
           </Text>
           <Text style={muted}>✉️ {props.email}</Text>
           {props.message && (
@@ -322,8 +347,8 @@ function ShopEmail(props: {
               }}
             >
               <Text style={{ ...paragraph, color: BRAND.alertText, margin: 0, fontSize: '14px' }}>
-                <strong>Prix communiqué au client à la remise.</strong> Une ou plusieurs lignes
-                sont marquées « À peser / calibrer » : les prix seront fixés au moment du retrait.
+                <strong>Prix communiqué au client à la livraison.</strong> Une ou plusieurs lignes
+                sont marquées « À peser / calibrer ».
               </Text>
             </Section>
           ) : (
@@ -336,6 +361,14 @@ function ShopEmail(props: {
                       <td style={{ padding: '4px 0', color: BRAND.muted, fontSize: '14px' }}>Total estimé annoncé client</td>
                       <td style={{ padding: '4px 0', textAlign: 'right' as const, fontWeight: 600 }}>{formatPrice(total)}</td>
                     </tr>
+                    {props.fraisLivraisonCents > 0 && (
+                      <tr>
+                        <td style={{ padding: '4px 0', color: BRAND.muted, fontSize: '14px' }}>Frais de livraison</td>
+                        <td style={{ padding: '4px 0', textAlign: 'right' as const, fontWeight: 600 }}>
+                          {formatPriceCents(props.fraisLivraisonCents)}
+                        </td>
+                      </tr>
+                    )}
                     {borneMax != null && (
                       <tr>
                         <td style={{ padding: '4px 0', color: BRAND.muted, fontSize: '14px' }}>
@@ -350,7 +383,7 @@ function ShopEmail(props: {
                             color: BRAND.green,
                           }}
                         >
-                          {formatPrice(borneMax)}
+                          {formatPrice(borneMax + props.fraisLivraisonCents / 100)}
                         </td>
                       </tr>
                     )}
@@ -367,11 +400,11 @@ function ShopEmail(props: {
                     }}
                   >
                     <Text style={{ ...paragraph, color: BRAND.alertText, margin: 0, fontSize: '14px' }}>
-                      ⚠️ <strong>Si le coût réel dépasse {formatPrice(borneMax)}</strong>,
+                      ⚠️ <strong>Si le coût réel dépasse la borne haute</strong>,
                       prévenir le client avant préparation au{' '}
-                      <a href={`tel:${props.telephone.replace(/\s+/g, '')}`} style={{ color: BRAND.alertText }}>
+                      <EmailLink href={`tel:${props.telephone.replace(/\s+/g, '')}`} style={{ color: BRAND.alertText }}>
                         <strong>{props.telephone}</strong>
-                      </a>.
+                      </EmailLink>.
                     </Text>
                   </Section>
                 )}
@@ -387,28 +420,28 @@ function ShopEmail(props: {
   );
 }
 
-function ClientEmail(props: {
+function ClientEmail(props: LivraisonInfos & {
   prenom: string;
-  jourRetrait: string;
-  creneau?: string | null;
-  dateRetraitSouhaite?: string | null;
   lignes: LigneCommande[];
   fourchetteBornes: FourchetteBornes;
 }) {
   const total = totalEstime(props.lignes);
   const incertain = hasIncertain(props.lignes);
   const fourchette = total != null && !incertain ? calcFourchette(total, props.fourchetteBornes) : null;
-  const dateLong = formatDateLong(props.dateRetraitSouhaite);
+  const dateLong = formatDateLong(props.dateLivraison);
+  const adresseFull = buildAdresseFull(props.adresse, props.complementAdresse, props.codePostal, props.ville);
+  const totalAvecFraisMin = fourchette ? fourchette.min + props.fraisLivraisonCents / 100 : null;
+  const totalAvecFraisMax = fourchette ? fourchette.max + props.fraisLivraisonCents / 100 : null;
 
   return (
     <Html>
       <Head />
-      <Preview>Votre commande chez {SITE.name} est confirmée</Preview>
+      <Preview>Votre livraison Primeur Chez Vous est confirmée</Preview>
       <Body style={main}>
         <Container style={container}>
           <Heading as="h1" style={h1}>Bonjour {props.prenom},</Heading>
           <Text style={paragraph}>
-            Nous vous remercions de votre confiance. Votre commande a bien été enregistrée.
+            Nous vous remercions de votre confiance. Votre commande a bien été enregistrée et sera livrée à votre adresse.
           </Text>
 
           <Section
@@ -429,7 +462,7 @@ function ClientEmail(props: {
                 margin: '0 0 8px',
               }}
             >
-              Votre retrait est prévu
+              Votre livraison est prévue
             </Text>
             <Text
               style={{
@@ -440,18 +473,14 @@ function ClientEmail(props: {
                 color: BRAND.text,
               }}
             >
-              {dateLong || props.jourRetrait}
+              {dateLong || props.creneauLabel}
             </Text>
-            {dateLong && (
-              <Text style={{ fontSize: '14px', color: BRAND.muted, margin: '4px 0 0' }}>
-                {props.jourRetrait}
-              </Text>
-            )}
-            {props.creneau && (
-              <Text style={{ fontSize: '16px', color: BRAND.green, margin: '6px 0 0' }}>
-                Créneau : {props.creneau}
-              </Text>
-            )}
+            <Text style={{ fontSize: '16px', color: BRAND.green, margin: '6px 0 0' }}>
+              {props.creneauLabel}
+            </Text>
+            <Text style={{ ...muted, marginTop: '12px' }}>
+              à <strong>{adresseFull}</strong>
+            </Text>
           </Section>
 
           <Heading as="h2" style={h2}>Récapitulatif</Heading>
@@ -459,18 +488,32 @@ function ClientEmail(props: {
 
           {incertain ? (
             <Text style={{ ...paragraph, marginTop: '16px' }}>
-              <strong>Prix à la remise.</strong> Certains produits seront pesés ou calibrés
-              au moment du retrait : nous vous communiquerons le prix exact à ce moment-là.
+              <strong>Prix à la livraison.</strong> Certains produits seront pesés ou calibrés
+              à la préparation : nous vous communiquerons le prix exact à la livraison.
             </Text>
           ) : (
             fourchette && (
               <>
-                <Text style={{ ...paragraph, marginTop: '16px', fontSize: '17px' }}>
-                  <strong>Total final estimé : {formatFourchette(fourchette)}</strong>
+                <Text style={{ ...paragraph, marginTop: '16px' }}>
+                  Sous-total estimé : <strong>{formatFourchette(fourchette)}</strong>
                 </Text>
+                {props.fraisLivraisonCents > 0 ? (
+                  <Text style={paragraph}>
+                    Frais de livraison : <strong>{formatPriceCents(props.fraisLivraisonCents)}</strong>
+                  </Text>
+                ) : (
+                  <Text style={{ ...paragraph, color: BRAND.green }}>
+                    <strong>Livraison offerte</strong>
+                  </Text>
+                )}
+                {totalAvecFraisMin != null && totalAvecFraisMax != null && (
+                  <Text style={{ ...paragraph, fontSize: '17px', marginTop: '8px' }}>
+                    <strong>Total final estimé : {formatPrice(totalAvecFraisMin)} – {formatPrice(totalAvecFraisMax)}</strong>
+                  </Text>
+                )}
                 <Text style={muted}>
-                  Prix indicatif, ajusté à la remise (cours du jour, poids réel).
-                  Si l&apos;écart dépasse cette fourchette, nous vous contactons avant préparation.
+                  Prix indicatif, ajusté à la préparation (cours du jour, poids réel).
+                  Si l&apos;écart dépasse cette fourchette, nous vous contactons avant livraison.
                 </Text>
               </>
             )
@@ -485,7 +528,7 @@ function ClientEmail(props: {
               marginTop: '24px',
             }}
           >
-            Le règlement s&apos;effectue directement en boutique lors du retrait.
+            Le règlement s&apos;effectue à la livraison (CB ou espèces).
           </Text>
 
           <Footer />
@@ -495,30 +538,28 @@ function ClientEmail(props: {
   );
 }
 
-export async function emailShop(args: {
+export type EmailShopArgs = LivraisonInfos & {
   prenom: string;
   nom: string;
   email: string;
   telephone: string;
-  jourRetrait: string;
-  creneau?: string | null;
-  dateRetraitSouhaite?: string | null;
   message?: string | null;
   lignes: LigneCommande[];
   orderId: string;
   fourchetteMaxPct: number;
-}): Promise<string> {
+};
+
+export type EmailClientArgs = LivraisonInfos & {
+  prenom: string;
+  lignes: LigneCommande[];
+  fourchetteBornes: FourchetteBornes;
+};
+
+export async function emailShop(args: EmailShopArgs): Promise<string> {
   const date = new Date().toLocaleString('fr-FR', { timeZone: 'Europe/Paris' });
   return render(<ShopEmail {...args} date={date} />);
 }
 
-export async function emailClient(args: {
-  prenom: string;
-  jourRetrait: string;
-  creneau?: string | null;
-  dateRetraitSouhaite?: string | null;
-  lignes: LigneCommande[];
-  fourchetteBornes: FourchetteBornes;
-}): Promise<string> {
+export async function emailClient(args: EmailClientArgs): Promise<string> {
   return render(<ClientEmail {...args} />);
 }

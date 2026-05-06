@@ -63,8 +63,8 @@ export default async function OrdersPage({ searchParams }: { searchParams?: { pe
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto">
       <div className="mb-6 no-print">
-        <h2 className="text-2xl font-serif text-neutral-800 mb-2">Suivi des commandes</h2>
-        <p className="text-sm text-neutral-500 mb-3">Fiche de préparation des commandes à retirer ({PERIODE_LABEL[periode].toLowerCase()}).</p>
+        <h2 className="text-2xl font-serif text-neutral-800 mb-2">Suivi des livraisons</h2>
+        <p className="text-sm text-neutral-500 mb-3">Fiche de préparation des commandes à livrer ({PERIODE_LABEL[periode].toLowerCase()}).</p>
         <div className="flex flex-wrap gap-2">
           {periodes.map((p) => (
             <a

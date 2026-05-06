@@ -220,29 +220,30 @@ export async function POST(request: Request) {
 
     const shopEmailAddr = process.env.SHOP_EMAIL || 'magasin@primeur-test.com';
     const fourchetteBornes = await getFourchetteBornes();
-    // Pour rester compatible avec les templates existants (refondés en O3),
-    // on passe le créneau dans `jourRetrait`/`creneau`. Voir Sprint O3 pour
-    // la refonte complète des emails livraison.
-    const jourLabel = creneau.label;
+    const livraisonInfos = {
+      adresse,
+      complementAdresse: complementAdresse || null,
+      ville,
+      codePostal,
+      creneauLabel: creneau.label,
+      dateLivraison: dateLivraisonRaw,
+      fraisLivraisonCents: fraisCents,
+    };
     const [shopHtml, clientHtml] = await Promise.all([
       emailShop({
+        ...livraisonInfos,
         prenom: client.prenom,
         nom: client.nom,
         email: client.email,
         telephone: client.telephone,
-        jourRetrait: jourLabel,
-        creneau: null,
-        dateRetraitSouhaite: dateLivraisonRaw,
         message,
         lignes: lignesNormalisees,
         orderId,
         fourchetteMaxPct: fourchetteBornes.max,
       }),
       emailClient({
+        ...livraisonInfos,
         prenom: client.prenom,
-        jourRetrait: jourLabel,
-        creneau: null,
-        dateRetraitSouhaite: dateLivraisonRaw,
         lignes: lignesNormalisees,
         fourchetteBornes,
       }),
@@ -250,7 +251,7 @@ export async function POST(request: Request) {
     await Promise.all([
       sendEmail({
         to: shopEmailAddr,
-        subject: `Nouvelle livraison — ${client.prenom} ${client.nom} — ${jourLabel} — ${ville}`,
+        subject: `Nouvelle livraison — ${client.prenom} ${client.nom} — ${creneau.label} — ${ville}`,
         html: shopHtml,
       }),
       sendEmail({

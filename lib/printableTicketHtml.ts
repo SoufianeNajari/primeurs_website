@@ -24,6 +24,14 @@ export type TicketOrder = {
   jour_retrait?: string | null
   creneau?: string | null
   prix_final?: number | null
+  // Champs livraison (O1+)
+  adresse?: string | null
+  complement_adresse?: string | null
+  ville?: string | null
+  code_postal?: string | null
+  creneau_livraison?: string | null
+  date_livraison?: string | null
+  frais_livraison_cents?: number | null
 }
 
 function esc(s: string | null | undefined): string {
@@ -67,7 +75,8 @@ export function renderTicketHtml(
   fourchette: FourchetteBornes,
 ): string {
   const tot = totalEstime(order.lignes)
-  const dateRetrait = order.date_retrait_souhaite || order.created_at.slice(0, 10)
+  const isLivraison = !!order.adresse
+  const dateRef = order.date_livraison || order.date_retrait_souhaite || order.created_at.slice(0, 10)
 
   const lignesHtml = order.lignes.map((ligne) => {
     const incertain = ligne.prix == null
@@ -134,8 +143,16 @@ export function renderTicketHtml(
       </div>
     </div>
     <div style="margin-bottom:6px;font-size:10pt">
-      <strong>Retrait :</strong> ${formatDateLongue(dateRetrait)}${order.jour_retrait ? ` · ${esc(order.jour_retrait)}` : ''}${order.creneau ? ` · ${esc(order.creneau)}` : ''}
+      <strong>${isLivraison ? 'Livraison' : 'Retrait'} :</strong> ${formatDateLongue(dateRef)}${
+        isLivraison
+          ? (order.creneau_livraison ? ` · ${esc(order.creneau_livraison)}` : '')
+          : `${order.jour_retrait ? ` · ${esc(order.jour_retrait)}` : ''}${order.creneau ? ` · ${esc(order.creneau)}` : ''}`
+      }
     </div>
+    ${isLivraison ? `<div style="margin-bottom:6px;font-size:10pt;border:1px solid #000;padding:4px 6px">
+      <strong>Adresse :</strong> ${esc(order.adresse)}${order.complement_adresse ? ` · ${esc(order.complement_adresse)}` : ''}<br/>
+      ${esc(order.code_postal || '')} ${esc(order.ville || '')}
+    </div>` : ''}
     <table style="width:100%;border-collapse:collapse;font-size:9.5pt;margin-bottom:6px">
       <thead>
         <tr style="border-bottom:1px solid #000">

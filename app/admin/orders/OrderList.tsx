@@ -42,9 +42,23 @@ type Order = {
   jour_retrait?: string | null;
   creneau?: string | null;
   prix_final?: number | null;
+  // Champs livraison (O1+)
+  adresse?: string | null;
+  complement_adresse?: string | null;
+  ville?: string | null;
+  code_postal?: string | null;
+  creneau_livraison?: string | null;
+  date_livraison?: string | null;
+  frais_livraison_cents?: number | null;
 }
 
 type StatusFilter = 'tous' | 'reçue' | 'prête' | 'retirée';
+type CreneauFilter = 'tous' | 'mardi' | 'samedi';
+
+function buildMapsUrl(adresse: string, codePostal: string | null | undefined, ville: string | null | undefined): string {
+  const q = encodeURIComponent(`${adresse}, ${codePostal ?? ''} ${ville ?? ''}, France`.trim());
+  return `https://www.google.com/maps/search/?api=1&query=${q}`;
+}
 
 const euro = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
@@ -143,6 +157,7 @@ export default function OrderList({
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(() => {
     return initialOrders.some(o => o.statut === 'reçue') ? 'reçue' : 'tous'
   })
+  const [creneauFilter, setCreneauFilter] = useState<CreneauFilter>('tous')
   const [search, setSearch] = useState('')
   const [prepStates, setPrepStates] = useState<Record<string, Set<string>>>({})
   const [expandedRetired, setExpandedRetired] = useState<Set<string>>(new Set())
@@ -252,17 +267,31 @@ export default function OrderList({
       if (normalizeText(o.client_nom).includes(qText)) return true
       if (qDigits.length >= 2 && digitsOnly(o.client_telephone).includes(qDigits)) return true
       if (qText.length >= 3 && shortId(o.id).toLowerCase().includes(qText)) return true
-      // Match commentaires de ligne (« avocat mûr », « pas trop gros »…)
+      // Match commentaires de ligne
       if (qText.length >= 3 && o.lignes.some(l => l.commentaire && normalizeText(l.commentaire).includes(qText))) return true
+      // Match ville et adresse livraison
+      if (qText.length >= 2 && o.ville && normalizeText(o.ville).includes(qText)) return true
+      if (qText.length >= 3 && o.adresse && normalizeText(o.adresse).includes(qText)) return true
       return false
     })
   }, [orders, search])
 
+  const filteredByCreneau = useMemo(() => {
+    if (creneauFilter === 'tous') return filteredBySearch
+    return filteredBySearch.filter(o => (o.creneau_livraison || '').toLowerCase().startsWith(creneauFilter))
+  }, [filteredBySearch, creneauFilter])
+
   const counts = useMemo(() => ({
+    tous: filteredByCreneau.length,
+    'reçue': filteredByCreneau.filter(o => o.statut === 'reçue').length,
+    'prête': filteredByCreneau.filter(o => o.statut === 'prête').length,
+    'retirée': filteredByCreneau.filter(o => o.statut === 'retirée').length,
+  }), [filteredByCreneau])
+
+  const creneauCounts = useMemo(() => ({
     tous: filteredBySearch.length,
-    'reçue': filteredBySearch.filter(o => o.statut === 'reçue').length,
-    'prête': filteredBySearch.filter(o => o.statut === 'prête').length,
-    'retirée': filteredBySearch.filter(o => o.statut === 'retirée').length,
+    mardi: filteredBySearch.filter(o => (o.creneau_livraison || '').toLowerCase().startsWith('mardi')).length,
+    samedi: filteredBySearch.filter(o => (o.creneau_livraison || '').toLowerCase().startsWith('samedi')).length,
   }), [filteredBySearch])
 
   const setStatusWithToast = async (id: string, newStatus: string, currentStatus: string, label: string, withUndo = false) => {
@@ -321,14 +350,14 @@ export default function OrderList({
     })
   }
 
-  const visibleOrders = statusFilter === 'tous' ? filteredBySearch : filteredBySearch.filter(o => o.statut === statusFilter)
+  const visibleOrders = statusFilter === 'tous' ? filteredByCreneau : filteredByCreneau.filter(o => o.statut === statusFilter)
   const activeOrders = visibleOrders.filter(o => o.statut !== 'retirée')
   const completedOrders = visibleOrders.filter(o => o.statut === 'retirée')
 
   const groupedActive = useMemo(() => {
     const groups = new Map<string, { label: string; badge: string | null; orders: Order[] }>()
     for (const o of activeOrders) {
-      const b = jourBucketLabel(o.date_retrait_souhaite, o.created_at)
+      const b = jourBucketLabel(o.date_livraison ?? o.date_retrait_souhaite, o.created_at)
       if (!groups.has(b.key)) groups.set(b.key, { label: b.label, badge: b.badge, orders: [] })
       groups.get(b.key)!.orders.push(o)
     }
@@ -411,18 +440,48 @@ export default function OrderList({
           </div>
         </div>
 
-        {/* RETRAIT */}
-        <div className="bg-green-primary/5 border border-green-primary/20 p-3 mb-4">
-          <div className="text-[10px] uppercase tracking-widest text-green-primary font-semibold mb-1">À préparer pour</div>
-          <div className="font-serif text-base text-neutral-800 capitalize">
-            {order.date_retrait_souhaite ? formatDateLongue(order.date_retrait_souhaite) : `Date de commande : ${formatDateLongue(order.created_at.slice(0, 10))}`}
-          </div>
-          {(order.jour_retrait || order.creneau) && (
-            <div className="text-xs text-neutral-600 mt-0.5">
-              {order.jour_retrait}{order.creneau ? ` — ${order.creneau}` : ''}
+        {/* LIVRAISON / RETRAIT */}
+        {order.adresse ? (
+          <div className="bg-green-primary/5 border border-green-primary/20 p-3 mb-4 space-y-1">
+            <div className="text-[10px] uppercase tracking-widest text-green-primary font-semibold">À livrer le</div>
+            <div className="font-serif text-base text-neutral-800 capitalize">
+              {order.date_livraison ? formatDateLongue(order.date_livraison) : `Date de commande : ${formatDateLongue(order.created_at.slice(0, 10))}`}
             </div>
-          )}
-        </div>
+            {order.creneau_livraison && (
+              <div className="text-xs text-neutral-600">{order.creneau_livraison}</div>
+            )}
+            <div className="pt-1.5 border-t border-green-primary/20 mt-1.5">
+              <div className="text-[10px] uppercase tracking-widest text-neutral-500 font-semibold mb-0.5">Adresse</div>
+              <div className="text-sm text-neutral-800 font-medium">{order.adresse}</div>
+              {order.complement_adresse && (
+                <div className="text-xs text-neutral-600 italic">{order.complement_adresse}</div>
+              )}
+              <div className="text-sm text-neutral-700">
+                {order.code_postal} {order.ville}
+              </div>
+              <a
+                href={buildMapsUrl(order.adresse, order.code_postal, order.ville)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs font-medium text-green-primary hover:underline mt-1"
+              >
+                📍 Ouvrir dans Google Maps
+              </a>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-green-primary/5 border border-green-primary/20 p-3 mb-4">
+            <div className="text-[10px] uppercase tracking-widest text-green-primary font-semibold mb-1">À préparer pour (retrait)</div>
+            <div className="font-serif text-base text-neutral-800 capitalize">
+              {order.date_retrait_souhaite ? formatDateLongue(order.date_retrait_souhaite) : `Date de commande : ${formatDateLongue(order.created_at.slice(0, 10))}`}
+            </div>
+            {(order.jour_retrait || order.creneau) && (
+              <div className="text-xs text-neutral-600 mt-0.5">
+                {order.jour_retrait}{order.creneau ? ` — ${order.creneau}` : ''}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* LIGNES */}
         <div className="border border-neutral-200 mb-4">
@@ -531,12 +590,24 @@ export default function OrderList({
         ) : tot.total != null && (
           <div className="space-y-2 mb-3">
             <div className="flex justify-between items-baseline border-t border-neutral-200 pt-3">
-              <span className="text-sm text-neutral-600">Total estimé annoncé client</span>
-              <span className="font-serif text-xl text-neutral-800">{euro.format(tot.total)}</span>
+              <span className="text-sm text-neutral-600">Sous-total estimé</span>
+              <span className="font-serif text-lg text-neutral-800">{euro.format(tot.total)}</span>
             </div>
+            {order.frais_livraison_cents != null && order.frais_livraison_cents > 0 && (
+              <div className="flex justify-between items-baseline">
+                <span className="text-sm text-neutral-600">Frais de livraison</span>
+                <span className="text-sm font-medium text-neutral-700">{euro.format(order.frais_livraison_cents / 100)}</span>
+              </div>
+            )}
+            {order.adresse && (order.frais_livraison_cents == null || order.frais_livraison_cents === 0) && (
+              <div className="flex justify-between items-baseline">
+                <span className="text-sm text-green-primary">Livraison offerte</span>
+                <span className="text-sm font-medium text-green-primary italic">0,00 €</span>
+              </div>
+            )}
             <div className="flex justify-between items-baseline">
               <span className="text-xs text-orange-700">Borne haute (+{Math.round((fourchette.max - 1) * 100)}%)</span>
-              <span className="font-semibold text-orange-700">{euro.format(calcFourchette(tot.total, fourchette).max)}</span>
+              <span className="font-semibold text-orange-700">{euro.format(calcFourchette(tot.total, fourchette).max + (order.frais_livraison_cents ?? 0) / 100)}</span>
             </div>
             <div className="bg-orange-50 border border-orange-200 px-3 py-2 text-xs text-orange-900">
               ⚠️ Si dépassement de la borne haute, prévenir le client au <a href={`tel:${order.client_telephone}`} className="font-semibold underline">{order.client_telephone}</a>
@@ -619,6 +690,23 @@ export default function OrderList({
               {filteredBySearch.length} / {orders.length}
             </span>
           )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[10px] uppercase tracking-widest text-neutral-400 font-medium pr-1">Créneau</span>
+          {(['tous', 'mardi', 'samedi'] as CreneauFilter[]).map(c => (
+            <button
+              key={c}
+              onClick={() => setCreneauFilter(c)}
+              className={`text-[11px] uppercase tracking-widest font-medium px-3 py-1.5 border transition-colors ${
+                creneauFilter === c
+                  ? 'border-green-primary text-green-primary bg-green-primary/5'
+                  : 'border-neutral-200 text-neutral-500 hover:border-neutral-400 hover:text-neutral-800'
+              }`}
+            >
+              {c === 'tous' ? 'Tous' : c === 'mardi' ? 'Mardi' : 'Samedi'} <span className="text-neutral-400 ml-1">({creneauCounts[c]})</span>
+            </button>
+          ))}
         </div>
       </div>
 
