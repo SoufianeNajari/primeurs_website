@@ -4,6 +4,13 @@ export const SITE = {
   shortName: 'Primeur Chez Vous',
   description:
     'Livraison à domicile de fruits, légumes et fromages frais, sélectionnés chaque matin au marché de Rungis. Mardi et samedi, paiement à la réception.',
+  // Boutique partenaire (Pontault Primeurs) — sert de référence historique pour les avis Google.
+  // Cf. option A validée 2026-05-06 : on capitalise sur les avis sans réintroduire le co-branding partout.
+  partenaire: {
+    name: 'Pontault Primeurs',
+    anneeFondation: 1992,
+    description: 'Primeur de proximité fondé en 1992 à Pontault-Combault.',
+  },
   url: process.env.NEXT_PUBLIC_SITE_URL || 'https://pontaultprimeurs.fr',
   locale: 'fr_FR',
   telephone: '+33160296298',
@@ -33,6 +40,19 @@ export const SITE = {
     instagram: '',
     facebook: '',
   },
+};
+
+// Persona livreur — incarne la marque Primeur Chez Vous sur la home et la page /qui-livre.
+// Placeholder photo et bio à remplacer par les vraies infos quand fournies par l'utilisateur.
+// Photo : Unsplash libre (https://unsplash.com/license). Auteur : Christopher Campbell.
+export const LIVREUR = {
+  prenom: 'Karim',
+  nomComplet: '',
+  bio:
+    "Bonjour, moi c'est Karim. Chaque mardi et samedi, je me lève à 4 h pour aller sélectionner moi-même, dans les allées de Rungis, les fruits, légumes et fromages affinés que je vous livrerai dans la journée. Je suis le frère du primeur de Pontault-Combault — j'ai grandi entouré de cagettes, j'ai appris à choisir un melon mûr avant même de savoir lire, et je connais désormais mes clients par leur prénom. Une question sur un produit ? Vous m'appelez direct. C'est ça, ma promesse.",
+  photoUrl:
+    'https://images.unsplash.com/photo-1566753323558-f4e0952af115?auto=format&fit=crop&w=800&q=80',
+  photoAlt: 'Portrait du livreur Primeur Chez Vous',
 };
 
 export const DEFAULT_OG_IMAGE = `${SITE.url}/images/hero.jpg`;

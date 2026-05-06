@@ -4,6 +4,7 @@ import HowItWorks from '@/components/HowItWorks';
 import SaisonSection from '@/components/SaisonSection';
 import GoogleReviews from '@/components/GoogleReviews';
 import VillesDesservies from '@/components/VillesDesservies';
+import LivreurSection from '@/components/LivreurSection';
 import { Sunrise, Leaf, ShieldCheck, Phone } from 'lucide-react';
 import { SITE } from '@/lib/site';
 
@@ -17,6 +18,9 @@ export default function LandingPage() {
 
       {/* 2. Villes desservies (juste sous le hero pour répondre direct "tu livres chez moi ?") */}
       <VillesDesservies />
+
+      {/* 2bis. Visage humain de la marque — incarne la promesse de proximité */}
+      <LivreurSection />
 
       {/* 3. De saison en ce moment */}
       <SaisonSection />

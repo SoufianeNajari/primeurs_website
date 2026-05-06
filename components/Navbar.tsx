@@ -60,6 +60,12 @@ export default function Navbar({ isClientAuthed = false }: { isClientAuthed?: bo
             Notre boutique
           </Link>
           <Link
+            href="/qui-livre"
+            className={`font-medium tracking-widest uppercase text-[11px] transition-colors hover:text-green-primary ${pathname?.startsWith('/qui-livre') ? 'text-green-primary' : 'text-neutral-600'}`}
+          >
+            Qui livre&nbsp;?
+          </Link>
+          <Link
             href="/blog"
             className={`font-medium tracking-widest uppercase text-[11px] transition-colors hover:text-green-primary ${pathname?.startsWith('/blog') ? 'text-green-primary' : 'text-neutral-600'}`}
           >
@@ -108,6 +114,13 @@ export default function Navbar({ isClientAuthed = false }: { isClientAuthed?: bo
             onClick={() => setIsOpen(false)}
           >
             Notre boutique
+          </Link>
+          <Link
+            href="/qui-livre"
+            className={`text-[11px] tracking-widest uppercase font-medium px-4 py-4 border-l-2 ${pathname?.startsWith('/qui-livre') ? 'border-green-primary text-green-primary' : 'border-transparent text-neutral-600'}`}
+            onClick={() => setIsOpen(false)}
+          >
+            Qui livre&nbsp;?
           </Link>
           <Link
             href="/blog"
