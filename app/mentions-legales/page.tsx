@@ -11,29 +11,34 @@ export const metadata: Metadata = {
 
 export default function MentionsLegalesPage() {
   return (
-    <LegalLayout title="Mentions légales" lastUpdate="24 avril 2026">
+    <LegalLayout title="Mentions légales" lastUpdate="6 mai 2026">
       <section>
+        <div style={{ background: '#FFF4E5', border: '2px dashed #E0A030', padding: '12px 16px', marginBottom: '24px', color: '#7A4A00' }}>
+          <strong>⚠️ À COMPLÉTER avant mise en production</strong> — La marque Primeur Chez Vous est portée
+          par une micro-entreprise indépendante (en cours de création). Les coordonnées ci-dessous sont des
+          placeholders à remplacer par les informations officielles de la micro-entreprise dès son immatriculation.
+        </div>
+
         <h2>Éditeur du site</h2>
         <p>
           Le site <strong>{SITE.name}</strong> (accessible à l&apos;adresse{' '}
           <a href={SITE.url}>{SITE.url}</a>) est édité par&nbsp;:
         </p>
         <ul>
-          <li><strong>Raison sociale&nbsp;:</strong> Pontault Primeurs</li>
-          <li><strong>Forme juridique&nbsp;:</strong> Entrepreneur individuel</li>
-          <li><strong>Siège social&nbsp;:</strong> {SITE.address.street}, {SITE.address.postalCode} {SITE.address.city}, France</li>
-          <li><strong>SIRET&nbsp;:</strong> 388 873 002 00033</li>
-          <li><strong>RCS&nbsp;:</strong> Melun 388 873 002 (immatriculée le 1<sup>er</sup> octobre 1992)</li>
-          <li><strong>Code APE&nbsp;:</strong> 4721Z — Commerce de détail de fruits et légumes en magasin spécialisé</li>
-          <li><strong>N° TVA intracommunautaire&nbsp;:</strong> FR18388873002</li>
-          <li><strong>Téléphone&nbsp;:</strong> <a href={`tel:${SITE.telephone}`}>{SITE.telephoneDisplay}</a></li>
-          <li><strong>Email&nbsp;:</strong> <a href={`mailto:${SITE.email}`}>{SITE.email}</a></li>
+          <li><strong>Raison sociale&nbsp;:</strong> [À COMPLÉTER — nom commercial de la micro-entreprise]</li>
+          <li><strong>Forme juridique&nbsp;:</strong> Micro-entrepreneur (entreprise individuelle au régime micro-fiscal)</li>
+          <li><strong>Siège social&nbsp;:</strong> [À COMPLÉTER — adresse de l&apos;entrepreneur]</li>
+          <li><strong>SIRET&nbsp;:</strong> [À COMPLÉTER — 14 chiffres]</li>
+          <li><strong>Code APE&nbsp;:</strong> [À COMPLÉTER — ex 4799B Vente à domicile, ou 4721Z]</li>
+          <li><strong>N° TVA intracommunautaire&nbsp;:</strong> Non applicable (régime de la franchise en base de TVA, art. 293 B du CGI)</li>
+          <li><strong>Téléphone&nbsp;:</strong> <a href={`tel:${SITE.telephone}`}>{SITE.telephoneDisplay}</a> [À CONFIRMER — ligne dédiée ou numéro boutique]</li>
+          <li><strong>Email&nbsp;:</strong> <a href={`mailto:${SITE.email}`}>{SITE.email}</a> [À CONFIRMER — email dédié]</li>
         </ul>
       </section>
 
       <section>
         <h2>Directeur de la publication</h2>
-        <p>Lahcen Najari, en qualité d&apos;entrepreneur individuel.</p>
+        <p>[À COMPLÉTER — Prénom NOM], en qualité de micro-entrepreneur.</p>
       </section>
 
       <section>
@@ -64,8 +69,8 @@ export default function MentionsLegalesPage() {
         <p>
           {SITE.name} s&apos;efforce de fournir des informations exactes et à jour sur ce site, notamment
           concernant la disponibilité des produits et leurs prix. Toutefois, des erreurs ou omissions peuvent
-          survenir. En cas de divergence entre les informations affichées sur le site et celles constatées en
-          boutique, seules les informations constatées en boutique feront foi.
+          survenir. En cas de divergence entre les informations affichées sur le site et celles constatées
+          à la livraison, seules les informations constatées à la livraison feront foi.
         </p>
       </section>
 
