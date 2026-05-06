@@ -21,7 +21,7 @@ export default function ZonesLivreesPage() {
           </span>
           <h1 className="text-4xl md:text-5xl font-serif text-neutral-800 mb-4">Zones desservies</h1>
           <p className="text-neutral-600 max-w-xl mx-auto leading-relaxed">
-            Nous livrons 8 communes autour de Pontault-Combault, dans un rayon de 10 à 15 minutes en voiture depuis la boutique.
+            Nous livrons 8 communes autour de Pontault-Combault.
           </p>
         </header>
 

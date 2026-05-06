@@ -14,7 +14,7 @@ export default function VillesDesservies() {
             Nous livrons 8 communes
           </h2>
           <p className="text-sm text-neutral-500 max-w-md">
-            Mardi 17h-19h ou samedi 15h-19h, dans un rayon de 10 à 15 minutes en voiture autour de Pontault-Combault.
+            Mardi 17h-19h ou samedi 15h-19h, autour de Pontault-Combault.
           </p>
         </div>
 
