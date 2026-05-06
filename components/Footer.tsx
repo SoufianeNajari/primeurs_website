@@ -7,22 +7,24 @@ export default function Footer() {
       <div className="max-w-6xl mx-auto px-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10 pb-10 border-b border-neutral-700">
           <div>
-            <h2 className="text-2xl font-serif text-white mb-1 tracking-wide uppercase">
+            <h2 className="text-2xl font-serif text-white mb-3 tracking-wide uppercase">
               {SITE.name}
             </h2>
-            <p className="text-[10px] tracking-[0.25em] uppercase text-neutral-500 mb-3">by Pontault Primeurs</p>
             <p className="text-sm leading-relaxed">
-              Boutique d&apos;origine&nbsp;:<br />
-              {SITE.address.street}
-              <br />
-              {SITE.address.postalCode} {SITE.address.city}
+              Livraison à domicile de fruits, légumes et fromages frais, sélectionnés chaque matin à Rungis.
             </p>
-            <p className="text-sm mt-3">
+            <p className="text-sm mt-4">
               <a
                 href={`tel:${SITE.telephone}`}
-                className="hover:text-white transition-colors"
+                className="hover:text-white transition-colors block"
               >
                 {SITE.telephoneDisplay}
+              </a>
+              <a
+                href={`mailto:${SITE.email}`}
+                className="hover:text-white transition-colors block mt-1"
+              >
+                {SITE.email}
               </a>
             </p>
           </div>

@@ -4,7 +4,7 @@ import HowItWorks from '@/components/HowItWorks';
 import SaisonSection from '@/components/SaisonSection';
 import GoogleReviews from '@/components/GoogleReviews';
 import VillesDesservies from '@/components/VillesDesservies';
-import { Clock, MapPin, Phone } from 'lucide-react';
+import { Sunrise, Leaf, ShieldCheck, Phone } from 'lucide-react';
 import { SITE } from '@/lib/site';
 
 export const revalidate = 3600;
@@ -21,7 +21,7 @@ export default function LandingPage() {
       {/* 3. De saison en ce moment */}
       <SaisonSection />
 
-      {/* 3. Section "Notre sélection" */}
+      {/* 4. Section "Notre sélection" */}
       <section className="py-20 max-w-6xl mx-auto px-4 w-full">
         <h2 className="text-3xl md:text-4xl font-serif text-center text-neutral-800 mb-12">Notre sélection</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
@@ -31,69 +31,71 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 3. Section "Comment ça marche" */}
+      {/* 5. Section "Comment ça marche" */}
       <HowItWorks />
 
-      {/* Avis Google */}
-      <GoogleReviews />
-
-      {/* 4. Section "Infos pratiques" */}
+      {/* 6. Section "Au plus près des producteurs" — story Rungis */}
       <section className="py-20 bg-white border-t border-neutral-200">
         <div className="max-w-5xl mx-auto px-4">
-          <h2 className="text-3xl md:text-4xl font-serif text-center text-neutral-800 mb-2">Notre boutique d&apos;origine</h2>
-          <p className="text-center text-neutral-500 mb-12 max-w-xl mx-auto">
-            Vos paniers sont préparés et expédiés depuis Pontault Primeurs. Pour le retrait sur place, suivez les horaires de la boutique.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
-            {/* Horaires */}
-            <div className="bg-neutral-50 p-10 border border-neutral-200">
-              <h3 className="text-2xl font-serif text-neutral-800 mb-6 flex items-center gap-3">
-                <Clock className="text-green-primary" size={24} strokeWidth={1.5} />
-                Horaires
-              </h3>
-              <ul className="space-y-4 text-neutral-600 font-medium">
-                <li className="flex justify-between border-b border-neutral-200 pb-2"><span>Lundi</span> <span>Fermé</span></li>
-                <li className="flex justify-between border-b border-neutral-200 pb-2"><span>Mardi - Vendredi</span> <span>8h00 - 19h30</span></li>
-                <li className="flex justify-between border-b border-neutral-200 pb-2"><span>Samedi</span> <span>8h00 - 19h00</span></li>
-                <li className="flex justify-between border-b border-neutral-200 pb-2"><span>Dimanche</span> <span>8h00 - 13h00</span></li>
-              </ul>
+          <div className="text-center mb-14">
+            <span className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.25em] text-green-primary font-medium mb-4">
+              <Sunrise size={14} strokeWidth={1.5} /> Notre engagement fraîcheur
+            </span>
+            <h2 className="text-3xl md:text-4xl font-serif text-neutral-800 mb-4">
+              Au plus près des producteurs
+            </h2>
+            <p className="text-neutral-600 max-w-2xl mx-auto leading-relaxed">
+              Chaque matin avant le lever du jour, nous parcourons les allées du marché de Rungis — premier
+              marché de produits frais au monde — pour sélectionner les meilleurs fruits, légumes et fromages
+              affinés. Livrés chez vous dans la foulée, sans intermédiaire superflu.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-neutral-50 border border-neutral-200 p-8 text-center">
+              <Sunrise size={28} className="text-green-primary mx-auto mb-4" strokeWidth={1.5} />
+              <h3 className="font-serif text-lg text-neutral-800 mb-2">Sélection à 4h du matin</h3>
+              <p className="text-sm text-neutral-600 leading-relaxed">
+                Direct des grossistes de Rungis, avant que les produits ne partent dans les circuits classiques.
+              </p>
             </div>
-            
-            {/* Contact & Accès */}
-            <div className="bg-neutral-50 p-10 border border-neutral-200 flex flex-col gap-8">
-              <div>
-                <h3 className="text-2xl font-serif text-neutral-800 mb-4 flex items-center gap-3">
-                  <MapPin className="text-green-primary" size={24} strokeWidth={1.5} />
-                  Adresse
-                </h3>
-                <p className="text-neutral-600 leading-relaxed font-medium">
-                  {SITE.address.street}<br />
-                  {SITE.address.postalCode} {SITE.address.city}
-                </p>
-                <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${SITE.address.street}, ${SITE.address.postalCode} ${SITE.address.city}`)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-block mt-3 text-xs uppercase tracking-widest text-green-primary hover:text-green-dark font-medium"
-                >
-                  Voir sur la carte →
-                </a>
-              </div>
-              <div className="w-12 h-px bg-neutral-300"></div>
-              <div>
-                <h3 className="text-2xl font-serif text-neutral-800 mb-4 flex items-center gap-3">
-                  <Phone className="text-green-primary" size={24} strokeWidth={1.5} />
-                  Téléphone
-                </h3>
-                <a
-                  href={`tel:${SITE.telephone.replace(/\s/g, '')}`}
-                  className="text-neutral-800 font-serif text-xl hover:text-green-primary transition-colors"
-                >
-                  {SITE.telephoneDisplay}
-                </a>
-              </div>
+            <div className="bg-neutral-50 border border-neutral-200 p-8 text-center">
+              <Leaf size={28} className="text-green-primary mx-auto mb-4" strokeWidth={1.5} />
+              <h3 className="font-serif text-lg text-neutral-800 mb-2">Saison &amp; maturité</h3>
+              <p className="text-sm text-neutral-600 leading-relaxed">
+                Fruits cueillis à maturité, légumes du moment, fromages affinés à point. Pas de vitrine,
+                pas de transport longue distance inutile.
+              </p>
+            </div>
+            <div className="bg-neutral-50 border border-neutral-200 p-8 text-center">
+              <ShieldCheck size={28} className="text-green-primary mx-auto mb-4" strokeWidth={1.5} />
+              <h3 className="font-serif text-lg text-neutral-800 mb-2">Garantie qualité</h3>
+              <p className="text-sm text-neutral-600 leading-relaxed">
+                Si un produit ne vous convient pas à la livraison, signalez-le au livreur :
+                échange ou remboursement immédiat.
+              </p>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* 7. Avis Google */}
+      <GoogleReviews />
+
+      {/* 8. Contact direct */}
+      <section className="py-16 bg-neutral-50 border-t border-neutral-200">
+        <div className="max-w-2xl mx-auto px-4 text-center">
+          <h2 className="text-2xl md:text-3xl font-serif text-neutral-800 mb-3">Une question ?</h2>
+          <p className="text-neutral-600 mb-6">
+            Notre équipe répond directement, du mardi au samedi.
+          </p>
+          <a
+            href={`tel:${SITE.telephone.replace(/\s/g, '')}`}
+            className="inline-flex items-center gap-3 text-2xl font-serif text-green-primary hover:text-green-dark transition-colors"
+          >
+            <Phone size={24} strokeWidth={1.5} />
+            {SITE.telephoneDisplay}
+          </a>
         </div>
       </section>
     </main>

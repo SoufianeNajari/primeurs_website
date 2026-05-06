@@ -48,10 +48,7 @@ export default function Navbar({ isClientAuthed = false }: { isClientAuthed?: bo
       <div className="max-w-6xl mx-auto px-4 h-20 flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2" onClick={() => setIsOpen(false)}>
-          <span className="flex flex-col leading-tight">
-            <span className="text-xl md:text-2xl font-serif font-bold text-neutral-800 tracking-wide uppercase">Primeur Chez Vous</span>
-            <span className="text-[9px] md:text-[10px] tracking-[0.25em] uppercase text-neutral-500 mt-0.5">by Pontault Primeurs</span>
-          </span>
+          <span className="text-xl md:text-2xl font-serif font-bold text-neutral-800 tracking-wide uppercase">Primeur Chez Vous</span>
         </Link>
 
         {/* Desktop Menu */}

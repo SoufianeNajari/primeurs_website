@@ -27,7 +27,7 @@ export default function HowItWorks() {
       <div className="max-w-5xl mx-auto px-4">
         <h2 className="text-3xl md:text-4xl font-serif text-center text-neutral-800 mb-4">Comment ça marche</h2>
         <p className="text-center text-neutral-500 mb-16 max-w-xl mx-auto">
-          Un service de livraison simple et transparent, depuis la boutique Pontault Primeurs.
+          Du marché de Rungis à votre porte, en trois étapes simples.
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-4 relative">

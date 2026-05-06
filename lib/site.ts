@@ -3,7 +3,7 @@ export const SITE = {
   fullName: 'Primeur Chez Vous · by Pontault Primeurs',
   shortName: 'Primeur Chez Vous',
   description:
-    'Livraison à domicile de fruits, légumes et fromages affinés autour de Pontault-Combault. Sélection minutieuse, livraison mardi et samedi, paiement à la réception.',
+    'Livraison à domicile de fruits, légumes et fromages frais, sélectionnés chaque matin au marché de Rungis. Mardi et samedi, paiement à la réception.',
   url: process.env.NEXT_PUBLIC_SITE_URL || 'https://pontaultprimeurs.fr',
   locale: 'fr_FR',
   telephone: '+33160296298',

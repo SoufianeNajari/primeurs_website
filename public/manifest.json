@@ -1,7 +1,7 @@
 {
   "name": "Primeur Chez Vous — Livraison à domicile",
   "short_name": "Primeur Chez Vous",
-  "description": "Livraison à domicile de fruits, légumes et fromages affinés autour de Pontault-Combault.",
+  "description": "Livraison à domicile de fruits, légumes et fromages frais, sélectionnés chaque matin à Rungis.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { Truck } from 'lucide-react';
+import { Truck, Sparkles } from 'lucide-react';
 
 export default function HeroSection() {
   return (
@@ -22,14 +22,14 @@ export default function HeroSection() {
         <span className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 px-4 py-1.5 mb-6 text-[10px] uppercase tracking-[0.25em] text-white font-medium">
           <Truck size={14} strokeWidth={1.5} /> Livraison offerte pour le lancement
         </span>
-        <h1 className="text-5xl md:text-7xl font-serif text-white mb-3 tracking-tight drop-shadow-md">
+        <h1 className="text-5xl md:text-7xl font-serif text-white mb-6 tracking-tight drop-shadow-md">
           Primeur Chez Vous
         </h1>
-        <p className="text-[10px] md:text-xs uppercase tracking-[0.3em] text-white/80 mb-6 drop-shadow-sm">
-          by Pontault Primeurs
+        <p className="text-lg md:text-xl text-white/90 font-light mb-4 drop-shadow-sm max-w-xl">
+          Fruits, légumes et fromages affinés. Sélection chaque matin à Rungis, livrés chez vous.
         </p>
-        <p className="text-lg md:text-xl text-white/90 font-light mb-10 drop-shadow-sm max-w-xl">
-          Fruits, légumes et fromages affinés livrés à votre porte. Mardi 17h-19h ou samedi 15h-19h, autour de Pontault-Combault.
+        <p className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.25em] text-white/70 font-medium mb-10">
+          <Sparkles size={12} strokeWidth={1.5} /> Sélection quotidienne au marché de Rungis
         </p>
         <div className="flex flex-col sm:flex-row gap-4">
           <Link
