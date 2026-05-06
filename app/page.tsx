@@ -5,6 +5,7 @@ import SaisonSection from '@/components/SaisonSection';
 import GoogleReviews from '@/components/GoogleReviews';
 import VillesDesservies from '@/components/VillesDesservies';
 import LivreurSection from '@/components/LivreurSection';
+import HomeFAQ from '@/components/HomeFAQ';
 import { Sunrise, Leaf, ShieldCheck, Phone } from 'lucide-react';
 import { SITE } from '@/lib/site';
 
@@ -85,6 +86,9 @@ export default function LandingPage() {
 
       {/* 7. Avis Google */}
       <GoogleReviews />
+
+      {/* 7bis. FAQ — désamorce les freins avant le contact */}
+      <HomeFAQ />
 
       {/* 8. Contact direct */}
       <section className="py-16 bg-neutral-50 border-t border-neutral-200">
