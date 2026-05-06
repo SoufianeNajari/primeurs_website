@@ -3,6 +3,7 @@ import CategoryCard from '@/components/CategoryCard';
 import HowItWorks from '@/components/HowItWorks';
 import SaisonSection from '@/components/SaisonSection';
 import GoogleReviews from '@/components/GoogleReviews';
+import VillesDesservies from '@/components/VillesDesservies';
 import { Clock, MapPin, Phone } from 'lucide-react';
 import { SITE } from '@/lib/site';
 
@@ -14,7 +15,10 @@ export default function LandingPage() {
       {/* 1. Hero Section */}
       <HeroSection />
 
-      {/* 2. De saison en ce moment */}
+      {/* 2. Villes desservies (juste sous le hero pour répondre direct "tu livres chez moi ?") */}
+      <VillesDesservies />
+
+      {/* 3. De saison en ce moment */}
       <SaisonSection />
 
       {/* 3. Section "Notre sélection" */}
