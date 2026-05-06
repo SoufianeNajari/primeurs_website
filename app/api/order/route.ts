@@ -6,6 +6,14 @@ import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { getClientSession } from '@/lib/client-auth';
 import { isCommandesBloquees } from '@/lib/parametres';
 import { getFourchetteBornes } from '@/lib/fourchette';
+import {
+  VILLES_AUTORISEES,
+  CRENEAUX_LIVRAISON,
+  getFraisLivraisonCents,
+  getMinCommandeCents,
+  getCutoffVeilleHeure,
+  nextDateForCreneau,
+} from '@/lib/livraison';
 import type { ProduitOption } from '@/lib/produit';
 
 type PanierItem = {
@@ -25,6 +33,11 @@ function sanitizeCommentaireServer(raw: unknown): string | undefined {
   if (typeof raw !== 'string') return undefined;
   const trimmed = raw.replace(/\s+/g, ' ').trim().slice(0, COMMENTAIRE_MAX);
   return trimmed === '' ? undefined : trimmed;
+}
+
+function sanitizeText(raw: unknown, max: number): string {
+  if (typeof raw !== 'string') return '';
+  return raw.replace(/\s+/g, ' ').trim().slice(0, max);
 }
 
 export async function POST(request: Request) {
@@ -48,41 +61,71 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { client, panier, jourRetrait, creneau, dateRetraitSouhaite, message } = body as {
+    const {
+      client,
+      panier,
+      adresse: adresseRaw,
+      complementAdresse: complementRaw,
+      ville: villeRaw,
+      codePostal: codePostalRaw,
+      creneauKey: creneauKeyRaw,
+      dateLivraison: dateLivraisonRaw,
+      message,
+    } = body as {
       client: { prenom: string; nom: string; email: string; telephone: string };
       panier: PanierItem[];
-      jourRetrait: string;
-      creneau?: string | null;
-      dateRetraitSouhaite?: string | null;
+      adresse?: string;
+      complementAdresse?: string;
+      ville?: string;
+      codePostal?: string;
+      creneauKey?: string;
+      dateLivraison?: string;
       message?: string;
     };
 
-    if (!client || !client.prenom || !client.nom || !client.email || !client.telephone || !jourRetrait) {
+    if (!client || !client.prenom || !client.nom || !client.email || !client.telephone) {
       return NextResponse.json({ error: 'Champs obligatoires manquants.' }, { status: 400 });
     }
 
-    // Validation date retrait : ISO YYYY-MM-DD, J+1 → J+14, pas un lundi.
-    let dateRetraitNorm: string | null = null;
-    if (dateRetraitSouhaite) {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateRetraitSouhaite)) {
-        return NextResponse.json({ error: 'Date de retrait invalide.' }, { status: 400 });
-      }
-      const d = new Date(dateRetraitSouhaite + 'T00:00:00');
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const minD = new Date(today); minD.setDate(minD.getDate() + 1);
-      const maxD = new Date(today); maxD.setDate(maxD.getDate() + 14);
-      if (Number.isNaN(d.getTime()) || d < minD || d > maxD || d.getDay() === 1) {
-        return NextResponse.json({ error: 'Date de retrait hors plage autorisée.' }, { status: 400 });
-      }
-      dateRetraitNorm = dateRetraitSouhaite;
+    const adresse = sanitizeText(adresseRaw, 200);
+    const complementAdresse = sanitizeText(complementRaw, 200);
+    const ville = sanitizeText(villeRaw, 100);
+
+    if (!adresse) {
+      return NextResponse.json({ error: 'Adresse de livraison requise.' }, { status: 400 });
+    }
+    const villeAutorisee = VILLES_AUTORISEES.find((v) => v.nom === ville);
+    if (!villeAutorisee) {
+      return NextResponse.json({ error: 'Ville non desservie par la livraison.' }, { status: 400 });
+    }
+    // On ignore le codePostal du client : on le fixe depuis la whitelist (source de vérité).
+    void codePostalRaw;
+    const codePostal = villeAutorisee.codePostal;
+
+    const creneau = CRENEAUX_LIVRAISON.find((c) => c.key === creneauKeyRaw);
+    if (!creneau) {
+      return NextResponse.json({ error: 'Créneau de livraison invalide.' }, { status: 400 });
+    }
+    if (!dateLivraisonRaw || !/^\d{4}-\d{2}-\d{2}$/.test(dateLivraisonRaw)) {
+      return NextResponse.json({ error: 'Date de livraison invalide.' }, { status: 400 });
+    }
+    // On recalcule la date côté serveur (source de vérité) et on vérifie qu'elle
+    // correspond à ce que le client a vu — sinon on prend la prochaine date valide.
+    const cutoffHeure = await getCutoffVeilleHeure();
+    const dateAttendue = nextDateForCreneau(creneau, cutoffHeure);
+    const dateAttendueIso = `${dateAttendue.getFullYear()}-${String(dateAttendue.getMonth() + 1).padStart(2, '0')}-${String(dateAttendue.getDate()).padStart(2, '0')}`;
+    if (dateAttendueIso !== dateLivraisonRaw) {
+      return NextResponse.json(
+        { error: 'Le créneau choisi n\'est plus disponible (cutoff dépassé). Recharge la page.' },
+        { status: 400 },
+      );
     }
 
     if (!panier || !Array.isArray(panier) || panier.length === 0) {
       return NextResponse.json({ error: 'Le panier est vide.' }, { status: 400 });
     }
 
-    // Re-vérif disponibilité + lecture fraîche des prix (ne jamais faire confiance au client)
+    // Re-vérif disponibilité + lecture fraîche des prix
     const produitIds = panier.map((item) => item.produitId);
     const { data: produitsDb, error: produitsError } = await supabaseAdmin
       .from('produits')
@@ -125,8 +168,22 @@ export async function POST(request: Request) {
       );
     }
 
-    // Récupère l'id du client whitelisté depuis la session (le middleware
-    // garantit qu'on est bien connecté quand on arrive ici)
+    // Vérification minimum commande (best-effort : on ignore les produits à prix incertain)
+    const minCents = await getMinCommandeCents();
+    const totalCertainCents = lignesNormalisees.reduce((sum, l) => {
+      if (l.prix == null) return sum;
+      return sum + Math.round(l.prix * 100) * l.quantite;
+    }, 0);
+    const tousIncertains = lignesNormalisees.every((l) => l.prix == null);
+    if (!tousIncertains && totalCertainCents < minCents) {
+      return NextResponse.json(
+        { error: `Minimum de commande : ${(minCents / 100).toFixed(2).replace('.', ',')} €.` },
+        { status: 400 },
+      );
+    }
+
+    const fraisCents = await getFraisLivraisonCents();
+
     let clientId: string | null = null;
     try {
       const session = await getClientSession();
@@ -142,9 +199,13 @@ export async function POST(request: Request) {
         lignes: lignesNormalisees,
         message: message || '',
         statut: 'reçue',
-        jour_retrait: jourRetrait,
-        creneau_retrait: creneau || null,
-        date_retrait_souhaite: dateRetraitNorm,
+        adresse,
+        complement_adresse: complementAdresse || null,
+        ville,
+        code_postal: codePostal,
+        creneau_livraison: creneau.label,
+        date_livraison: dateLivraisonRaw,
+        frais_livraison_cents: fraisCents,
         client_id: clientId,
       })
       .select('id')
@@ -159,15 +220,19 @@ export async function POST(request: Request) {
 
     const shopEmailAddr = process.env.SHOP_EMAIL || 'magasin@primeur-test.com';
     const fourchetteBornes = await getFourchetteBornes();
+    // Pour rester compatible avec les templates existants (refondés en O3),
+    // on passe le créneau dans `jourRetrait`/`creneau`. Voir Sprint O3 pour
+    // la refonte complète des emails livraison.
+    const jourLabel = creneau.label;
     const [shopHtml, clientHtml] = await Promise.all([
       emailShop({
         prenom: client.prenom,
         nom: client.nom,
         email: client.email,
         telephone: client.telephone,
-        jourRetrait,
-        creneau,
-        dateRetraitSouhaite: dateRetraitNorm,
+        jourRetrait: jourLabel,
+        creneau: null,
+        dateRetraitSouhaite: dateLivraisonRaw,
         message,
         lignes: lignesNormalisees,
         orderId,
@@ -175,9 +240,9 @@ export async function POST(request: Request) {
       }),
       emailClient({
         prenom: client.prenom,
-        jourRetrait,
-        creneau,
-        dateRetraitSouhaite: dateRetraitNorm,
+        jourRetrait: jourLabel,
+        creneau: null,
+        dateRetraitSouhaite: dateLivraisonRaw,
         lignes: lignesNormalisees,
         fourchetteBornes,
       }),
@@ -185,12 +250,12 @@ export async function POST(request: Request) {
     await Promise.all([
       sendEmail({
         to: shopEmailAddr,
-        subject: `Nouvelle commande — ${client.prenom} ${client.nom} — ${jourRetrait}${creneau ? ` ${creneau}` : ''}`,
+        subject: `Nouvelle livraison — ${client.prenom} ${client.nom} — ${jourLabel} — ${ville}`,
         html: shopHtml,
       }),
       sendEmail({
         to: client.email,
-        subject: `Votre commande est confirmée — Pontault Primeurs`,
+        subject: `Votre livraison est confirmée — Primeur Chez Vous`,
         html: clientHtml,
       }),
     ]);
