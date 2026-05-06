@@ -1,6 +1,7 @@
 import Image from 'next/image';
-import { Star, ExternalLink } from 'lucide-react';
+import { Star, ExternalLink, Store } from 'lucide-react';
 import { getCachedGoogleReviews } from '@/lib/google-reviews';
+import { SITE } from '@/lib/site';
 
 function Stars({ value, size = 14 }: { value: number; size?: number }) {
   const full = Math.floor(value);
@@ -39,12 +40,18 @@ export default async function GoogleReviews() {
     <section className="py-16 md:py-20 bg-white border-t border-neutral-200">
       <div className="max-w-6xl mx-auto px-4">
         <div className="flex flex-col items-center text-center mb-10">
-          <div className="text-green-primary text-xs uppercase tracking-[0.2em] font-medium mb-3">
-            Avis clients
+          <div className="inline-flex items-center gap-2 text-green-primary text-xs uppercase tracking-[0.2em] font-medium mb-3">
+            <Store size={14} strokeWidth={1.5} /> Notre boutique partenaire
           </div>
-          <h2 className="text-3xl md:text-4xl font-serif text-neutral-800 mb-5">
-            Ce qu&apos;en disent nos clients
+          <h2 className="text-3xl md:text-4xl font-serif text-neutral-800 mb-4">
+            {SITE.partenaire.name}, primeur depuis {SITE.partenaire.anneeFondation}
           </h2>
+          <p className="text-neutral-600 max-w-2xl leading-relaxed mb-6 text-[15px]">
+            Primeur Chez Vous est le service de livraison à domicile opéré en partenariat avec{' '}
+            <strong className="text-neutral-800">{SITE.partenaire.name}</strong>, primeur de proximité
+            installé à Pontault-Combault depuis {new Date().getFullYear() - SITE.partenaire.anneeFondation}{' '}
+            ans. C&apos;est leur sélection, leur savoir-faire et leur réseau Rungis que nous livrons chez vous.
+          </p>
           <div className="flex items-center gap-3">
             <Stars value={data.rating} size={20} />
             <span className="font-serif text-2xl text-neutral-800">{data.rating.toFixed(1)}</span>
@@ -93,9 +100,13 @@ export default async function GoogleReviews() {
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 text-sm text-neutral-600 hover:text-green-primary transition-colors font-medium uppercase tracking-widest"
           >
-            Voir tous les avis sur Google
+            Voir les avis {SITE.partenaire.name} sur Google
             <ExternalLink size={14} strokeWidth={1.5} />
           </a>
+          <p className="text-xs text-neutral-400 mt-3 max-w-xl mx-auto">
+            Avis collectés sur la fiche Google de notre boutique partenaire.
+            Primeur Chez Vous est un service de livraison juridiquement distinct.
+          </p>
         </div>
       </div>
     </section>
