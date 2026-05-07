@@ -11,11 +11,24 @@ export const SITE = {
     anneeFondation: 1992,
     description: 'Primeur de proximité fondé en 1992 à Pontault-Combault.',
   },
-  url: process.env.NEXT_PUBLIC_SITE_URL || 'https://pontaultprimeurs.fr',
+  // URL canonique du site. Cascade :
+  //  1. NEXT_PUBLIC_SITE_URL — à configurer manuellement quand on aura un domaine custom
+  //  2. VERCEL_PROJECT_PRODUCTION_URL — URL stable du déploiement prod (auto-injectée)
+  //  3. VERCEL_URL — URL du déploiement courant (preview/prod, change à chaque build)
+  //  4. localhost:3000 — dev local
+  url:
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : '') ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '') ||
+    'http://localhost:3000',
   locale: 'fr_FR',
   telephone: '+33160296298',
   telephoneDisplay: '01 60 29 62 98',
-  email: 'contact@pontaultprimeurs.fr',
+  // Email de contact public. Vide tant qu'aucune adresse dédiée n'est créée :
+  //  les composants qui l'utilisent (Footer, mentions légales, confidentialité,
+  //  zones-livrées, JSON-LD localbusiness) gèrent le cas vide en affichant
+  //  '[À DÉFINIR]' au lieu d'un mailto: cassé.
+  email: '',
   address: {
     street: '44 Avenue Charles Rouxel',
     postalCode: '77340',

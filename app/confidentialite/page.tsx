@@ -28,8 +28,8 @@ export default function ConfidentialitePage() {
           coordonnées figurent dans les <a href="/mentions-legales">mentions légales</a>.
         </p>
         <p>
-          Pour toute question relative à vos données, vous pouvez nous contacter par email à{' '}
-          <a href={`mailto:${SITE.email}`}>{SITE.email}</a>.
+          Pour toute question relative à vos données, vous pouvez nous contacter
+          {SITE.email ? <> par email à <a href={`mailto:${SITE.email}`}>{SITE.email}</a></> : <> par téléphone au <a href={`tel:${SITE.telephone}`}>{SITE.telephoneDisplay}</a></>}.
         </p>
       </section>
 
@@ -106,8 +106,9 @@ export default function ConfidentialitePage() {
           <li><strong>Droit d&apos;opposition</strong> au traitement</li>
         </ul>
         <p>
-          Pour exercer ces droits, contactez-nous par email à{' '}
-          <a href={`mailto:${SITE.email}`}>{SITE.email}</a>. Nous répondrons dans un délai maximum d&apos;un mois.
+          Pour exercer ces droits, contactez-nous
+          {SITE.email ? <> par email à <a href={`mailto:${SITE.email}`}>{SITE.email}</a></> : <> par téléphone au <a href={`tel:${SITE.telephone}`}>{SITE.telephoneDisplay}</a></>}.
+          Nous répondrons dans un délai maximum d&apos;un mois.
         </p>
         <p>
           Vous pouvez également introduire une réclamation auprès de la{' '}

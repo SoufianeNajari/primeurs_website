@@ -42,8 +42,18 @@ export default function ZonesLivreesPage() {
             ))}
           </ul>
           <p className="text-xs text-neutral-500 italic mt-4">
-            Votre commune n&apos;est pas dans la liste&nbsp;? Écrivez-nous à{' '}
-            <a href={`mailto:${SITE.email}`} className="text-green-primary hover:underline">{SITE.email}</a>{' '}
+            Votre commune n&apos;est pas dans la liste&nbsp;?{' '}
+            {SITE.email ? (
+              <>
+                Écrivez-nous à{' '}
+                <a href={`mailto:${SITE.email}`} className="text-green-primary hover:underline">{SITE.email}</a>{' '}
+              </>
+            ) : (
+              <>
+                Appelez-nous au{' '}
+                <a href={`tel:${SITE.telephone}`} className="text-green-primary hover:underline">{SITE.telephoneDisplay}</a>{' '}
+              </>
+            )}
             — nous étudions les demandes au cas par cas.
           </p>
         </section>

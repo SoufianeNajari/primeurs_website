@@ -32,7 +32,7 @@ export default function MentionsLegalesPage() {
           <li><strong>Code APE&nbsp;:</strong> [À COMPLÉTER — ex 4799B Vente à domicile, ou 4721Z]</li>
           <li><strong>N° TVA intracommunautaire&nbsp;:</strong> Non applicable (régime de la franchise en base de TVA, art. 293 B du CGI)</li>
           <li><strong>Téléphone&nbsp;:</strong> <a href={`tel:${SITE.telephone}`}>{SITE.telephoneDisplay}</a> [À CONFIRMER — ligne dédiée ou numéro boutique]</li>
-          <li><strong>Email&nbsp;:</strong> <a href={`mailto:${SITE.email}`}>{SITE.email}</a> [À CONFIRMER — email dédié]</li>
+          <li><strong>Email&nbsp;:</strong> {SITE.email ? <a href={`mailto:${SITE.email}`}>{SITE.email}</a> : <em>[À DÉFINIR — email dédié]</em>}</li>
         </ul>
       </section>
 
@@ -85,9 +85,9 @@ export default function MentionsLegalesPage() {
       <section>
         <h2>Contact</h2>
         <p>
-          Pour toute question relative au site, vous pouvez nous contacter par email à{' '}
-          <a href={`mailto:${SITE.email}`}>{SITE.email}</a> ou par téléphone au{' '}
-          <a href={`tel:${SITE.telephone}`}>{SITE.telephoneDisplay}</a>.
+          Pour toute question relative au site, vous pouvez nous contacter
+          {SITE.email ? <> par email à <a href={`mailto:${SITE.email}`}>{SITE.email}</a> ou</> : null}
+          {' '}par téléphone au <a href={`tel:${SITE.telephone}`}>{SITE.telephoneDisplay}</a>.
         </p>
       </section>
     </LegalLayout>

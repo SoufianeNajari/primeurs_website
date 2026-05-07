@@ -20,12 +20,14 @@ export default function Footer() {
               >
                 {SITE.telephoneDisplay}
               </a>
-              <a
-                href={`mailto:${SITE.email}`}
-                className="hover:text-white transition-colors block mt-1"
-              >
-                {SITE.email}
-              </a>
+              {SITE.email ? (
+                <a
+                  href={`mailto:${SITE.email}`}
+                  className="hover:text-white transition-colors block mt-1"
+                >
+                  {SITE.email}
+                </a>
+              ) : null}
             </p>
           </div>
 

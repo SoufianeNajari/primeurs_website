@@ -63,7 +63,8 @@ const localBusinessJsonLd = {
   description: SITE.description,
   url: SITE.url,
   telephone: SITE.telephone,
-  email: SITE.email,
+  // email omis tant que SITE.email vide (évite une propriété "" en JSON-LD)
+  ...(SITE.email ? { email: SITE.email } : {}),
   image: DEFAULT_OG_IMAGE,
   priceRange: "€€",
   address: {
