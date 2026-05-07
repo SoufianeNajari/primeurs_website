@@ -17,6 +17,7 @@ import { formatPrixMontant, cartHasPoidsIncertain, isPoidsIncertain } from '@/li
 import { calcFourchette, formatFourchette } from '@/lib/fourchette';
 import { useFourchetteBornes } from '@/lib/use-fourchette';
 import { CUSTOMER_MEMORY_KEY, type CustomerMemory } from '@/components/WelcomeBackBanner';
+import UpsellSuggestions from '@/components/UpsellSuggestions';
 
 const DRAFT_KEY = 'primeur_order_draft';
 // Brouillon expiré au-delà de 7 jours.
@@ -440,6 +441,8 @@ export default function OrderPage() {
             </>
           )}
         </div>
+
+        <UpsellSuggestions />
 
         <form onSubmit={handleSubmit} className="bg-white border border-neutral-200 p-6 md:p-8 space-y-8">
           {error && (
