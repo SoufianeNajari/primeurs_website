@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { triggerHaptic } from '@/lib/haptic'
 import { calcFourchette, type FourchetteBornes } from '@/lib/fourchette'
-import { Printer, Phone, Mail, Clock, MessageSquare, Undo2, ChevronDown, ChevronUp, Search, X } from 'lucide-react'
+import { Printer, Phone, Mail, Clock, MessageSquare, MessageCircle, Undo2, ChevronDown, ChevronUp, Search, X } from 'lucide-react'
 import { useToast } from '@/components/admin/Toast'
 import { statutBadgeCls, statutLabel } from '@/lib/orderStatus'
 
@@ -66,6 +66,27 @@ const euro = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR'
 
 function shortId(id: string): string {
   return '#' + id.replace(/-/g, '').slice(0, 8).toUpperCase()
+}
+
+function firstName(fullName: string): string {
+  return fullName.trim().split(/\s+/)[0] || ''
+}
+
+// Format E.164 sans le + pour wa.me. Hypothèse FR par défaut (06 → 336…).
+function toWhatsappNumber(raw: string): string {
+  const digits = raw.replace(/\D/g, '')
+  if (digits.startsWith('33')) return digits
+  if (digits.startsWith('0')) return '33' + digits.slice(1)
+  return digits
+}
+
+function whatsappUrl(order: Order): string {
+  const number = toWhatsappNumber(order.client_telephone)
+  const dateTxt = order.date_livraison ? formatDateLongue(order.date_livraison) : ''
+  const creneauTxt = order.creneau_livraison ? ` (${order.creneau_livraison})` : ''
+  const contextTxt = dateTxt ? ` prévue le ${dateTxt}${creneauTxt}` : ''
+  const message = `Bonjour ${firstName(order.client_nom)},\n\nKarim de Primeur Chez Vous, concernant votre commande ${shortId(order.id)}${contextTxt}.\n\n`
+  return `https://wa.me/${number}?text=${encodeURIComponent(message)}`
 }
 
 function formatDateLongue(iso: string): string {
@@ -399,6 +420,15 @@ export default function OrderList({
             <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1.5 text-sm">
               <a href={`tel:${order.client_telephone}`} className="inline-flex items-center gap-1.5 text-green-primary font-semibold hover:underline">
                 <Phone size={14} /> {order.client_telephone}
+              </a>
+              <a
+                href={whatsappUrl(order)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-[#25D366] font-medium hover:underline text-sm no-print"
+                title="Ouvrir WhatsApp avec un message pré-rempli (commande, date, créneau)"
+              >
+                <MessageCircle size={14} /> WhatsApp
               </a>
               {order.client_email && (
                 <a href={`mailto:${order.client_email}`} className="inline-flex items-center gap-1.5 text-neutral-500 hover:text-neutral-800 hover:underline text-xs">
