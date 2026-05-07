@@ -1,5 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabase'
 import { getFourchetteBornes } from '@/lib/fourchette'
+import { buildCancelUrl } from '@/lib/cancel-token'
+import { SITE } from '@/lib/site'
 import OrderList from './OrderList'
 
 export const dynamic = 'force-dynamic'
@@ -81,7 +83,14 @@ export default async function OrdersPage({ searchParams }: { searchParams?: { pe
           ))}
         </div>
       </div>
-      <OrderList initialOrders={commandes || []} fourchette={fourchette} prixActuels={prixActuels} />
+      <OrderList
+        initialOrders={commandes || []}
+        fourchette={fourchette}
+        prixActuels={prixActuels}
+        cancelLinks={Object.fromEntries(
+          (commandes || []).map((c: { id: string }) => [c.id, buildCancelUrl(SITE.url, c.id, 7)]),
+        )}
+      />
     </div>
   )
 }

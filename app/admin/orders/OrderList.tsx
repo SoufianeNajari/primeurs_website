@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { triggerHaptic } from '@/lib/haptic'
 import { calcFourchette, type FourchetteBornes } from '@/lib/fourchette'
-import { Printer, Phone, Mail, Clock, MessageSquare, MessageCircle, Undo2, ChevronDown, ChevronUp, Search, X } from 'lucide-react'
+import { Printer, Phone, Mail, Clock, MessageSquare, MessageCircle, Undo2, ChevronDown, ChevronUp, Search, X, Link as LinkIcon } from 'lucide-react'
 import { useToast } from '@/components/admin/Toast'
 import { statutBadgeCls, statutLabel } from '@/lib/orderStatus'
 
@@ -170,10 +170,12 @@ export default function OrderList({
   initialOrders,
   fourchette,
   prixActuels,
+  cancelLinks,
 }: {
   initialOrders: Order[]
   fourchette: FourchetteBornes
   prixActuels: Record<string, number | null>
+  cancelLinks: Record<string, string>
 }) {
   const [orders, setOrders] = useState<Order[]>(initialOrders)
   const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set())
@@ -430,6 +432,17 @@ export default function OrderList({
               >
                 <MessageCircle size={14} /> WhatsApp
               </a>
+              {cancelLinks[order.id] && order.statut !== 'retirée' && order.statut !== 'annulée' && (
+                <a
+                  href={cancelLinks[order.id]}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-neutral-400 hover:text-neutral-700 text-xs no-print"
+                  title="Ouvrir la page d'annulation client (lien signé valable 7 jours, à partager si besoin)"
+                >
+                  <LinkIcon size={12} /> Lien annulation
+                </a>
+              )}
               {order.client_email && (
                 <a href={`mailto:${order.client_email}`} className="inline-flex items-center gap-1.5 text-neutral-500 hover:text-neutral-800 hover:underline text-xs">
                   <Mail size={12} /> {order.client_email}
