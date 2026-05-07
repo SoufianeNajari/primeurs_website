@@ -3,29 +3,28 @@ import { Star, ExternalLink, Store } from 'lucide-react';
 import { getCachedGoogleReviews } from '@/lib/google-reviews';
 import { SITE } from '@/lib/site';
 
+// Rendu pixel-précis : chaque étoile est remplie au pourcentage exact
+// correspondant à la note (ex. 4.8 = 4 pleines + une 5ᵉ remplie à 80%),
+// pour éviter qu'une note 4.8 paraisse identique à 4.5.
 function Stars({ value, size = 14 }: { value: number; size?: number }) {
-  const full = Math.floor(value);
-  const hasHalf = value - full >= 0.5;
-  const stars = Array.from({ length: 5 }, (_, i) => {
-    if (i < full) return 'full';
-    if (i === full && hasHalf) return 'half';
-    return 'empty';
-  });
   return (
     <div className="inline-flex items-center gap-0.5" aria-label={`${value.toFixed(1)} sur 5`}>
-      {stars.map((kind, i) => (
-        <span key={i} className="relative inline-block" style={{ width: size, height: size }}>
-          <Star size={size} strokeWidth={1.5} className="text-amber-300" />
-          {kind !== 'empty' && (
-            <span
-              className="absolute inset-0 overflow-hidden"
-              style={{ width: kind === 'half' ? size / 2 : size }}
-            >
-              <Star size={size} strokeWidth={1.5} className="text-amber-400 fill-amber-400" />
-            </span>
-          )}
-        </span>
-      ))}
+      {Array.from({ length: 5 }).map((_, i) => {
+        const fillPct = Math.max(0, Math.min(1, value - i)) * 100;
+        return (
+          <span key={i} className="relative inline-block" style={{ width: size, height: size }}>
+            <Star size={size} strokeWidth={1.5} className="text-amber-300" />
+            {fillPct > 0 && (
+              <span
+                className="absolute inset-y-0 left-0 overflow-hidden"
+                style={{ width: `${fillPct}%` }}
+              >
+                <Star size={size} strokeWidth={1.5} className="text-amber-400 fill-amber-400" />
+              </span>
+            )}
+          </span>
+        );
+      })}
     </div>
   );
 }

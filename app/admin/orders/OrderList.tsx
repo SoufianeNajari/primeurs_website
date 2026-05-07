@@ -50,6 +50,8 @@ type Order = {
   creneau_livraison?: string | null;
   date_livraison?: string | null;
   frais_livraison_cents?: number | null;
+  code_promo?: string | null;
+  reduction_cents?: number | null;
 }
 
 type StatusFilter = 'tous' | 'reçue' | 'prête' | 'retirée';
@@ -605,13 +607,29 @@ export default function OrderList({
                 <span className="text-sm font-medium text-green-primary italic">0,00 €</span>
               </div>
             )}
-            <div className="flex justify-between items-baseline">
-              <span className="text-xs text-orange-700">Borne haute (+{Math.round((fourchette.max - 1) * 100)}%)</span>
-              <span className="font-semibold text-orange-700">{euro.format(calcFourchette(tot.total, fourchette).max + (order.frais_livraison_cents ?? 0) / 100)}</span>
-            </div>
-            <div className="bg-orange-50 border border-orange-200 px-3 py-2 text-xs text-orange-900">
-              ⚠️ Si dépassement de la borne haute, prévenir le client au <a href={`tel:${order.client_telephone}`} className="font-semibold underline">{order.client_telephone}</a>
-            </div>
+            {order.code_promo && order.reduction_cents != null && order.reduction_cents > 0 && (
+              <div className="flex justify-between items-baseline">
+                <span className="text-sm text-green-primary">Code promo {order.code_promo}</span>
+                <span className="text-sm font-medium text-green-primary">−{euro.format(order.reduction_cents / 100)}</span>
+              </div>
+            )}
+            {(() => {
+              const reductionEuros = (order.reduction_cents ?? 0) / 100
+              const fraisEuros = (order.frais_livraison_cents ?? 0) / 100
+              const borneMin = calcFourchette(tot.total!, fourchette).min + fraisEuros - reductionEuros
+              const borneMax = calcFourchette(tot.total!, fourchette).max + fraisEuros - reductionEuros
+              return (
+                <>
+                  <div className="flex justify-between items-baseline pt-1 border-t border-neutral-100">
+                    <span className="text-xs text-neutral-600">Fourchette client (−{Math.round((1 - fourchette.min) * 100)}% / +{Math.round((fourchette.max - 1) * 100)}%)</span>
+                    <span className="text-sm font-semibold text-neutral-800">{euro.format(borneMin)} – {euro.format(borneMax)}</span>
+                  </div>
+                  <div className="bg-orange-50 border border-orange-200 px-3 py-2 text-xs text-orange-900">
+                    ⚠️ Si dépassement de <span className="font-semibold">{euro.format(borneMax)}</span>, prévenir le client au <a href={`tel:${order.client_telephone}`} className="font-semibold underline">{order.client_telephone}</a>
+                  </div>
+                </>
+              )
+            })()}
           </div>
         )}
 

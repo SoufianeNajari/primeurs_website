@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { RefreshCw, Star } from 'lucide-react';
+import { Lock, Star } from 'lucide-react';
 
 type Props = {
   refreshedAt: string | null;
@@ -27,33 +26,10 @@ function formatRelative(iso: string | null): string {
   return months === 1 ? 'il y a 1 mois' : `il y a ${months} mois`;
 }
 
-export default function AdminReviewsWidget(initial: Props) {
-  const [refreshedAt, setRefreshedAt] = useState(initial.refreshedAt);
-  const [rating, setRating] = useState(initial.rating);
-  const [count, setCount] = useState(initial.userRatingCount);
-  const [reviewsCount, setReviewsCount] = useState(initial.reviewsCount);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
-
-  const onRefresh = async () => {
-    setLoading(true);
-    setMessage(null);
-    try {
-      const res = await fetch('/api/admin/reviews/refresh', { method: 'POST' });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erreur');
-      setRefreshedAt(data.refreshedAt ?? new Date().toISOString());
-      setRating(data.rating);
-      setCount(data.userRatingCount);
-      setReviewsCount(data.reviewsCount);
-      setMessage({ kind: 'ok', text: `Avis mis à jour (${data.reviewsCount} avis)` });
-    } catch (e) {
-      setMessage({ kind: 'err', text: e instanceof Error ? e.message : 'Erreur' });
-    } finally {
-      setLoading(false);
-    }
-  };
-
+// Bouton de refresh manuel volontairement désactivé pour éviter d'écraser le
+// snapshot par inadvertance (les avis cristallisés sont la vitrine de la
+// boutique partenaire). Le cron mensuel (cf vercel.json) reste actif.
+export default function AdminReviewsWidget({ refreshedAt, rating, userRatingCount, reviewsCount }: Props) {
   return (
     <section className="mb-8 bg-white border border-neutral-200 p-4 md:p-5">
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -65,36 +41,27 @@ export default function AdminReviewsWidget(initial: Props) {
           <p className="text-xs text-neutral-500 mt-1">
             {rating != null ? (
               <>
-                <strong className="text-neutral-700">{rating.toFixed(1)}</strong> · {count} avis · {reviewsCount} affichés ·
+                <strong className="text-neutral-700">{rating.toFixed(1)}</strong> · {userRatingCount} avis · {reviewsCount} affichés ·
                 {' '}MAJ {formatRelative(refreshedAt)}
               </>
             ) : (
-              <>Aucun snapshot. Cliquez pour récupérer les avis depuis Google.</>
+              <>Aucun snapshot.</>
             )}
           </p>
         </div>
         <button
           type="button"
-          onClick={onRefresh}
-          disabled={loading}
-          className="inline-flex items-center gap-2 bg-green-primary text-white px-3 py-2 text-[11px] uppercase tracking-widest font-medium hover:bg-green-dark disabled:bg-neutral-300 disabled:cursor-not-allowed"
+          disabled
+          title="Refresh manuel verrouillé pour protéger les avis. Le cron mensuel s'en charge."
+          className="inline-flex items-center gap-2 bg-neutral-200 text-neutral-500 px-3 py-2 text-[11px] uppercase tracking-widest font-medium cursor-not-allowed"
         >
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-          {loading ? 'Rafraîchissement…' : 'Rafraîchir'}
+          <Lock size={14} />
+          Verrouillé
         </button>
       </div>
-      {message && (
-        <div
-          className={
-            'mt-3 text-xs px-3 py-2 border ' +
-            (message.kind === 'ok'
-              ? 'border-green-300 bg-green-50 text-green-800'
-              : 'border-red-300 bg-red-50 text-red-700')
-          }
-        >
-          {message.text}
-        </div>
-      )}
+      <p className="mt-3 text-[11px] text-neutral-500 italic">
+        Refresh manuel désactivé pour éviter un écrasement involontaire. Mise à jour automatique mensuelle.
+      </p>
     </section>
   );
 }
