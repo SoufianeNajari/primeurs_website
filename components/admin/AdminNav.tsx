@@ -15,6 +15,7 @@ const LINKS = [
   { href: '/admin/prix', label: 'Prix du jour' },
   { href: '/admin', label: 'Dispo rapide' },
   { href: '/admin/orders', label: 'Commandes' },
+  { href: '/admin/tournee', label: 'Tournée' },
   { href: '/admin/articles', label: 'Articles' },
   { href: '/admin/arrivages', label: 'Arrivage' },
   { href: '/admin/clients', label: 'Clients' },
