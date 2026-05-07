@@ -765,3 +765,71 @@ export type EmailRappelJ1Args = {
 export async function emailRappelJ1(args: EmailRappelJ1Args): Promise<string> {
   return render(<RappelJ1Email {...args} />);
 }
+
+// ───── Relance J+14 ─────
+
+function RelanceJ14Email(props: {
+  prenom: string;
+  boutiqueUrl: string;
+  livreurPrenom: string;
+}) {
+  return (
+    <Html>
+      <Head />
+      <Preview>Le marché du moment — Primeur Chez Vous</Preview>
+      <Body style={main}>
+        <Container style={container}>
+          <Heading as="h1" style={h1}>Bonjour {props.prenom},</Heading>
+          <Text style={paragraph}>
+            Cela fait deux semaines que nous vous avons livré, j&apos;espère que tout vous a plu.
+          </Text>
+          <Text style={paragraph}>
+            Le marché change vite à cette période : de nouveaux fruits arrivent, certains
+            légumes finissent leur saison. Si l&apos;envie d&apos;une commande vous prend, je
+            sélectionne tout au matin à Rungis.
+          </Text>
+
+          <Section style={{ textAlign: 'center' as const, margin: '28px 0 8px' }}>
+            <EmailLink
+              href={props.boutiqueUrl}
+              style={{
+                backgroundColor: BRAND.green,
+                color: '#ffffff',
+                padding: '14px 28px',
+                textDecoration: 'none',
+                fontWeight: 600,
+                fontSize: '15px',
+                letterSpacing: '0.5px',
+                display: 'inline-block',
+              }}
+            >
+              Voir la boutique
+            </EmailLink>
+          </Section>
+
+          <Text style={{ ...muted, textAlign: 'center' as const, fontSize: '12px', marginTop: '8px' }}>
+            Livraison à votre porte sur les créneaux du mardi et du samedi.
+          </Text>
+
+          <Hr style={hr} />
+          <Text style={paragraph}>
+            À très vite,<br />
+            <strong>{props.livreurPrenom}</strong>
+          </Text>
+
+          <Footer />
+        </Container>
+      </Body>
+    </Html>
+  );
+}
+
+export type EmailRelanceJ14Args = {
+  prenom: string;
+  boutiqueUrl: string;
+  livreurPrenom: string;
+};
+
+export async function emailRelanceJ14(args: EmailRelanceJ14Args): Promise<string> {
+  return render(<RelanceJ14Email {...args} />);
+}
