@@ -12,7 +12,7 @@ import {
 } from '@react-email/components';
 import { render } from '@react-email/render';
 import { SITE } from '@/lib/site';
-import { calcFourchette, formatFourchette, type FourchetteBornes } from '@/lib/fourchette';
+import { calcFourchette, type FourchetteBornes } from '@/lib/fourchette';
 
 export type LigneCommande = {
   produitId: string;
@@ -248,11 +248,17 @@ function ShopEmail(props: LivraisonInfos & {
   lignes: LigneCommande[];
   orderId: string;
   date: string;
-  fourchetteMaxPct: number;
+  fourchetteBornes: FourchetteBornes;
 }) {
   const total = totalEstime(props.lignes);
   const incertain = hasIncertain(props.lignes);
-  const borneMax = total != null ? Math.round(total * props.fourchetteMaxPct * 100) / 100 : null;
+  const fourchette = total != null ? calcFourchette(total, props.fourchetteBornes) : null;
+  const fraisEuros = props.fraisLivraisonCents / 100;
+  const reductionEuros = (props.reductionCents ?? 0) / 100;
+  const totalCentral = total != null ? total + fraisEuros - reductionEuros : null;
+  const bornesClient = fourchette
+    ? { min: fourchette.min + fraisEuros - reductionEuros, max: fourchette.max + fraisEuros - reductionEuros }
+    : null;
   const dateLong = formatDateLong(props.dateLivraison);
   const adresseFull = buildAdresseFull(props.adresse, props.complementAdresse, props.codePostal, props.ville);
   const mapsUrl = buildMapsUrl(props.adresse, props.codePostal, props.ville);
@@ -354,23 +360,21 @@ function ShopEmail(props: LivraisonInfos & {
               </Text>
             </Section>
           ) : (
-            total != null && (
+            total != null && totalCentral != null && bornesClient && (
               <>
                 <Hr style={hr} />
                 <table style={tableStyle} cellPadding={0} cellSpacing={0}>
                   <tbody>
                     <tr>
-                      <td style={{ padding: '4px 0', color: BRAND.muted, fontSize: '14px' }}>Total estimé annoncé client</td>
+                      <td style={{ padding: '4px 0', color: BRAND.muted, fontSize: '14px' }}>Sous-total produits</td>
                       <td style={{ padding: '4px 0', textAlign: 'right' as const, fontWeight: 600 }}>{formatPrice(total)}</td>
                     </tr>
-                    {props.fraisLivraisonCents > 0 && (
-                      <tr>
-                        <td style={{ padding: '4px 0', color: BRAND.muted, fontSize: '14px' }}>Frais de livraison</td>
-                        <td style={{ padding: '4px 0', textAlign: 'right' as const, fontWeight: 600 }}>
-                          {formatPriceCents(props.fraisLivraisonCents)}
-                        </td>
-                      </tr>
-                    )}
+                    <tr>
+                      <td style={{ padding: '4px 0', color: BRAND.muted, fontSize: '14px' }}>Frais de livraison</td>
+                      <td style={{ padding: '4px 0', textAlign: 'right' as const, fontWeight: 600 }}>
+                        {props.fraisLivraisonCents > 0 ? formatPriceCents(props.fraisLivraisonCents) : 'Offerts'}
+                      </td>
+                    </tr>
                     {props.codePromo && props.reductionCents && props.reductionCents > 0 && (
                       <tr>
                         <td style={{ padding: '4px 0', color: BRAND.green, fontSize: '14px' }}>
@@ -381,45 +385,85 @@ function ShopEmail(props: LivraisonInfos & {
                         </td>
                       </tr>
                     )}
-                    {borneMax != null && (
-                      <tr>
-                        <td style={{ padding: '4px 0', color: BRAND.muted, fontSize: '14px' }}>
-                          Borne haute fourchette (+{Math.round((props.fourchetteMaxPct - 1) * 100)}%)
-                        </td>
-                        <td
-                          style={{
-                            padding: '4px 0',
-                            textAlign: 'right' as const,
-                            fontWeight: 700,
-                            fontSize: '17px',
-                            color: BRAND.green,
-                          }}
-                        >
-                          {formatPrice(borneMax + props.fraisLivraisonCents / 100 - (props.reductionCents ?? 0) / 100)}
-                        </td>
-                      </tr>
-                    )}
+                    <tr>
+                      <td
+                        style={{
+                          padding: '8px 0 4px',
+                          borderTop: `1px solid ${BRAND.border}`,
+                          color: BRAND.text,
+                          fontSize: '14px',
+                          fontWeight: 600,
+                        }}
+                      >
+                        Total estimé annoncé
+                      </td>
+                      <td
+                        style={{
+                          padding: '8px 0 4px',
+                          borderTop: `1px solid ${BRAND.border}`,
+                          textAlign: 'right' as const,
+                          fontWeight: 700,
+                          fontSize: '16px',
+                        }}
+                      >
+                        {formatPrice(totalCentral)}
+                      </td>
+                    </tr>
                   </tbody>
                 </table>
 
-                {borneMax != null && (
-                  <Section
+                <Section
+                  style={{
+                    backgroundColor: BRAND.bg,
+                    border: `1px solid ${BRAND.border}`,
+                    padding: '14px 16px',
+                    margin: '16px 0 0',
+                  }}
+                >
+                  <Text
                     style={{
-                      backgroundColor: BRAND.alertBg,
-                      border: `1px solid ${BRAND.alertBorder}`,
-                      padding: '14px 16px',
-                      margin: '20px 0 0',
+                      color: BRAND.muted,
+                      fontSize: '11px',
+                      letterSpacing: '1.5px',
+                      textTransform: 'uppercase' as const,
+                      margin: '0 0 6px',
+                      fontWeight: 600,
                     }}
                   >
-                    <Text style={{ ...paragraph, color: BRAND.alertText, margin: 0, fontSize: '14px' }}>
-                      ⚠️ <strong>Si le coût réel dépasse la borne haute</strong>,
-                      prévenir le client avant préparation au{' '}
-                      <EmailLink href={`tel:${props.telephone.replace(/\s+/g, '')}`} style={{ color: BRAND.alertText }}>
-                        <strong>{props.telephone}</strong>
-                      </EmailLink>.
-                    </Text>
-                  </Section>
-                )}
+                    Fourchette annoncée au client
+                  </Text>
+                  <Text
+                    style={{
+                      fontFamily: 'Georgia, serif',
+                      fontSize: '20px',
+                      margin: 0,
+                      color: BRAND.green,
+                      fontWeight: 'bold' as const,
+                    }}
+                  >
+                    {formatPrice(bornesClient.min)} – {formatPrice(bornesClient.max)}
+                  </Text>
+                  <Text style={{ ...muted, margin: '4px 0 0', fontSize: '12px' }}>
+                    (−{Math.round((1 - props.fourchetteBornes.min) * 100)}% / +{Math.round((props.fourchetteBornes.max - 1) * 100)}% sur sous-total, frais et code inclus)
+                  </Text>
+                </Section>
+
+                <Section
+                  style={{
+                    backgroundColor: BRAND.alertBg,
+                    border: `1px solid ${BRAND.alertBorder}`,
+                    padding: '14px 16px',
+                    margin: '12px 0 0',
+                  }}
+                >
+                  <Text style={{ ...paragraph, color: BRAND.alertText, margin: 0, fontSize: '14px' }}>
+                    ⚠️ <strong>Si le coût réel dépasse {formatPrice(bornesClient.max)}</strong>,
+                    prévenir le client avant préparation au{' '}
+                    <EmailLink href={`tel:${props.telephone.replace(/\s+/g, '')}`} style={{ color: BRAND.alertText }}>
+                      <strong>{props.telephone}</strong>
+                    </EmailLink>.
+                  </Text>
+                </Section>
               </>
             )
           )}
@@ -442,9 +486,11 @@ function ClientEmail(props: LivraisonInfos & {
   const fourchette = total != null && !incertain ? calcFourchette(total, props.fourchetteBornes) : null;
   const dateLong = formatDateLong(props.dateLivraison);
   const adresseFull = buildAdresseFull(props.adresse, props.complementAdresse, props.codePostal, props.ville);
+  const fraisEuros = props.fraisLivraisonCents / 100;
   const reductionEuros = (props.reductionCents ?? 0) / 100;
-  const totalAvecFraisMin = fourchette ? fourchette.min + props.fraisLivraisonCents / 100 - reductionEuros : null;
-  const totalAvecFraisMax = fourchette ? fourchette.max + props.fraisLivraisonCents / 100 - reductionEuros : null;
+  const totalCentral = total != null && !incertain ? total + fraisEuros - reductionEuros : null;
+  const totalAvecFraisMin = fourchette ? fourchette.min + fraisEuros - reductionEuros : null;
+  const totalAvecFraisMax = fourchette ? fourchette.max + fraisEuros - reductionEuros : null;
 
   return (
     <Html>
@@ -505,34 +551,72 @@ function ClientEmail(props: LivraisonInfos & {
               à la préparation : nous vous communiquerons le prix exact à la livraison.
             </Text>
           ) : (
-            fourchette && (
+            total != null && totalCentral != null && fourchette && (
               <>
-                <Text style={{ ...paragraph, marginTop: '16px' }}>
-                  Sous-total estimé : <strong>{formatFourchette(fourchette)}</strong>
-                </Text>
-                {props.fraisLivraisonCents > 0 ? (
-                  <Text style={paragraph}>
-                    Frais de livraison : <strong>{formatPriceCents(props.fraisLivraisonCents)}</strong>
-                  </Text>
-                ) : (
-                  <Text style={{ ...paragraph, color: BRAND.green }}>
-                    <strong>Livraison offerte</strong>
-                  </Text>
-                )}
-                {props.codePromo && props.reductionCents && props.reductionCents > 0 && (
-                  <Text style={{ ...paragraph, color: BRAND.green }}>
-                    Code promo <strong>{props.codePromo}</strong> : −{formatPriceCents(props.reductionCents)}
-                  </Text>
-                )}
+                <table style={{ ...tableStyle, marginTop: '20px' }} cellPadding={0} cellSpacing={0}>
+                  <tbody>
+                    <tr>
+                      <td style={{ padding: '6px 0', color: BRAND.muted, fontSize: '14px' }}>Sous-total produits</td>
+                      <td style={{ padding: '6px 0', textAlign: 'right' as const, fontWeight: 600 }}>
+                        {formatPrice(total)}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: '6px 0', color: BRAND.muted, fontSize: '14px' }}>Frais de livraison</td>
+                      <td
+                        style={{
+                          padding: '6px 0',
+                          textAlign: 'right' as const,
+                          fontWeight: 600,
+                          color: props.fraisLivraisonCents === 0 ? BRAND.green : BRAND.text,
+                        }}
+                      >
+                        {props.fraisLivraisonCents > 0 ? formatPriceCents(props.fraisLivraisonCents) : 'Offerts'}
+                      </td>
+                    </tr>
+                    {props.codePromo && props.reductionCents && props.reductionCents > 0 && (
+                      <tr>
+                        <td style={{ padding: '6px 0', color: BRAND.green, fontSize: '14px' }}>
+                          Code promo {props.codePromo}
+                        </td>
+                        <td style={{ padding: '6px 0', textAlign: 'right' as const, fontWeight: 600, color: BRAND.green }}>
+                          −{formatPriceCents(props.reductionCents)}
+                        </td>
+                      </tr>
+                    )}
+                    <tr>
+                      <td
+                        style={{
+                          padding: '10px 0 4px',
+                          borderTop: `1px solid ${BRAND.border}`,
+                          color: BRAND.text,
+                          fontSize: '15px',
+                          fontWeight: 600,
+                        }}
+                      >
+                        Total estimé
+                      </td>
+                      <td
+                        style={{
+                          padding: '10px 0 4px',
+                          borderTop: `1px solid ${BRAND.border}`,
+                          textAlign: 'right' as const,
+                          fontWeight: 700,
+                          fontSize: '18px',
+                        }}
+                      >
+                        {formatPrice(totalCentral)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+
                 {totalAvecFraisMin != null && totalAvecFraisMax != null && (
-                  <Text style={{ ...paragraph, fontSize: '17px', marginTop: '8px' }}>
-                    <strong>Total final estimé : {formatPrice(totalAvecFraisMin)} – {formatPrice(totalAvecFraisMax)}</strong>
+                  <Text style={{ ...muted, marginTop: '14px', fontSize: '13px' }}>
+                    Fourchette possible à la préparation : <strong>{formatPrice(totalAvecFraisMin)} – {formatPrice(totalAvecFraisMax)}</strong>
+                    {' '}(cours du jour, poids réel). Si l&apos;écart dépasse, nous vous contactons avant livraison.
                   </Text>
                 )}
-                <Text style={muted}>
-                  Prix indicatif, ajusté à la préparation (cours du jour, poids réel).
-                  Si l&apos;écart dépasse cette fourchette, nous vous contactons avant livraison.
-                </Text>
               </>
             )
           )}
@@ -564,7 +648,7 @@ export type EmailShopArgs = LivraisonInfos & {
   message?: string | null;
   lignes: LigneCommande[];
   orderId: string;
-  fourchetteMaxPct: number;
+  fourchetteBornes: FourchetteBornes;
 };
 
 export type EmailClientArgs = LivraisonInfos & {

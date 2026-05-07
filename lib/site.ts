@@ -49,7 +49,7 @@ export const LIVREUR = {
   prenom: 'Karim',
   nomComplet: '',
   bio:
-    "Bonjour, moi c'est Karim. Chaque mardi et samedi, je me lève à 4 h pour aller sélectionner moi-même, dans les allées de Rungis, les fruits, légumes et fromages affinés que je vous livrerai dans la journée. Je suis le frère du primeur de Pontault-Combault — j'ai grandi entouré de cagettes, j'ai appris à choisir un melon mûr avant même de savoir lire, et je connais désormais mes clients par leur prénom. Une question sur un produit ? Vous m'appelez direct. C'est ça, ma promesse.",
+    "Bonjour, moi c'est Karim. Chaque mardi et samedi, je me lève à 4 h pour sélectionner moi-même, dans les allées de Rungis, les fruits, légumes et fromages affinés que je vous livrerai dans la journée. Une question sur un produit, un fromage à commander, un créneau à décaler ? Vous m'appelez direct. C'est ça, ma promesse.",
   photoUrl:
     'https://images.unsplash.com/photo-1566753323558-f4e0952af115?auto=format&fit=crop&w=800&q=80',
   photoAlt: 'Portrait du livreur Primeur Chez Vous',

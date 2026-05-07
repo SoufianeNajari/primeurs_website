@@ -265,7 +265,7 @@ export async function POST(request: Request) {
         message,
         lignes: lignesNormalisees,
         orderId,
-        fourchetteMaxPct: fourchetteBornes.max,
+        fourchetteBornes,
       }),
       emailClient({
         ...livraisonInfos,
