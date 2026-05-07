@@ -5,6 +5,7 @@ import SaisonSection from '@/components/SaisonSection';
 import GoogleReviews from '@/components/GoogleReviews';
 import VillesDesservies from '@/components/VillesDesservies';
 import LivreurSection from '@/components/LivreurSection';
+import ArrivageRungis from '@/components/ArrivageRungis';
 import HomeFAQ from '@/components/HomeFAQ';
 import { Sunrise, Leaf, ShieldCheck, Phone } from 'lucide-react';
 import { SITE } from '@/lib/site';
@@ -22,6 +23,9 @@ export default function LandingPage() {
 
       {/* 2bis. Visage humain de la marque — incarne la promesse de proximité */}
       <LivreurSection />
+
+      {/* 2ter. Ce matin à Rungis — alimenté par /admin/arrivages, masqué si rien à publier */}
+      <ArrivageRungis />
 
       {/* 3. De saison en ce moment */}
       <SaisonSection />

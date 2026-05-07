@@ -16,6 +16,7 @@ const LINKS = [
   { href: '/admin', label: 'Dispo rapide' },
   { href: '/admin/orders', label: 'Commandes' },
   { href: '/admin/articles', label: 'Articles' },
+  { href: '/admin/arrivages', label: 'Arrivage' },
   { href: '/admin/clients', label: 'Clients' },
 ]
 
