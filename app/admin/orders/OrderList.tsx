@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { triggerHaptic } from '@/lib/haptic'
 import { calcFourchette, type FourchetteBornes } from '@/lib/fourchette'
-import { Printer, Phone, Mail, Clock, MessageSquare, MessageCircle, Undo2, ChevronDown, ChevronUp, Search, X, Link as LinkIcon } from 'lucide-react'
+import { Printer, Phone, Mail, Clock, MessageSquare, MessageCircle, Undo2, ChevronDown, ChevronUp, Search, X, Link as LinkIcon, Send } from 'lucide-react'
 import { useToast } from '@/components/admin/Toast'
 import { statutBadgeCls, statutLabel } from '@/lib/orderStatus'
 
@@ -52,6 +52,8 @@ type Order = {
   frais_livraison_cents?: number | null;
   code_promo?: string | null;
   reduction_cents?: number | null;
+  rappel_j1_envoye_le?: string | null;
+  cancelled_at?: string | null;
 }
 
 type StatusFilter = 'tous' | 'reçue' | 'prête' | 'retirée';
@@ -251,6 +253,25 @@ export default function OrderList({
     })
   }
 
+  const sendJ1 = async (order: Order) => {
+    const alreadySent = !!order.rappel_j1_envoye_le
+    const confirmMsg = alreadySent
+      ? `Renvoyer l'email J-1 à ${order.client_email} ? (déjà envoyé une fois)`
+      : `Envoyer l'email J-1 à ${order.client_email} maintenant ?`
+    if (!window.confirm(confirmMsg)) return
+    triggerHaptic()
+    try {
+      const res = await fetch(`/api/orders/${order.id}/send-j1`, { method: 'POST' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Erreur')
+      toast.success(alreadySent ? 'Rappel J-1 renvoyé' : 'Rappel J-1 envoyé')
+      setOrders(prev => prev.map(o => o.id === order.id ? { ...o, rappel_j1_envoye_le: new Date().toISOString() } : o))
+    } catch (e) {
+      console.error(e)
+      toast.error(e instanceof Error ? e.message : 'Échec envoi J-1')
+    }
+  }
+
   const updatePrixFinal = async (id: string, value: number | null) => {
     setOrders(prev => prev.map(o => o.id === id ? { ...o, prix_final: value } : o))
     try {
@@ -442,6 +463,24 @@ export default function OrderList({
                 >
                   <LinkIcon size={12} /> Lien annulation
                 </a>
+              )}
+              {order.client_email && order.adresse && order.date_livraison && order.statut !== 'retirée' && order.statut !== 'annulée' && (
+                <button
+                  type="button"
+                  onClick={() => sendJ1(order)}
+                  className={`inline-flex items-center gap-1.5 text-xs no-print ${
+                    order.rappel_j1_envoye_le
+                      ? 'text-neutral-400 hover:text-neutral-700'
+                      : 'text-green-primary hover:text-green-dark font-medium'
+                  }`}
+                  title={
+                    order.rappel_j1_envoye_le
+                      ? `Rappel J-1 déjà envoyé le ${new Date(order.rappel_j1_envoye_le).toLocaleDateString('fr-FR')}. Cliquer pour renvoyer.`
+                      : 'Envoyer manuellement l\'email rappel J-1 (test ou commande de dernière minute)'
+                  }
+                >
+                  <Send size={12} /> {order.rappel_j1_envoye_le ? 'Renvoyer J-1' : 'Envoyer J-1'}
+                </button>
               )}
               {order.client_email && (
                 <a href={`mailto:${order.client_email}`} className="inline-flex items-center gap-1.5 text-neutral-500 hover:text-neutral-800 hover:underline text-xs">
