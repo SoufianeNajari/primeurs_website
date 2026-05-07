@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart, cartKey } from '@/components/CartContext';
 import CartItemNote from '@/components/CartItemNote';
-import { Loader2, ArrowLeft, ShoppingBag, AlertTriangle, Trash2, Info, Truck, MapPin } from 'lucide-react';
+import { Loader2, ArrowLeft, ShoppingBag, AlertTriangle, Trash2, Info, Truck, MapPin, Tag, Check, X } from 'lucide-react';
 import Link from 'next/link';
 import {
   VILLES_AUTORISEES,
@@ -32,13 +32,20 @@ type Draft = {
   ville: string;        // nom de la ville (clé fonctionnelle)
   creneauKey: string;   // ex 'mardi-17-19'
   message: string;
+  codePromo: string;
 };
 
 const EMPTY_DRAFT: Draft = {
   prenom: '', nom: '', email: '', telephone: '',
   adresse: '', complementAdresse: '', ville: '',
-  creneauKey: '', message: '',
+  creneauKey: '', message: '', codePromo: '',
 };
+
+type PromoState =
+  | { status: 'idle' }
+  | { status: 'checking' }
+  | { status: 'valid'; code: string; libelle: string; reductionCents: number }
+  | { status: 'invalid'; raison: string };
 
 function formatEuros(cents: number): string {
   return (cents / 100).toFixed(2).replace('.', ',') + ' €';
@@ -51,9 +58,12 @@ export default function OrderPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
+  const [promo, setPromo] = useState<PromoState>({ status: 'idle' });
+  const [showPromoInput, setShowPromoInput] = useState(false);
   const bornes = useFourchetteBornes();
   const config = useLivraisonConfig();
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const promoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const updateDraft = (patch: Partial<Draft>) => {
     setDraft((prev) => ({ ...prev, ...patch }));
@@ -146,6 +156,54 @@ export default function OrderPage() {
     }
   }, [isMounted, isLoaded, totalItems, router]);
 
+  // Validation debounced du code promo (350ms après la dernière frappe).
+  useEffect(() => {
+    if (!isMounted) return;
+    if (promoTimer.current) clearTimeout(promoTimer.current);
+    const code = draft.codePromo.trim();
+    if (!code) {
+      setPromo({ status: 'idle' });
+      return;
+    }
+    const items = Object.values(cart);
+    const incertain = cartHasPoidsIncertain(items);
+    if (incertain || totalEstime == null) {
+      setPromo({ status: 'invalid', raison: 'Code promo indisponible avec des produits pesés.' });
+      return;
+    }
+    const panierCents = Math.round(totalEstime * 100);
+    if (panierCents <= 0) {
+      setPromo({ status: 'idle' });
+      return;
+    }
+    setPromo({ status: 'checking' });
+    promoTimer.current = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/codes-promos/validate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code, panierCents }),
+        });
+        const data = await res.json();
+        if (data?.ok) {
+          setPromo({
+            status: 'valid',
+            code: data.code,
+            libelle: data.libelle,
+            reductionCents: data.reductionCents,
+          });
+        } else {
+          setPromo({ status: 'invalid', raison: data?.raison || 'Code invalide.' });
+        }
+      } catch {
+        setPromo({ status: 'invalid', raison: 'Impossible de vérifier le code.' });
+      }
+    }, 350);
+    return () => {
+      if (promoTimer.current) clearTimeout(promoTimer.current);
+    };
+  }, [draft.codePromo, totalEstime, cart, isMounted]);
+
   if (!isMounted || !isLoaded || totalItems === 0) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -162,6 +220,8 @@ export default function OrderPage() {
   const minEuros = (minCents / 100).toFixed(2).replace('.', ',');
   // Min commande : on bloque uniquement si on connaît le total (pas d'incertain) et qu'il est en-dessous.
   const sousMin = !hasIncertain && totalEstime != null && totalEstime * 100 < minCents;
+
+  const reductionCents = promo.status === 'valid' ? promo.reductionCents : 0;
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -223,6 +283,7 @@ export default function OrderPage() {
           codePostal: villeSelectionnee?.codePostal ?? '',
           creneauKey,
           dateLivraison: opt.iso,
+          codePromo: promo.status === 'valid' ? promo.code : undefined,
           message,
         }),
       });
@@ -344,10 +405,25 @@ export default function OrderPage() {
                   <span className="text-base font-serif text-green-dark italic">Offerts</span>
                 </div>
               )}
+              {reductionCents > 0 && promo.status === 'valid' && (
+                <div className="px-6 py-3 bg-green-soft/30 flex items-baseline justify-between border-t border-neutral-100">
+                  <span className="text-xs uppercase tracking-widest text-green-dark font-medium">
+                    Code {promo.code}
+                  </span>
+                  <span className="text-base font-serif text-green-dark">
+                    −{formatEuros(reductionCents)}
+                  </span>
+                </div>
+              )}
               {fourchette && (
                 <div className="px-6 py-3 bg-neutral-50 flex items-baseline justify-between border-t border-neutral-100">
                   <span className="text-xs uppercase tracking-widest text-neutral-600 font-medium">Total final</span>
-                  <span className="text-xl font-serif text-neutral-800">{formatFourchette(fourchette)}</span>
+                  <span className="text-xl font-serif text-neutral-800">
+                    {formatFourchette({
+                      min: fourchette.min - reductionCents / 100,
+                      max: fourchette.max - reductionCents / 100,
+                    })}
+                  </span>
                 </div>
               )}
               {fourchette && (
@@ -515,6 +591,70 @@ export default function OrderPage() {
             <p className="text-[11px] text-neutral-500 italic">
               Commandez au plus tard la veille à {config.cutoffHeure}h. Au-delà, le créneau suivant est proposé.
             </p>
+          </section>
+
+          <section className="space-y-2">
+            {!showPromoInput && promo.status !== 'valid' ? (
+              <button
+                type="button"
+                onClick={() => setShowPromoInput(true)}
+                disabled={hasIncertain}
+                className="inline-flex items-center gap-2 text-sm text-green-primary hover:text-green-dark transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Tag size={16} strokeWidth={1.5} />
+                {hasIncertain ? 'Code promo indisponible avec produits pesés' : "J'ai un code promo"}
+              </button>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="codePromo" className="block text-xs uppercase tracking-wider text-neutral-600 inline-flex items-center gap-2">
+                    <Tag size={14} strokeWidth={1.5} /> Code promo
+                  </label>
+                  {promo.status !== 'valid' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowPromoInput(false);
+                        updateDraft({ codePromo: '' });
+                        setPromo({ status: 'idle' });
+                      }}
+                      className="text-xs text-neutral-400 hover:text-neutral-600"
+                    >
+                      Annuler
+                    </button>
+                  )}
+                </div>
+                <div className="relative">
+                  <input
+                    type="text" id="codePromo" name="codePromo"
+                    autoComplete="off"
+                    placeholder="BIENVENUE10"
+                    value={draft.codePromo}
+                    onChange={(e) => updateDraft({ codePromo: e.target.value.toUpperCase() })}
+                    className={`w-full px-4 py-3 pr-10 border rounded-sm focus:ring-1 outline-none transition-colors uppercase tracking-wider font-medium ${
+                      promo.status === 'valid'
+                        ? 'border-green-primary bg-green-soft/30 focus:ring-green-primary focus:border-green-primary'
+                        : promo.status === 'invalid'
+                        ? 'border-red-text/50 bg-red-soft/30 focus:ring-red-text focus:border-red-text'
+                        : 'border-neutral-300 focus:ring-green-primary focus:border-green-primary'
+                    }`}
+                  />
+                  <div className="absolute inset-y-0 right-3 flex items-center">
+                    {promo.status === 'checking' && <Loader2 size={16} className="animate-spin text-neutral-400" />}
+                    {promo.status === 'valid' && <Check size={18} className="text-green-primary" strokeWidth={2} />}
+                    {promo.status === 'invalid' && <X size={18} className="text-red-text" strokeWidth={2} />}
+                  </div>
+                </div>
+                {promo.status === 'valid' && (
+                  <p className="text-xs text-green-dark font-medium">
+                    Code accepté : {promo.libelle} (−{formatEuros(promo.reductionCents)} appliqué).
+                  </p>
+                )}
+                {promo.status === 'invalid' && (
+                  <p className="text-xs text-red-text">{promo.raison}</p>
+                )}
+              </div>
+            )}
           </section>
 
           <section className="space-y-2">

@@ -6,6 +6,7 @@ import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { getClientSession } from '@/lib/client-auth';
 import { isCommandesBloquees } from '@/lib/parametres';
 import { getFourchetteBornes } from '@/lib/fourchette';
+import { validateCodePromo, incrementCodeUsage } from '@/lib/codes-promos';
 import {
   VILLES_AUTORISEES,
   CRENEAUX_LIVRAISON,
@@ -70,6 +71,7 @@ export async function POST(request: Request) {
       codePostal: codePostalRaw,
       creneauKey: creneauKeyRaw,
       dateLivraison: dateLivraisonRaw,
+      codePromo: codePromoRaw,
       message,
     } = body as {
       client: { prenom: string; nom: string; email: string; telephone: string };
@@ -80,6 +82,7 @@ export async function POST(request: Request) {
       codePostal?: string;
       creneauKey?: string;
       dateLivraison?: string;
+      codePromo?: string;
       message?: string;
     };
 
@@ -184,6 +187,20 @@ export async function POST(request: Request) {
 
     const fraisCents = await getFraisLivraisonCents();
 
+    // Validation code promo (best-effort : si invalide, on ignore plutôt que
+    // refuser la commande — le client n'a pas perdu de temps pour rien).
+    let codePromoApplique: string | null = null;
+    let reductionCents = 0;
+    let codePromoId: string | null = null;
+    if (typeof codePromoRaw === 'string' && codePromoRaw.trim() && !tousIncertains) {
+      const validation = await validateCodePromo(codePromoRaw, totalCertainCents);
+      if (validation.ok) {
+        codePromoApplique = validation.code.code;
+        reductionCents = validation.reductionCents;
+        codePromoId = validation.code.id;
+      }
+    }
+
     let clientId: string | null = null;
     try {
       const session = await getClientSession();
@@ -206,6 +223,8 @@ export async function POST(request: Request) {
         creneau_livraison: creneau.label,
         date_livraison: dateLivraisonRaw,
         frais_livraison_cents: fraisCents,
+        code_promo: codePromoApplique,
+        reduction_cents: reductionCents,
         client_id: clientId,
       })
       .select('id')
@@ -218,6 +237,11 @@ export async function POST(request: Request) {
 
     const orderId = orderData.id;
 
+    // Incrément non-bloquant du compteur d'usage du code promo
+    if (codePromoId) {
+      incrementCodeUsage(codePromoId).catch(() => {});
+    }
+
     const shopEmailAddr = process.env.SHOP_EMAIL || 'magasin@primeur-test.com';
     const fourchetteBornes = await getFourchetteBornes();
     const livraisonInfos = {
@@ -228,6 +252,8 @@ export async function POST(request: Request) {
       creneauLabel: creneau.label,
       dateLivraison: dateLivraisonRaw,
       fraisLivraisonCents: fraisCents,
+      codePromo: codePromoApplique,
+      reductionCents,
     };
     const [shopHtml, clientHtml] = await Promise.all([
       emailShop({

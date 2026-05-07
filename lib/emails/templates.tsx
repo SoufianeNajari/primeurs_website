@@ -235,6 +235,8 @@ type LivraisonInfos = {
   creneauLabel: string;
   dateLivraison: string;
   fraisLivraisonCents: number;
+  codePromo?: string | null;
+  reductionCents?: number;
 };
 
 function ShopEmail(props: LivraisonInfos & {
@@ -369,6 +371,16 @@ function ShopEmail(props: LivraisonInfos & {
                         </td>
                       </tr>
                     )}
+                    {props.codePromo && props.reductionCents && props.reductionCents > 0 && (
+                      <tr>
+                        <td style={{ padding: '4px 0', color: BRAND.green, fontSize: '14px' }}>
+                          Code promo {props.codePromo}
+                        </td>
+                        <td style={{ padding: '4px 0', textAlign: 'right' as const, fontWeight: 600, color: BRAND.green }}>
+                          −{formatPriceCents(props.reductionCents)}
+                        </td>
+                      </tr>
+                    )}
                     {borneMax != null && (
                       <tr>
                         <td style={{ padding: '4px 0', color: BRAND.muted, fontSize: '14px' }}>
@@ -383,7 +395,7 @@ function ShopEmail(props: LivraisonInfos & {
                             color: BRAND.green,
                           }}
                         >
-                          {formatPrice(borneMax + props.fraisLivraisonCents / 100)}
+                          {formatPrice(borneMax + props.fraisLivraisonCents / 100 - (props.reductionCents ?? 0) / 100)}
                         </td>
                       </tr>
                     )}
@@ -430,8 +442,9 @@ function ClientEmail(props: LivraisonInfos & {
   const fourchette = total != null && !incertain ? calcFourchette(total, props.fourchetteBornes) : null;
   const dateLong = formatDateLong(props.dateLivraison);
   const adresseFull = buildAdresseFull(props.adresse, props.complementAdresse, props.codePostal, props.ville);
-  const totalAvecFraisMin = fourchette ? fourchette.min + props.fraisLivraisonCents / 100 : null;
-  const totalAvecFraisMax = fourchette ? fourchette.max + props.fraisLivraisonCents / 100 : null;
+  const reductionEuros = (props.reductionCents ?? 0) / 100;
+  const totalAvecFraisMin = fourchette ? fourchette.min + props.fraisLivraisonCents / 100 - reductionEuros : null;
+  const totalAvecFraisMax = fourchette ? fourchette.max + props.fraisLivraisonCents / 100 - reductionEuros : null;
 
   return (
     <Html>
@@ -504,6 +517,11 @@ function ClientEmail(props: LivraisonInfos & {
                 ) : (
                   <Text style={{ ...paragraph, color: BRAND.green }}>
                     <strong>Livraison offerte</strong>
+                  </Text>
+                )}
+                {props.codePromo && props.reductionCents && props.reductionCents > 0 && (
+                  <Text style={{ ...paragraph, color: BRAND.green }}>
+                    Code promo <strong>{props.codePromo}</strong> : −{formatPriceCents(props.reductionCents)}
                   </Text>
                 )}
                 {totalAvecFraisMin != null && totalAvecFraisMax != null && (
