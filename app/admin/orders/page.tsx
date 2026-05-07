@@ -1,8 +1,18 @@
+import { headers } from 'next/headers'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getFourchetteBornes } from '@/lib/fourchette'
 import { buildCancelUrl } from '@/lib/cancel-token'
-import { SITE } from '@/lib/site'
 import OrderList from './OrderList'
+
+// Reconstitue l'origin réel de la requête (preview Vercel, prod, localhost…)
+// au lieu de SITE.url, pour que le lien d'annulation pointe sur le même
+// déploiement que celui qu'on est en train d'utiliser dans l'admin.
+function currentOrigin(): string {
+  const h = headers()
+  const host = h.get('host') ?? 'localhost:3000'
+  const proto = h.get('x-forwarded-proto') ?? (host.startsWith('localhost') ? 'http' : 'https')
+  return `${proto}://${host}`
+}
 
 export const dynamic = 'force-dynamic'
 
@@ -88,7 +98,7 @@ export default async function OrdersPage({ searchParams }: { searchParams?: { pe
         fourchette={fourchette}
         prixActuels={prixActuels}
         cancelLinks={Object.fromEntries(
-          (commandes || []).map((c: { id: string }) => [c.id, buildCancelUrl(SITE.url, c.id, 7)]),
+          (commandes || []).map((c: { id: string }) => [c.id, buildCancelUrl(currentOrigin(), c.id, 7)]),
         )}
       />
     </div>
