@@ -665,3 +665,103 @@ export async function emailShop(args: EmailShopArgs): Promise<string> {
 export async function emailClient(args: EmailClientArgs): Promise<string> {
   return render(<ClientEmail {...args} />);
 }
+
+// ───── Rappel J-1 ─────
+
+function RappelJ1Email(props: {
+  prenom: string;
+  dateLivraison: string;
+  creneauLabel: string;
+  adresseFull: string;
+  cancelUrl: string;
+  livreurPrenom: string;
+}) {
+  const dateLong = formatDateLong(props.dateLivraison) ?? props.dateLivraison;
+  return (
+    <Html>
+      <Head />
+      <Preview>Votre livraison Primeur Chez Vous demain — {dateLong}</Preview>
+      <Body style={main}>
+        <Container style={container}>
+          <Heading as="h1" style={h1}>Bonjour {props.prenom},</Heading>
+          <Text style={paragraph}>
+            Petit rappel : votre livraison <strong>Primeur Chez Vous</strong> est prévue demain.
+          </Text>
+
+          <Section
+            style={{
+              backgroundColor: BRAND.bg,
+              border: `2px solid ${BRAND.green}`,
+              padding: '20px',
+              margin: '24px 0',
+              textAlign: 'center' as const,
+            }}
+          >
+            <Text
+              style={{
+                color: BRAND.green,
+                fontSize: '11px',
+                letterSpacing: '2px',
+                textTransform: 'uppercase' as const,
+                margin: '0 0 8px',
+                fontWeight: 600,
+              }}
+            >
+              Demain
+            </Text>
+            <Text style={{ fontFamily: 'Georgia, serif', fontSize: '22px', margin: 0, color: BRAND.text, fontWeight: 'bold' as const }}>
+              {dateLong}
+            </Text>
+            <Text style={{ fontSize: '15px', color: BRAND.green, margin: '6px 0 0' }}>
+              {props.creneauLabel}
+            </Text>
+            <Text style={{ ...muted, marginTop: '12px' }}>
+              à <strong>{props.adresseFull}</strong>
+            </Text>
+          </Section>
+
+          <Text style={paragraph}>
+            <strong>{props.livreurPrenom}</strong> sera à votre porte sur ce créneau. Si vous n&apos;êtes pas chez vous,
+            il vous appellera pour convenir d&apos;un point de remise (voisin, gardien, lieu sûr).
+          </Text>
+
+          <Hr style={hr} />
+
+          <Text style={{ ...muted, textAlign: 'center' as const, fontSize: '13px', margin: '8px 0 16px' }}>
+            Empêchement de dernière minute ?
+          </Text>
+          <Section style={{ textAlign: 'center' as const, margin: '0 0 8px' }}>
+            <EmailLink
+              href={props.cancelUrl}
+              style={{
+                color: BRAND.muted,
+                fontSize: '13px',
+                textDecoration: 'underline',
+              }}
+            >
+              Annuler ma livraison
+            </EmailLink>
+          </Section>
+          <Text style={{ ...muted, textAlign: 'center' as const, fontSize: '12px' }}>
+            Annulation gratuite et immédiate, sans débit.
+          </Text>
+
+          <Footer />
+        </Container>
+      </Body>
+    </Html>
+  );
+}
+
+export type EmailRappelJ1Args = {
+  prenom: string;
+  dateLivraison: string;
+  creneauLabel: string;
+  adresseFull: string;
+  cancelUrl: string;
+  livreurPrenom: string;
+};
+
+export async function emailRappelJ1(args: EmailRappelJ1Args): Promise<string> {
+  return render(<RappelJ1Email {...args} />);
+}
