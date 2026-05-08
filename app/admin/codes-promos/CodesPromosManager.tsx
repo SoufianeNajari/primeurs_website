@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Trash2, X, Tag, Gift, Users, Search } from 'lucide-react';
+import { Plus, Trash2, X, Tag, Gift, Users, Search, Pencil } from 'lucide-react';
 import type { CodePromo } from '@/lib/codes-promos';
 import { useToast } from '@/components/admin/Toast';
 import { useConfirm } from '@/components/admin/ConfirmModal';
@@ -53,6 +53,7 @@ export default function CodesPromosManager({ initialCodes }: { initialCodes: Cod
   const [search, setSearch] = useState('');
   const [showAnciens, setShowAnciens] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
+  const [editing, setEditing] = useState<CodePromo | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const counts = useMemo(() => {
@@ -245,6 +246,15 @@ export default function CodesPromosManager({ initialCodes }: { initialCodes: Cod
                   <ToggleActif checked={c.actif} disabled={busyId === c.id} onChange={() => toggleActif(c)} />
                   <button
                     type="button"
+                    onClick={() => setEditing(c)}
+                    disabled={busyId === c.id}
+                    aria-label="Modifier le code"
+                    className="p-2 text-neutral-400 hover:text-green-primary disabled:opacity-50"
+                  >
+                    <Pencil size={16} />
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => deleteCode(c)}
                     disabled={busyId === c.id}
                     aria-label="Supprimer le code"
@@ -266,6 +276,19 @@ export default function CodesPromosManager({ initialCodes }: { initialCodes: Cod
             setCodes((prev) => [code, ...prev]);
             setShowCreate(false);
             toast.success(`Code ${code.code} créé`);
+            router.refresh();
+          }}
+        />
+      )}
+
+      {editing && (
+        <EditCodeModal
+          code={editing}
+          onClose={() => setEditing(null)}
+          onUpdated={(updated) => {
+            setCodes((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
+            setEditing(null);
+            toast.success('Code mis à jour');
             router.refresh();
           }}
         />
@@ -480,5 +503,193 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
       <div className="mt-1">{children}</div>
       {hint && <div className="text-xs text-neutral-400 mt-1">{hint}</div>}
     </label>
+  );
+}
+
+function toDatetimeLocal(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function EditCodeModal({ code, onClose, onUpdated }: { code: CodePromo; onClose: () => void; onUpdated: (c: CodePromo) => void }) {
+  const [type, setType] = useState<'pourcent' | 'montant_fixe'>(code.type);
+  const [valeur, setValeur] = useState(
+    code.type === 'pourcent' ? String(code.valeur) : (code.valeur / 100).toFixed(2),
+  );
+  const [reductionMaxEur, setReductionMaxEur] = useState(
+    code.reduction_max_cents != null ? (code.reduction_max_cents / 100).toFixed(2) : '',
+  );
+  const [minPanierEur, setMinPanierEur] = useState((code.min_panier_cents / 100).toFixed(2));
+  const [usageMax, setUsageMax] = useState(code.usage_max != null ? String(code.usage_max) : '');
+  const [expireAt, setExpireAt] = useState(toDatetimeLocal(code.expire_at));
+  const [description, setDescription] = useState(code.description || '');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const toast = useToast();
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (!valeur.trim()) {
+      setError('Valeur requise.');
+      return;
+    }
+    const valeurNum = type === 'pourcent' ? Math.round(Number(valeur)) : Math.round(Number(valeur) * 100);
+    if (!Number.isFinite(valeurNum) || valeurNum <= 0) {
+      setError('Valeur invalide.');
+      return;
+    }
+    if (code.usage_max == null && usageMax.trim()) {
+      // OK : on ajoute un plafond
+    }
+    if (code.usage_max != null && usageMax.trim()) {
+      const newMax = Math.round(Number(usageMax));
+      if (newMax < code.usage_actuel) {
+        setError(`Plafond < usage actuel (${code.usage_actuel}). Refusé pour ne pas casser l'historique.`);
+        return;
+      }
+    }
+    setSaving(true);
+    try {
+      const payload = {
+        type,
+        valeur: valeurNum,
+        reduction_max_cents: type === 'pourcent' && reductionMaxEur.trim() ? Math.round(Number(reductionMaxEur) * 100) : null,
+        min_panier_cents: minPanierEur.trim() ? Math.round(Number(minPanierEur) * 100) : 0,
+        usage_max: usageMax.trim() ? Math.round(Number(usageMax)) : null,
+        expire_at: expireAt.trim() ? new Date(expireAt).toISOString() : null,
+        description: description.trim() || null,
+      };
+      const res = await fetch(`/api/admin/codes-promos/${code.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Erreur');
+      onUpdated(json.code as CodePromo);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Erreur';
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
+      <form
+        onSubmit={handleSubmit}
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white border border-neutral-200 max-w-lg w-full max-h-[90vh] overflow-y-auto"
+      >
+        <div className="flex items-center justify-between p-4 border-b border-neutral-200">
+          <div>
+            <h2 className="font-serif text-lg text-neutral-800">Modifier le code</h2>
+            <div className="font-mono text-xs text-neutral-500 mt-0.5">{code.code} · {code.usage_actuel} usage{code.usage_actuel > 1 ? 's' : ''} enregistré{code.usage_actuel > 1 ? 's' : ''}</div>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Fermer" className="text-neutral-500 hover:text-neutral-800">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="p-4 space-y-4">
+          {error && <div className="border border-red-300 bg-red-50 text-red-800 px-3 py-2 text-sm">{error}</div>}
+
+          <Field label="Type *">
+            <div className="flex gap-2">
+              <label className={`flex-1 border px-3 py-2 cursor-pointer text-sm text-center ${type === 'montant_fixe' ? 'border-green-primary bg-green-primary/5 text-green-primary' : 'border-neutral-300 text-neutral-600'}`}>
+                <input type="radio" checked={type === 'montant_fixe'} onChange={() => setType('montant_fixe')} className="sr-only" />
+                Montant fixe (€)
+              </label>
+              <label className={`flex-1 border px-3 py-2 cursor-pointer text-sm text-center ${type === 'pourcent' ? 'border-green-primary bg-green-primary/5 text-green-primary' : 'border-neutral-300 text-neutral-600'}`}>
+                <input type="radio" checked={type === 'pourcent'} onChange={() => setType('pourcent')} className="sr-only" />
+                Pourcentage (%)
+              </label>
+            </div>
+          </Field>
+
+          <Field label={type === 'pourcent' ? 'Valeur (%) *' : 'Valeur (€) *'}>
+            <input
+              required
+              type="number"
+              value={valeur}
+              onChange={(e) => setValeur(e.target.value)}
+              step={type === 'pourcent' ? '1' : '0.01'}
+              min="0"
+              className={inputCls}
+            />
+          </Field>
+
+          {type === 'pourcent' && (
+            <Field label="Plafond de réduction (€)" hint="Vide = pas de plafond">
+              <input
+                type="number"
+                value={reductionMaxEur}
+                onChange={(e) => setReductionMaxEur(e.target.value)}
+                step="0.01"
+                min="0"
+                className={inputCls}
+              />
+            </Field>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Panier min (€)">
+              <input
+                type="number"
+                value={minPanierEur}
+                onChange={(e) => setMinPanierEur(e.target.value)}
+                step="0.01"
+                min="0"
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Usages max" hint={`Vide = illimité. Actuel : ${code.usage_actuel}`}>
+              <input
+                type="number"
+                value={usageMax}
+                onChange={(e) => setUsageMax(e.target.value)}
+                step="1"
+                min={code.usage_actuel || 1}
+                className={inputCls}
+                placeholder="∞"
+              />
+            </Field>
+          </div>
+
+          <Field label="Date d'expiration" hint="Vide = jamais">
+            <input
+              type="datetime-local"
+              value={expireAt}
+              onChange={(e) => setExpireAt(e.target.value)}
+              className={inputCls}
+            />
+          </Field>
+
+          <Field label="Description (interne)" hint="Affichée seulement dans l'admin.">
+            <input
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              maxLength={200}
+              className={inputCls}
+            />
+          </Field>
+        </div>
+
+        <div className="p-4 border-t border-neutral-200 flex items-center justify-end gap-2">
+          <button type="button" onClick={onClose} className="text-sm text-neutral-500 hover:text-neutral-800 px-3 py-2">
+            Annuler
+          </button>
+          <button type="submit" disabled={saving} className="bg-green-primary text-white px-5 py-2 font-medium uppercase tracking-widest text-[11px] hover:bg-green-dark disabled:opacity-50">
+            {saving ? 'Mise à jour…' : 'Enregistrer'}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }

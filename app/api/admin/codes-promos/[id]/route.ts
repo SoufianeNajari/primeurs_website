@@ -7,6 +7,10 @@ export const dynamic = 'force-dynamic';
 
 const patchSchema = z.object({
   actif: z.coerce.boolean().optional(),
+  type: z.enum(['pourcent', 'montant_fixe']).optional(),
+  valeur: z.coerce.number().int().positive().optional(),
+  reduction_max_cents: z.coerce.number().int().positive().nullish(),
+  min_panier_cents: z.coerce.number().int().min(0).optional(),
   expire_at: z.string().nullish(),
   usage_max: z.coerce.number().int().positive().nullish(),
   description: z.string().max(200).nullish(),
@@ -21,6 +25,10 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
     const updatePayload: Record<string, unknown> = {};
     if (input.actif !== undefined) updatePayload.actif = input.actif;
+    if (input.type !== undefined) updatePayload.type = input.type;
+    if (input.valeur !== undefined) updatePayload.valeur = input.valeur;
+    if (input.reduction_max_cents !== undefined) updatePayload.reduction_max_cents = input.reduction_max_cents ?? null;
+    if (input.min_panier_cents !== undefined) updatePayload.min_panier_cents = input.min_panier_cents;
     if (input.expire_at !== undefined) {
       updatePayload.expire_at = input.expire_at && input.expire_at.trim() !== '' ? input.expire_at : null;
     }
