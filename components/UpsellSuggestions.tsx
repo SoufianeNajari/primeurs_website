@@ -19,12 +19,11 @@ export default function UpsellSuggestions() {
     const run = async () => {
       const cartItems = Object.values(cart);
       const excludeIds = Array.from(new Set(cartItems.map((i) => i.produitId)));
-      const cartCategories = Array.from(new Set(cartItems.map((i) => i.categorie)));
       try {
         const res = await fetch('/api/upsell', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ excludeIds, cartCategories }),
+          body: JSON.stringify({ excludeIds }),
         });
         if (!res.ok) throw new Error('Erreur');
         const data = (await res.json()) as { suggestions: UpsellSuggestion[] };
@@ -49,10 +48,10 @@ export default function UpsellSuggestions() {
     <section className="bg-white border border-neutral-200">
       <div className="bg-neutral-50 px-6 py-4 border-b border-neutral-200 flex items-center gap-3">
         <Sparkles className="text-green-primary" size={20} strokeWidth={1.5} />
-        <h2 className="text-lg font-serif text-neutral-800">Suggestions du primeur</h2>
+        <h2 className="text-lg font-serif text-neutral-800">Coups de cœur du primeur</h2>
       </div>
       <p className="px-6 pt-4 text-sm text-neutral-500 italic">
-        Quelques produits qui se marient bien avec votre panier.
+        Une sélection que Karim aime particulièrement en ce moment.
       </p>
       <ul className="px-4 sm:px-6 py-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
         {suggestions.map((s) => {

@@ -21,6 +21,7 @@ export const produitInputSchema = z.object({
   variete: z.string().max(120).nullish(),
   qualite: z.string().max(60).nullish(),
   disponible: z.coerce.boolean().optional(),
+  mis_en_avant: z.coerce.boolean().optional(),
   ordre: z.coerce.number().int().nullish(),
   mois_debut: z.coerce.number().int().min(1).max(12).nullish(),
   mois_fin: z.coerce.number().int().min(1).max(12).nullish(),
@@ -46,6 +47,7 @@ export function normalizeProduitInput(raw: unknown): ProduitInput {
     variete: parsed.variete && parsed.variete.trim() !== '' ? parsed.variete.trim() : null,
     qualite: parsed.qualite && parsed.qualite.trim() !== '' ? parsed.qualite.trim() : null,
     disponible: parsed.disponible ?? true,
+    mis_en_avant: parsed.mis_en_avant ?? false,
     options: parsed.options.map((o) => ({
       id: o.id,
       libelle: o.libelle.trim(),

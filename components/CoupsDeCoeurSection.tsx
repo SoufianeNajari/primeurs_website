@@ -1,24 +1,24 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { supabaseAdmin } from '@/lib/supabase';
-import { formatPrixResume, isEnSaison, type Product } from '@/lib/produit';
+import { formatPrixResume, type Product } from '@/lib/produit';
 import { ArrowRight, Sparkles } from 'lucide-react';
 
-export default async function SaisonSection() {
+// Section "Coups de cœur du primeur" sur la home — pilotée par le flag
+// produits.mis_en_avant. Mode strict : si le primeur n'a rien coché, la
+// section disparaît (pas de fallback automatique).
+export default async function CoupsDeCoeurSection() {
   const { data } = await supabaseAdmin
     .from('produits')
-    .select('id, nom, slug, categorie, options, image_url, mois_debut, mois_fin, disponible')
+    .select('id, nom, slug, categorie, options, image_url, disponible')
     .eq('disponible', true)
+    .eq('mis_en_avant', true)
     .eq('masque_boutique', false)
-    .not('mois_debut', 'is', null)
-    .not('mois_fin', 'is', null)
-    .not('slug', 'is', null);
+    .not('slug', 'is', null)
+    .order('ordre', { ascending: true })
+    .limit(6);
 
-  const month = new Date().getMonth() + 1;
-  const produits = ((data || []) as Product[])
-    .filter((p) => isEnSaison(p.mois_debut, p.mois_fin, month))
-    .slice(0, 6);
-
+  const produits = (data || []) as Product[];
   if (produits.length === 0) return null;
 
   return (
@@ -28,9 +28,9 @@ export default async function SaisonSection() {
           <div>
             <div className="flex items-center gap-2 text-green-primary text-xs uppercase tracking-[0.2em] font-medium mb-2">
               <Sparkles size={14} strokeWidth={1.5} />
-              De saison
+              Coups de cœur du primeur
             </div>
-            <h2 className="text-3xl md:text-4xl font-serif text-neutral-800">En ce moment sur les étals</h2>
+            <h2 className="text-3xl md:text-4xl font-serif text-neutral-800">La sélection de Karim</h2>
           </div>
           <Link
             href="/boutique"

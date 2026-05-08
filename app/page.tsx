@@ -1,7 +1,7 @@
 import HeroSection from '@/components/HeroSection';
 import CategoryCard from '@/components/CategoryCard';
 import HowItWorks from '@/components/HowItWorks';
-import SaisonSection from '@/components/SaisonSection';
+import CoupsDeCoeurSection from '@/components/CoupsDeCoeurSection';
 import GoogleReviews from '@/components/GoogleReviews';
 import VillesDesservies from '@/components/VillesDesservies';
 import LivreurSection from '@/components/LivreurSection';
@@ -27,8 +27,8 @@ export default function LandingPage() {
       {/* 2ter. Ce matin à Rungis — alimenté par /admin/arrivages, masqué si rien à publier */}
       <ArrivageRungis />
 
-      {/* 3. De saison en ce moment */}
-      <SaisonSection />
+      {/* 3. Coups de cœur du primeur (piloté par produits.mis_en_avant) */}
+      <CoupsDeCoeurSection />
 
       {/* 4. Section "Notre sélection" */}
       <section className="py-20 max-w-6xl mx-auto px-4 w-full">

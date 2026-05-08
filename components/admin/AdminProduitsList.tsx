@@ -278,6 +278,7 @@ export default function AdminProduitsList({ produits: initial, categoriesOrder }
                         </div>
                       </div>
                       <div className="flex items-center gap-3 text-xs">
+                        {p.mis_en_avant && <span className="border border-amber-300 bg-amber-50 text-amber-800 px-2 py-0.5" title="Mis en avant sur la home et en suggestion à la commande">★ Coup de cœur</span>}
                         {!p.disponible && <span className="border border-red-300 bg-red-50 text-red-700 px-2 py-0.5">Indispo</span>}
                         {p.bio && <span className="border border-green-300 bg-green-50 text-green-800 px-2 py-0.5">Bio</span>}
                         <Pencil size={14} className="text-neutral-400" />

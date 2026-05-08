@@ -53,6 +53,7 @@ export default function ProductForm({ mode, initial, categories }: { mode: Mode;
   const [variete, setVariete] = useState(initial?.variete || '');
   const [qualite, setQualite] = useState(initial?.qualite || '');
   const [disponible, setDisponible] = useState(initial?.disponible ?? true);
+  const [misEnAvant, setMisEnAvant] = useState(initial?.mis_en_avant ?? false);
   const [moisDebut, setMoisDebut] = useState<string>(initial?.mois_debut ? String(initial.mois_debut) : '');
   const [moisFin, setMoisFin] = useState<string>(initial?.mois_fin ? String(initial.mois_fin) : '');
   const [imageUrl, setImageUrl] = useState<string>(initial?.image_url || '');
@@ -145,6 +146,7 @@ export default function ProductForm({ mode, initial, categories }: { mode: Mode;
       variete: variete || null,
       qualite: qualite || null,
       disponible,
+      mis_en_avant: misEnAvant,
       mois_debut: moisDebut === '' ? null : Number(moisDebut),
       mois_fin: moisFin === '' ? null : Number(moisFin),
       image_url: imageUrl || null,
@@ -351,7 +353,11 @@ export default function ProductForm({ mode, initial, categories }: { mode: Mode;
         <Toggle label="Bio" checked={bio} onChange={setBio} />
         <Toggle label="Local" checked={local} onChange={setLocal} />
         <Toggle label="Disponible" checked={disponible} onChange={setDisponible} />
+        <Toggle label="Coup de cœur ★" checked={misEnAvant} onChange={setMisEnAvant} />
       </div>
+      <p className="text-xs text-neutral-500 -mt-3">
+        Les produits « coup de cœur » sont mis en avant sur la page d&apos;accueil et proposés en suggestion au moment de la commande.
+      </p>
 
       <div>
         <div className="text-xs uppercase tracking-widest text-neutral-500 font-medium mb-2">Photo principale</div>
