@@ -1,3 +1,29 @@
+// Garde-fou : la marque a été pivotée de "Pontault Primeurs" vers "Primeur
+// Chez Vous" en mai 2026. Le domaine `pontaultprimeurs.fr` est mort. Si une
+// variable d'env Vercel persistait encore (oubli de purge), on log un warning
+// au boot — invisible pour l'utilisateur final mais visible dans les logs
+// build/runtime, et on retombe sur la cascade Vercel.
+function resolveSiteUrl(): string {
+  const explicit = process.env.NEXT_PUBLIC_SITE_URL;
+  if (explicit) {
+    if (/pontaultprimeurs/i.test(explicit)) {
+      console.warn(
+        '[lib/site] NEXT_PUBLIC_SITE_URL contient "pontaultprimeurs" — ignorée. ' +
+        'Vide cette variable dans Vercel Project Settings ou pointe-la sur le domaine custom.',
+      );
+    } else {
+      return explicit;
+    }
+  }
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  return 'http://localhost:3000';
+}
+
 export const SITE = {
   name: 'Primeur Chez Vous',
   fullName: 'Primeur Chez Vous · by Pontault Primeurs',
@@ -16,11 +42,7 @@ export const SITE = {
   //  2. VERCEL_PROJECT_PRODUCTION_URL — URL stable du déploiement prod (auto-injectée)
   //  3. VERCEL_URL — URL du déploiement courant (preview/prod, change à chaque build)
   //  4. localhost:3000 — dev local
-  url:
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : '') ||
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '') ||
-    'http://localhost:3000',
+  url: resolveSiteUrl(),
   locale: 'fr_FR',
   telephone: '+33160296298',
   telephoneDisplay: '01 60 29 62 98',

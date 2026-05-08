@@ -18,6 +18,7 @@ const LINKS = [
   { href: '/admin/tournee', label: 'Tournée' },
   { href: '/admin/articles', label: 'Articles' },
   { href: '/admin/arrivages', label: 'Arrivage' },
+  { href: '/admin/codes-promos', label: 'Codes promos' },
   { href: '/admin/clients', label: 'Clients' },
 ]
 

@@ -15,6 +15,7 @@ export type CodePromo = {
   est_parrainage: boolean;
   parrain_email: string | null;
   client_email_lock: string | null;
+  created_at: string;
 };
 
 // Comparaison d'emails insensible à la casse — on utilise lowercase comme
