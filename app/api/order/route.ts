@@ -7,6 +7,7 @@ import { getClientSession } from '@/lib/client-auth';
 import { isCommandesBloquees } from '@/lib/parametres';
 import { getFourchetteBornes } from '@/lib/fourchette';
 import { validateCodePromo, incrementCodeUsage } from '@/lib/codes-promos';
+import { genererCodeParrainSiNouveau, traiterUsageSiParrainage, getCodeParrainPourClient, PARRAINAGE_CONFIG } from '@/lib/parrainage';
 import {
   VILLES_AUTORISEES,
   CRENEAUX_LIVRAISON,
@@ -193,7 +194,7 @@ export async function POST(request: Request) {
     let reductionCents = 0;
     let codePromoId: string | null = null;
     if (typeof codePromoRaw === 'string' && codePromoRaw.trim() && !tousIncertains) {
-      const validation = await validateCodePromo(codePromoRaw, totalCertainCents);
+      const validation = await validateCodePromo(codePromoRaw, totalCertainCents, client.email);
       if (validation.ok) {
         codePromoApplique = validation.code.code;
         reductionCents = validation.reductionCents;
@@ -240,7 +241,21 @@ export async function POST(request: Request) {
     // Incrément non-bloquant du compteur d'usage du code promo
     if (codePromoId) {
       incrementCodeUsage(codePromoId).catch(() => {});
+      // Si c'est un code de parrainage : crédite le parrain (code MERCI + email)
+      traiterUsageSiParrainage({
+        codePromoId,
+        filleulPrenom: client.prenom,
+        filleulNom: client.nom,
+        filleulEmail: client.email,
+      }).catch((err) => console.error('[order] traiterUsageSiParrainage:', err));
     }
+
+    // Génère (idempotent) le code de parrainage du client pour l'inclure
+    // dans son email de confirmation. Best-effort : si la génération échoue,
+    // l'email part sans le bloc parrainage plutôt que de bloquer la commande.
+    const codeParrainage = await genererCodeParrainSiNouveau(client.email)
+      .catch(() => null)
+      ?? await getCodeParrainPourClient(client.email).catch(() => null);
 
     const shopEmailAddr = process.env.SHOP_EMAIL || 'magasin@primeur-test.com';
     const fourchetteBornes = await getFourchetteBornes();
@@ -272,6 +287,9 @@ export async function POST(request: Request) {
         prenom: client.prenom,
         lignes: lignesNormalisees,
         fourchetteBornes,
+        codeParrainage,
+        reductionParrainageCents: PARRAINAGE_CONFIG.reductionFilleulCents,
+        panierMinParrainageCents: PARRAINAGE_CONFIG.panierMinCents,
       }),
     ]);
     await Promise.all([

@@ -12,7 +12,16 @@ export type CodePromo = {
   expire_at: string | null;
   actif: boolean;
   description: string | null;
+  est_parrainage: boolean;
+  parrain_email: string | null;
+  client_email_lock: string | null;
 };
+
+// Comparaison d'emails insensible à la casse — on utilise lowercase comme
+// référence canonique (les codes lockés sont stockés en lowercase).
+export function normalizeEmail(raw: string | null | undefined): string {
+  return (raw || '').trim().toLowerCase();
+}
 
 export type CodePromoValidation =
   | { ok: true; code: CodePromo; reductionCents: number; libelle: string }
@@ -75,13 +84,27 @@ export async function loadActiveCode(codeRaw: string): Promise<CodePromo | null>
 // Valide un code et calcule la réduction. Aucune mutation BDD.
 // Utilisé par /api/codes-promos/validate (avant commande) et par /api/order
 // (re-validation atomique au moment de l'enregistrement).
+//
+// `clientEmail` (optionnel mais recommandé côté serveur) :
+//  - permet de rejeter les codes lockés sur un autre email (codes « MERCI »
+//    crédités à un parrain particulier)
+//  - permet de rejeter le cas où un parrain essaie d'utiliser son propre
+//    code de parrainage sur sa propre commande (auto-récompense bloquée)
 export async function validateCodePromo(
   codeRaw: string,
   panierCents: number,
+  clientEmail?: string | null,
 ): Promise<CodePromoValidation> {
   const code = await loadActiveCode(codeRaw);
   if (!code) {
     return { ok: false, raison: 'Code promo invalide ou expiré.' };
+  }
+  const emailNorm = normalizeEmail(clientEmail);
+  if (code.client_email_lock && (!emailNorm || emailNorm !== normalizeEmail(code.client_email_lock))) {
+    return { ok: false, raison: 'Ce code est réservé à un autre client.' };
+  }
+  if (code.est_parrainage && code.parrain_email && emailNorm && emailNorm === normalizeEmail(code.parrain_email)) {
+    return { ok: false, raison: 'Vous ne pouvez pas utiliser votre propre code de parrainage.' };
   }
   if (panierCents < code.min_panier_cents) {
     const min = (code.min_panier_cents / 100).toFixed(2).replace('.', ',');

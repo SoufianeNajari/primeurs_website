@@ -183,7 +183,7 @@ export default function OrderPage() {
         const res = await fetch('/api/codes-promos/validate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code, panierCents }),
+          body: JSON.stringify({ code, panierCents, email: draft.email || null }),
         });
         const data = await res.json();
         if (data?.ok) {
@@ -203,7 +203,7 @@ export default function OrderPage() {
     return () => {
       if (promoTimer.current) clearTimeout(promoTimer.current);
     };
-  }, [draft.codePromo, totalEstime, cart, isMounted]);
+  }, [draft.codePromo, draft.email, totalEstime, cart, isMounted]);
 
   if (!isMounted || !isLoaded || totalItems === 0) {
     return (

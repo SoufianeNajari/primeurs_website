@@ -480,6 +480,9 @@ function ClientEmail(props: LivraisonInfos & {
   prenom: string;
   lignes: LigneCommande[];
   fourchetteBornes: FourchetteBornes;
+  codeParrainage?: string | null;
+  reductionParrainageCents?: number;
+  panierMinParrainageCents?: number;
 }) {
   const total = totalEstime(props.lignes);
   const incertain = hasIncertain(props.lignes);
@@ -633,6 +636,146 @@ function ClientEmail(props: LivraisonInfos & {
             Le règlement s&apos;effectue à la livraison (CB ou espèces).
           </Text>
 
+          {props.codeParrainage && (
+            <Section
+              style={{
+                backgroundColor: BRAND.bg,
+                border: `1px dashed ${BRAND.green}`,
+                padding: '20px',
+                marginTop: '32px',
+                textAlign: 'center' as const,
+              }}
+            >
+              <Text
+                style={{
+                  color: BRAND.green,
+                  fontSize: '11px',
+                  letterSpacing: '2px',
+                  textTransform: 'uppercase' as const,
+                  margin: '0 0 8px',
+                  fontWeight: 600,
+                }}
+              >
+                Parrainez et gagnez −{formatPriceCents(props.reductionParrainageCents ?? 500)}
+              </Text>
+              <Text style={{ ...paragraph, marginTop: 0, marginBottom: '12px' }}>
+                Partagez votre code à un proche : il bénéficie de <strong>−{formatPriceCents(props.reductionParrainageCents ?? 500)}</strong> sur sa première commande, et nous vous offrons <strong>−{formatPriceCents(props.reductionParrainageCents ?? 500)}</strong> sur la vôtre.
+              </Text>
+              <Text
+                style={{
+                  fontFamily: 'Georgia, serif',
+                  fontSize: '24px',
+                  fontWeight: 'bold' as const,
+                  letterSpacing: '2px',
+                  color: BRAND.green,
+                  margin: '8px 0',
+                  padding: '12px 16px',
+                  backgroundColor: '#ffffff',
+                  border: `1px solid ${BRAND.border}`,
+                  display: 'inline-block' as const,
+                }}
+              >
+                {props.codeParrainage}
+              </Text>
+              <Text style={{ ...muted, marginTop: '10px', fontSize: '12px' }}>
+                Valable sur les paniers de {formatPriceCents(props.panierMinParrainageCents ?? 3000)} minimum.
+              </Text>
+            </Section>
+          )}
+
+          <Footer />
+        </Container>
+      </Body>
+    </Html>
+  );
+}
+
+function MerciParrainEmail(props: {
+  parrainEmail: string;
+  filleulPrenom: string;
+  filleulNom: string;
+  codeMerci: string;
+  reductionCents: number;
+  panierMinCents: number;
+}) {
+  return (
+    <Html>
+      <Head />
+      <Preview>Merci ! {props.filleulPrenom} a utilisé votre code — voici votre cadeau</Preview>
+      <Body style={main}>
+        <Container style={container}>
+          <Heading as="h1" style={h1}>Merci pour le coup de main !</Heading>
+          <Text style={paragraph}>
+            Bonne nouvelle : <strong>{props.filleulPrenom} {props.filleulNom}</strong> vient de passer sa première commande chez {SITE.name} grâce à votre code de parrainage.
+          </Text>
+          <Text style={paragraph}>
+            Pour vous remercier, voici un code à utiliser sur votre prochaine commande :
+          </Text>
+
+          <Section
+            style={{
+              backgroundColor: BRAND.bg,
+              border: `2px solid ${BRAND.green}`,
+              padding: '24px',
+              margin: '24px 0',
+              textAlign: 'center' as const,
+            }}
+          >
+            <Text
+              style={{
+                color: BRAND.green,
+                fontSize: '11px',
+                letterSpacing: '2px',
+                textTransform: 'uppercase' as const,
+                margin: '0 0 8px',
+                fontWeight: 600,
+              }}
+            >
+              Votre cadeau
+            </Text>
+            <Text
+              style={{
+                fontFamily: 'Georgia, serif',
+                fontSize: '28px',
+                fontWeight: 'bold' as const,
+                letterSpacing: '3px',
+                color: BRAND.green,
+                margin: '8px 0',
+              }}
+            >
+              {props.codeMerci}
+            </Text>
+            <Text style={{ ...paragraph, marginTop: '8px', marginBottom: 0 }}>
+              <strong>−{formatPriceCents(props.reductionCents)}</strong> sur votre prochaine commande
+            </Text>
+            <Text style={{ ...muted, marginTop: '8px', fontSize: '12px' }}>
+              Valable une seule fois, sur un panier d&apos;au moins {formatPriceCents(props.panierMinCents)}.
+              <br />Code réservé à votre adresse email.
+            </Text>
+          </Section>
+
+          <Text style={paragraph}>
+            Vous pouvez continuer à partager votre code de parrainage : il fonctionne pour autant de filleuls que vous voulez, et chaque utilisation vous fait gagner un nouveau cadeau.
+          </Text>
+
+          <Section style={{ textAlign: 'center' as const, marginTop: '24px' }}>
+            <EmailLink
+              href={`${SITE.url}/boutique`}
+              style={{
+                display: 'inline-block' as const,
+                backgroundColor: BRAND.green,
+                color: '#ffffff',
+                fontFamily: 'Georgia, serif',
+                fontSize: '15px',
+                padding: '12px 24px',
+                textDecoration: 'none',
+                border: `1px solid ${BRAND.green}`,
+              }}
+            >
+              Passer commande
+            </EmailLink>
+          </Section>
+
           <Footer />
         </Container>
       </Body>
@@ -655,6 +798,18 @@ export type EmailClientArgs = LivraisonInfos & {
   prenom: string;
   lignes: LigneCommande[];
   fourchetteBornes: FourchetteBornes;
+  codeParrainage?: string | null;
+  reductionParrainageCents?: number;
+  panierMinParrainageCents?: number;
+};
+
+export type EmailMerciParrainArgs = {
+  parrainEmail: string;
+  filleulPrenom: string;
+  filleulNom: string;
+  codeMerci: string;
+  reductionCents: number;
+  panierMinCents: number;
 };
 
 export async function emailShop(args: EmailShopArgs): Promise<string> {
@@ -664,6 +819,10 @@ export async function emailShop(args: EmailShopArgs): Promise<string> {
 
 export async function emailClient(args: EmailClientArgs): Promise<string> {
   return render(<ClientEmail {...args} />);
+}
+
+export async function emailMerciParrain(args: EmailMerciParrainArgs): Promise<string> {
+  return render(<MerciParrainEmail {...args} />);
 }
 
 // ───── Rappel J-1 ─────
