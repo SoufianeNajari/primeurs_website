@@ -56,7 +56,7 @@ type Order = {
   cancelled_at?: string | null;
 }
 
-type StatusFilter = 'tous' | 'reçue' | 'prête' | 'retirée';
+type StatusFilter = 'tous' | 'reçue' | 'prête' | 'retirée' | 'annulée';
 type CreneauFilter = 'tous' | 'mardi' | 'samedi';
 
 function buildMapsUrl(adresse: string, codePostal: string | null | undefined, ville: string | null | undefined): string {
@@ -332,6 +332,7 @@ export default function OrderList({
     'reçue': filteredByCreneau.filter(o => o.statut === 'reçue').length,
     'prête': filteredByCreneau.filter(o => o.statut === 'prête').length,
     'retirée': filteredByCreneau.filter(o => o.statut === 'retirée').length,
+    'annulée': filteredByCreneau.filter(o => o.statut === 'annulée').length,
   }), [filteredByCreneau])
 
   const creneauCounts = useMemo(() => ({
@@ -397,8 +398,9 @@ export default function OrderList({
   }
 
   const visibleOrders = statusFilter === 'tous' ? filteredByCreneau : filteredByCreneau.filter(o => o.statut === statusFilter)
-  const activeOrders = visibleOrders.filter(o => o.statut !== 'retirée')
+  const activeOrders = visibleOrders.filter(o => o.statut !== 'retirée' && o.statut !== 'annulée')
   const completedOrders = visibleOrders.filter(o => o.statut === 'retirée')
+  const cancelledOrders = visibleOrders.filter(o => o.statut === 'annulée')
 
   const groupedActive = useMemo(() => {
     const groups = new Map<string, { label: string; badge: string | null; orders: Order[] }>()
@@ -419,6 +421,7 @@ export default function OrderList({
     { value: 'reçue', label: 'Reçues' },
     { value: 'prête', label: 'Prêtes' },
     { value: 'retirée', label: 'Retirées' },
+    { value: 'annulée', label: 'Annulées' },
   ]
 
   const renderOrderArticle = (order: Order, opts: { dimmed?: boolean } = {}) => {
@@ -858,6 +861,43 @@ export default function OrderList({
                 </button>
                 {isOpen && (
                   <div id={`retired-${order.id}`} className="p-2 sm:p-3 bg-white border-t border-neutral-200">
+                    {renderOrderArticle(order, { dimmed: true })}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {cancelledOrders.length > 0 && (
+        <div className="space-y-2 pt-8 border-t border-neutral-200 no-print">
+          <h3 className="text-[11px] uppercase tracking-widest font-medium text-neutral-500 border-b border-neutral-200 pb-2">Commandes annulées ({cancelledOrders.length})</h3>
+          {cancelledOrders.map(order => {
+            const isOpen = expandedRetired.has(order.id)
+            return (
+              <div key={order.id} className="border border-neutral-200">
+                <button
+                  type="button"
+                  onClick={() => toggleRetiredExpand(order.id)}
+                  aria-expanded={isOpen}
+                  aria-controls={`cancelled-${order.id}`}
+                  className="w-full bg-red-soft/40 hover:bg-red-soft/60 transition-colors p-3 flex flex-wrap justify-between items-center gap-2 text-sm text-left"
+                >
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    {isOpen ? <ChevronUp size={16} className="text-neutral-500 shrink-0" /> : <ChevronDown size={16} className="text-neutral-500 shrink-0" />}
+                    <span className="font-mono text-xs text-neutral-500">{shortId(order.id)}</span>
+                    <span className="font-serif text-neutral-700 truncate">{order.client_nom}</span>
+                    {order.cancelled_at && (
+                      <span className="text-xs text-neutral-500 hidden sm:inline">{formatRelativeTime(order.cancelled_at)}</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={`text-[10px] uppercase tracking-widest font-semibold px-2 py-1 ${statutBadgeCls('annulée')}`}>{statutLabel('annulée')}</span>
+                  </div>
+                </button>
+                {isOpen && (
+                  <div id={`cancelled-${order.id}`} className="p-2 sm:p-3 bg-white border-t border-neutral-200">
                     {renderOrderArticle(order, { dimmed: true })}
                   </div>
                 )}

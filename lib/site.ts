@@ -36,10 +36,10 @@ export const SITE = {
     region: 'Île-de-France',
     country: 'FR',
   },
-  // Coordonnées approximatives — à affiner si besoin
+  // Coordonnées exactes de la boutique (Nominatim sur "44 Avenue Charles Rouxel, 77340 Pontault-Combault").
   geo: {
-    latitude: 48.7993,
-    longitude: 2.6087,
+    latitude: 48.7951134,
+    longitude: 2.6043155,
   },
   horaires: [
     { day: 'Tuesday', open: '08:00', close: '19:30' },
