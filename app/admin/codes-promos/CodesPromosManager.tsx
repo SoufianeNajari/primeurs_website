@@ -32,6 +32,18 @@ function categoriser(c: CodePromo): 'manuel' | 'parrainage' | 'merci' {
   return 'manuel';
 }
 
+function estEpuise(c: CodePromo): boolean {
+  return c.usage_max != null && c.usage_actuel >= c.usage_max;
+}
+
+function estExpire(c: CodePromo): boolean {
+  return !!(c.expire_at && new Date(c.expire_at) < new Date());
+}
+
+function estAncien(c: CodePromo): boolean {
+  return estEpuise(c) || estExpire(c) || !c.actif;
+}
+
 export default function CodesPromosManager({ initialCodes }: { initialCodes: CodePromo[] }) {
   const router = useRouter();
   const toast = useToast();
@@ -39,21 +51,26 @@ export default function CodesPromosManager({ initialCodes }: { initialCodes: Cod
   const [codes, setCodes] = useState<CodePromo[]>(initialCodes);
   const [filtre, setFiltre] = useState<Filtre>('tous');
   const [search, setSearch] = useState('');
+  const [showAnciens, setShowAnciens] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const counts = useMemo(() => {
-    const c = { tous: codes.length, manuels: 0, parrainage: 0, merci: 0 };
-    for (const code of codes) {
+    const actifs = codes.filter((c) => !estAncien(c));
+    const c = { tous: actifs.length, manuels: 0, parrainage: 0, merci: 0 };
+    for (const code of actifs) {
       const cat = categoriser(code);
       c[cat === 'manuel' ? 'manuels' : cat] += 1;
     }
     return c;
   }, [codes]);
 
+  const ancienCount = useMemo(() => codes.filter(estAncien).length, [codes]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return codes.filter((c) => {
+      if (!showAnciens && estAncien(c)) return false;
       if (filtre !== 'tous') {
         const cat = categoriser(c);
         if (filtre === 'manuels' && cat !== 'manuel') return false;
@@ -65,7 +82,7 @@ export default function CodesPromosManager({ initialCodes }: { initialCodes: Cod
       }
       return true;
     });
-  }, [codes, filtre, search]);
+  }, [codes, filtre, search, showAnciens]);
 
   async function toggleActif(c: CodePromo) {
     setBusyId(c.id);
@@ -145,7 +162,7 @@ export default function CodesPromosManager({ initialCodes }: { initialCodes: Cod
         )}
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-6">
+      <div className="flex flex-wrap gap-2 mb-6 items-center">
         {([
           { key: 'tous', label: 'Tous', icon: null },
           { key: 'manuels', label: 'Manuels', icon: <Tag size={12} /> },
@@ -166,6 +183,21 @@ export default function CodesPromosManager({ initialCodes }: { initialCodes: Cod
             {tab.label} <span className="text-neutral-400 ml-1">({counts[tab.key]})</span>
           </button>
         ))}
+        {ancienCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setShowAnciens((v) => !v)}
+            className={`ml-auto inline-flex items-center gap-1.5 text-[11px] uppercase tracking-widest font-medium px-3 py-2 border transition-colors ${
+              showAnciens
+                ? 'border-neutral-400 text-neutral-700 bg-neutral-100'
+                : 'border-neutral-200 text-neutral-500 hover:border-neutral-400 hover:text-neutral-800 bg-white'
+            }`}
+            title={showAnciens ? 'Masquer les codes épuisés/expirés/inactifs' : 'Afficher les codes épuisés/expirés/inactifs'}
+          >
+            {showAnciens ? 'Masquer anciens' : 'Afficher anciens'}
+            <span className="text-neutral-400 ml-1">({ancienCount})</span>
+          </button>
+        )}
       </div>
 
       {filtered.length === 0 ? (
@@ -177,7 +209,8 @@ export default function CodesPromosManager({ initialCodes }: { initialCodes: Cod
           {filtered.map((c) => {
             const cat = categoriser(c);
             const usageStr = c.usage_max != null ? `${c.usage_actuel} / ${c.usage_max}` : `${c.usage_actuel} / ∞`;
-            const expired = c.expire_at && new Date(c.expire_at) < new Date();
+            const expired = estExpire(c);
+            const epuise = estEpuise(c);
             return (
               <div key={c.id} className={`flex items-center gap-4 px-4 py-3 ${!c.actif ? 'opacity-60' : ''}`}>
                 <div className="min-w-0 flex-1">
@@ -193,6 +226,7 @@ export default function CodesPromosManager({ initialCodes }: { initialCodes: Cod
                         <Gift size={10} /> Merci
                       </span>
                     )}
+                    {epuise && <span className="text-[10px] uppercase tracking-widest bg-neutral-200 text-neutral-700 border border-neutral-300 px-1.5 py-0.5">Épuisé</span>}
                     {expired && <span className="text-[10px] uppercase tracking-widest bg-red-soft text-red-text border border-red-text/20 px-1.5 py-0.5">Expiré</span>}
                     {!c.actif && <span className="text-[10px] uppercase tracking-widest bg-neutral-100 text-neutral-500 border border-neutral-200 px-1.5 py-0.5">Inactif</span>}
                   </div>
