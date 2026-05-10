@@ -22,14 +22,27 @@ type Commande = {
   jour_retrait: string | null;
   creneau_retrait: string | null;
   date_retrait_souhaite: string | null;
+  date_livraison: string | null;
+  creneau_livraison: string | null;
+  adresse: string | null;
+  complement_adresse: string | null;
+  code_postal: string | null;
+  ville: string | null;
+  frais_livraison_cents: number | null;
   message: string | null;
   lignes: Ligne[];
 };
 
-// Échappe une cellule CSV : double les guillemets internes, encadre si besoin.
+// Échappe une cellule CSV : double les guillemets internes, encadre si
+// besoin, et neutralise l'injection de formules Excel/LibreOffice
+// (cellules commençant par = + - @ \t \r sont interprétées comme
+// formules → on préfixe par une apostrophe pour forcer le format texte).
 function csvCell(value: unknown): string {
   if (value == null) return '';
-  const str = String(value);
+  let str = String(value);
+  if (/^[=+\-@\t\r]/.test(str)) {
+    str = `'${str}`;
+  }
   if (/[",\n\r;]/.test(str)) {
     return `"${str.replace(/"/g, '""')}"`;
   }
@@ -57,7 +70,7 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await supabaseAdmin
     .from('commandes')
-    .select('id, created_at, statut, client_nom, client_email, client_telephone, jour_retrait, creneau_retrait, date_retrait_souhaite, message, lignes')
+    .select('id, created_at, statut, client_nom, client_email, client_telephone, jour_retrait, creneau_retrait, date_retrait_souhaite, date_livraison, creneau_livraison, adresse, complement_adresse, code_postal, ville, frais_livraison_cents, message, lignes')
     .gte('created_at', start.toISOString())
     .lt('created_at', end.toISOString())
     .order('created_at', { ascending: true });
@@ -76,6 +89,13 @@ export async function GET(request: NextRequest) {
     'client_nom',
     'client_email',
     'client_telephone',
+    'date_livraison',
+    'creneau_livraison',
+    'adresse',
+    'complement_adresse',
+    'code_postal',
+    'ville',
+    'frais_livraison_eur',
     'jour_retrait',
     'creneau_retrait',
     'date_retrait_souhaite',
@@ -91,6 +111,9 @@ export async function GET(request: NextRequest) {
 
   for (const c of commandes) {
     const lignes = c.lignes && c.lignes.length > 0 ? c.lignes : [null];
+    const fraisEur = c.frais_livraison_cents != null
+      ? (c.frais_livraison_cents / 100).toFixed(2)
+      : '';
     for (const l of lignes) {
       const prix = l && l.prix != null ? Number(l.prix) : null;
       const qte = l ? Number(l.quantite || 0) : 0;
@@ -103,6 +126,13 @@ export async function GET(request: NextRequest) {
           c.client_nom,
           c.client_email,
           c.client_telephone,
+          c.date_livraison || '',
+          c.creneau_livraison || '',
+          c.adresse || '',
+          c.complement_adresse || '',
+          c.code_postal || '',
+          c.ville || '',
+          fraisEur,
           c.jour_retrait || '',
           c.creneau_retrait || '',
           c.date_retrait_souhaite || '',

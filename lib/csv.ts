@@ -101,11 +101,17 @@ export function parseIntOrNull(v: string | undefined): number | null {
   return Number.isInteger(n) ? n : null;
 }
 
-// Sérialise une valeur pour CSV : entoure de "..." et double les guillemets si nécessaire
+// Sérialise une valeur pour CSV : entoure de "..." et double les guillemets
+// si nécessaire. Neutralise aussi l'injection de formules Excel/LibreOffice
+// en préfixant par une apostrophe les cellules commençant par = + - @ \t \r
+// (sinon Excel les évalue comme formules → fuite de données ou commande système).
 export function csvEscape(v: string | number | null | undefined): string {
   if (v == null) return '';
-  const s = String(v);
+  let s = String(v);
   if (s === '') return '';
+  if (/^[=+\-@\t\r]/.test(s)) {
+    s = `'${s}`;
+  }
   if (/[",;\n\r]/.test(s)) {
     return '"' + s.replace(/"/g, '""') + '"';
   }

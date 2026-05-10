@@ -121,24 +121,17 @@ export async function validateCodePromo(
   return { ok: true, code, reductionCents, libelle: formatCodeLibelle(code) };
 }
 
-// Incrémente le compteur d'usage de manière atomique (RPC postgres).
+// Incrémente le compteur d'usage de manière atomique via RPC Postgres
+// (`increment_code_usage` — migration 024). L'incrément côté serveur
+// évite la race condition d'un read-then-write JS sur les codes
+// `usage_max=1` (ex. codes MERCI parrainage).
 // Best-effort : on log l'erreur sans faire échouer la commande, car la
 // commande elle-même est déjà enregistrée à ce stade.
 export async function incrementCodeUsage(codeId: string): Promise<void> {
-  const { error } = await supabaseAdmin
-    .from('codes_promos')
-    .update({ usage_actuel: (await getCurrentUsage(codeId)) + 1 })
-    .eq('id', codeId);
+  const { error } = await supabaseAdmin.rpc('increment_code_usage', {
+    code_id: codeId,
+  });
   if (error) {
     console.error('[codes-promos] Erreur incrément usage:', error);
   }
-}
-
-async function getCurrentUsage(codeId: string): Promise<number> {
-  const { data } = await supabaseAdmin
-    .from('codes_promos')
-    .select('usage_actuel')
-    .eq('id', codeId)
-    .maybeSingle();
-  return (data?.usage_actuel as number) ?? 0;
 }
