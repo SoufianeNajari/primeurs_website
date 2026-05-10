@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { isAdmin } from '@/lib/admin-auth';
+import { badRequestIfNotUuid } from '@/lib/uuid';
 
 export async function POST(request: Request) {
   if (!(await isAdmin())) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
 
   const { requestId } = (await request.json().catch(() => ({}))) as { requestId?: string };
-  if (!requestId) return NextResponse.json({ error: 'requestId manquant' }, { status: 400 });
+  const badId = badRequestIfNotUuid(requestId, 'requestId invalide');
+  if (badId) return badId;
 
   const { data: req, error: reqErr } = await supabaseAdmin
     .from('access_requests')

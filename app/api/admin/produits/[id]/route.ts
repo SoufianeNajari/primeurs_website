@@ -4,9 +4,12 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { isAdmin } from '@/lib/admin-auth';
 import { normalizeProduitInput } from '@/lib/produit-schema';
 import { findOrCreateCategorieByNom } from '@/lib/categories';
+import { badRequestIfNotUuid } from '@/lib/uuid';
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   if (!(await isAdmin())) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+  const badId = badRequestIfNotUuid(params.id);
+  if (badId) return badId;
 
   try {
     const body = await request.json();
@@ -26,6 +29,9 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       if (error.code === '23505') {
         return NextResponse.json({ error: 'Un produit avec ce slug existe déjà' }, { status: 409 });
       }
+      if (error.code === 'PGRST116') {
+        return NextResponse.json({ error: 'Produit introuvable' }, { status: 404 });
+      }
       console.error('[admin/produits PATCH]', error);
       return NextResponse.json({ error: 'Erreur base de données' }, { status: 500 });
     }
@@ -44,11 +50,20 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
 export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
   if (!(await isAdmin())) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+  const badId = badRequestIfNotUuid(params.id);
+  if (badId) return badId;
 
-  const { error } = await supabaseAdmin.from('produits').delete().eq('id', params.id);
+  const { data, error } = await supabaseAdmin
+    .from('produits')
+    .delete()
+    .eq('id', params.id)
+    .select('id');
   if (error) {
     console.error('[admin/produits DELETE]', error);
     return NextResponse.json({ error: 'Erreur base de données' }, { status: 500 });
+  }
+  if (!data || data.length === 0) {
+    return NextResponse.json({ error: 'Produit introuvable' }, { status: 404 });
   }
   return NextResponse.json({ success: true });
 }

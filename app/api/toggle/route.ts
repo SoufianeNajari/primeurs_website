@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { isAdmin } from '@/lib/admin-auth';
+import { badRequestIfNotUuid } from '@/lib/uuid';
 
 export async function PATCH(request: Request) {
   try {
@@ -15,8 +16,10 @@ export async function PATCH(request: Request) {
       masque_boutique?: boolean;
     };
 
-    if (!id || (typeof disponible !== 'boolean' && typeof masque_boutique !== 'boolean')) {
-      return NextResponse.json({ error: 'Données invalides' }, { status: 400 });
+    const badId = badRequestIfNotUuid(id);
+    if (badId) return badId;
+    if (typeof disponible !== 'boolean' && typeof masque_boutique !== 'boolean') {
+      return NextResponse.json({ error: 'Aucun champ à modifier' }, { status: 400 });
     }
 
     const update: { disponible?: boolean; masque_boutique?: boolean } = {};
@@ -28,14 +31,18 @@ export async function PATCH(request: Request) {
       if (masque_boutique === true) update.disponible = false;
     }
 
-    const { error } = await supabaseAdmin
+    const { data, error } = await supabaseAdmin
       .from('produits')
       .update(update)
-      .eq('id', id);
+      .eq('id', id!)
+      .select('id');
 
     if (error) {
       console.error('Supabase error:', error);
       throw error;
+    }
+    if (!data || data.length === 0) {
+      return NextResponse.json({ error: 'Produit introuvable' }, { status: 404 });
     }
 
     return NextResponse.json({ success: true });

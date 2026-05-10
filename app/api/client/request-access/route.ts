@@ -4,6 +4,7 @@ import { sendEmail } from '@/lib/mailer';
 import { normalizePhoneFR, formatPhoneFRDisplay } from '@/lib/phone';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { SITE } from '@/lib/site';
+import { isValidEmail } from '@/lib/email';
 
 function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
@@ -34,12 +35,17 @@ export async function POST(request: Request) {
 
   const prenom = (body.prenom || '').trim().slice(0, 80) || null;
   const nom = (body.nom || '').trim().slice(0, 80) || null;
-  const email = (body.email || '').trim().slice(0, 200) || null;
+  const emailRaw = (body.email || '').trim().slice(0, 254);
   const message = (body.message || '').trim().slice(0, 1000) || null;
 
   if (!prenom || !nom) {
     return NextResponse.json({ error: 'Prénom et nom requis.' }, { status: 400 });
   }
+  // Email facultatif : si renseigné, doit être valide.
+  if (emailRaw && !isValidEmail(emailRaw)) {
+    return NextResponse.json({ error: 'Adresse email invalide.' }, { status: 400 });
+  }
+  const email = emailRaw || null;
 
   const { error } = await supabaseAdmin.from('access_requests').insert({
     telephone: e164,

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase';
 import { isAdmin } from '@/lib/admin-auth';
+import { badRequestIfNotUuid } from '@/lib/uuid';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,6 +19,8 @@ const patchSchema = z.object({
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   if (!(await isAdmin())) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+  const badId = badRequestIfNotUuid(params.id);
+  if (badId) return badId;
 
   try {
     const body = await request.json();
@@ -49,6 +52,9 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       .single();
 
     if (error) {
+      if (error.code === 'PGRST116') {
+        return NextResponse.json({ error: 'Code introuvable' }, { status: 404 });
+      }
       console.error('[admin/codes-promos PATCH]', error);
       return NextResponse.json({ error: 'Erreur base de données' }, { status: 500 });
     }
@@ -65,11 +71,20 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
 export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
   if (!(await isAdmin())) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+  const badId = badRequestIfNotUuid(params.id);
+  if (badId) return badId;
 
-  const { error } = await supabaseAdmin.from('codes_promos').delete().eq('id', params.id);
+  const { data, error } = await supabaseAdmin
+    .from('codes_promos')
+    .delete()
+    .eq('id', params.id)
+    .select('id');
   if (error) {
     console.error('[admin/codes-promos DELETE]', error);
     return NextResponse.json({ error: 'Erreur base de données' }, { status: 500 });
+  }
+  if (!data || data.length === 0) {
+    return NextResponse.json({ error: 'Code introuvable' }, { status: 404 });
   }
   return NextResponse.json({ success: true });
 }

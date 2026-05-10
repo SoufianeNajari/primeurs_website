@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase';
 import { isAdmin } from '@/lib/admin-auth';
+import { badRequestIfNotUuid } from '@/lib/uuid';
 
 // Sprint H1 — endpoint dédié à la mise à jour rapide des prix d'options
 // (page /admin/prix). On ne touche qu'à la colonne `options` ; le trigger
@@ -22,6 +23,8 @@ const bodySchema = z.object({
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   if (!(await isAdmin())) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+  const badId = badRequestIfNotUuid(params.id);
+  if (badId) return badId;
 
   try {
     const body = await request.json();

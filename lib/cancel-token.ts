@@ -10,12 +10,26 @@ import crypto from 'crypto';
 // jamais exposé au client). On peut surcharger via ORDER_CANCEL_SECRET
 // pour pouvoir le rotater indépendamment du service role.
 
+// Garde-fou : on log une seule fois par process si on retombe sur le service
+// role. Ça évite de spammer les logs Vercel à chaque envoi d'email tout en
+// rappelant qu'il faut configurer ORDER_CANCEL_SECRET avant la prod (cf
+// todo_avant_prod : on ne veut pas signer les liens email avec une clé qui
+// ouvre tout Supabase si elle fuit dans des logs ou un export).
+let fallbackWarned = false;
+
 function getSecret(): string {
   const dedicated = process.env.ORDER_CANCEL_SECRET;
   if (dedicated && dedicated.length >= 16) return dedicated;
   const fallback = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!fallback) {
     throw new Error('Aucun secret disponible pour signer les liens d\'annulation.');
+  }
+  if (!fallbackWarned) {
+    fallbackWarned = true;
+    console.warn(
+      '[cancel-token] ORDER_CANCEL_SECRET non configuré — fallback sur SUPABASE_SERVICE_ROLE_KEY. ' +
+      'À configurer dans les env Vercel avant la prod (≥16 chars, openssl rand -hex 32).',
+    );
   }
   return fallback;
 }

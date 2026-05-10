@@ -2,9 +2,12 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { isAdmin } from '@/lib/admin-auth';
 import { slugifyCategorie } from '@/lib/categories';
+import { badRequestIfNotUuid } from '@/lib/uuid';
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   if (!(await isAdmin())) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+  const badId = badRequestIfNotUuid(params.id);
+  if (badId) return badId;
 
   try {
     const body = await request.json();
@@ -58,9 +61,13 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       if (error.code === '23505') {
         return NextResponse.json({ error: 'Conflit de nom/slug' }, { status: 409 });
       }
+      if (error.code === 'PGRST116') {
+        return NextResponse.json({ error: 'Catégorie introuvable' }, { status: 404 });
+      }
       console.error('[admin/categories PATCH]', error);
       return NextResponse.json({ error: 'Erreur base de données' }, { status: 500 });
     }
+    if (!data) return NextResponse.json({ error: 'Catégorie introuvable' }, { status: 404 });
     return NextResponse.json({ categorie: data });
   } catch (err) {
     console.error('[admin/categories PATCH]', err);
@@ -70,6 +77,8 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
 export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
   if (!(await isAdmin())) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+  const badId = badRequestIfNotUuid(params.id);
+  if (badId) return badId;
 
   try {
     const { count } = await supabaseAdmin
@@ -84,10 +93,17 @@ export async function DELETE(_request: Request, { params }: { params: { id: stri
       );
     }
 
-    const { error } = await supabaseAdmin.from('categories').delete().eq('id', params.id);
+    const { data, error } = await supabaseAdmin
+      .from('categories')
+      .delete()
+      .eq('id', params.id)
+      .select('id');
     if (error) {
       console.error('[admin/categories DELETE]', error);
       return NextResponse.json({ error: 'Erreur base de données' }, { status: 500 });
+    }
+    if (!data || data.length === 0) {
+      return NextResponse.json({ error: 'Catégorie introuvable' }, { status: 404 });
     }
     return NextResponse.json({ ok: true });
   } catch (err) {

@@ -7,6 +7,7 @@ import remarkGfm from 'remark-gfm';
 import { supabaseAdmin } from '@/lib/supabase';
 import { SITE, absoluteUrl } from '@/lib/site';
 import { formatArticleDate, isPublished, type Article } from '@/lib/article';
+import { breadcrumbJsonLd } from '@/lib/json-ld';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,7 +53,7 @@ export async function generateMetadata({
   if (!article || !isPublished(article)) {
     return { title: 'Article introuvable', robots: { index: false, follow: false } };
   }
-  const ogImage = article.image_url || undefined;
+  const ogImage = article.image_url ? absoluteUrl(article.image_url) : undefined;
   return {
     title: article.titre,
     description: article.extrait || undefined,
@@ -83,7 +84,7 @@ export default async function ArticlePage({
     '@type': 'Article',
     headline: article.titre,
     description: article.extrait || undefined,
-    image: article.image_url ? [article.image_url] : undefined,
+    image: article.image_url ? [absoluteUrl(article.image_url)] : undefined,
     datePublished: article.published_at,
     dateModified: article.updated_at,
     author: { '@type': 'Organization', name: SITE.name },
@@ -95,11 +96,21 @@ export default async function ArticlePage({
     mainEntityOfPage: `${SITE.url}/blog/${article.slug}`,
   };
 
+  const breadcrumb = breadcrumbJsonLd([
+    { name: 'Accueil', href: '/' },
+    { name: 'Blog', href: '/blog' },
+    { name: article.titre, href: `/blog/${article.slug}` },
+  ]);
+
   return (
     <main className="flex-grow bg-neutral-50 py-12 md:py-16">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }}
       />
 
       <article className="max-w-3xl mx-auto px-4">

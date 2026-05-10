@@ -292,6 +292,16 @@ export default function OrderPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erreur lors de la commande');
 
+      // Si le client attendait un code promo mais le serveur ne l'a finalement
+      // pas appliqué (expiré, usage_max atteint entre validation et submit),
+      // on prévient avant redirect — l'email final donnera le montant exact.
+      const promoExpected = promo.status === 'valid' ? promo.code : null;
+      if (promoExpected && !data.codePromoApplique) {
+        alert(
+          `Votre commande a bien été enregistrée, mais le code promo "${promoExpected}" n'a finalement pas pu être appliqué (probablement épuisé entre-temps). Le récapitulatif par email vous indique le montant final.`,
+        );
+      }
+
       localStorage.setItem('primeur_last_order', JSON.stringify(cartItems));
       try {
         const memory: CustomerMemory = {

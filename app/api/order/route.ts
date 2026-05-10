@@ -7,6 +7,7 @@ import { getClientSession } from '@/lib/client-auth';
 import { isCommandesBloquees } from '@/lib/parametres';
 import { getFourchetteBornes } from '@/lib/fourchette';
 import { validateCodePromo, incrementCodeUsage } from '@/lib/codes-promos';
+import { isValidEmail } from '@/lib/email';
 import { genererCodeParrainSiNouveau, traiterUsageSiParrainage, getCodeParrainPourClient, PARRAINAGE_CONFIG } from '@/lib/parrainage';
 import {
   VILLES_AUTORISEES,
@@ -90,6 +91,20 @@ export async function POST(request: Request) {
     if (!client || !client.prenom || !client.nom || !client.email || !client.telephone) {
       return NextResponse.json({ error: 'Champs obligatoires manquants.' }, { status: 400 });
     }
+    const prenomClean = sanitizeText(client.prenom, 80);
+    const nomClean = sanitizeText(client.nom, 80);
+    const telephoneClean = sanitizeText(client.telephone, 32);
+    const emailClean = typeof client.email === 'string' ? client.email.trim() : '';
+    if (!prenomClean || !nomClean || !telephoneClean) {
+      return NextResponse.json({ error: 'Prénom, nom et téléphone requis.' }, { status: 400 });
+    }
+    if (!isValidEmail(emailClean)) {
+      return NextResponse.json({ error: 'Adresse email invalide.' }, { status: 400 });
+    }
+    client.prenom = prenomClean;
+    client.nom = nomClean;
+    client.email = emailClean;
+    client.telephone = telephoneClean;
 
     const adresse = sanitizeText(adresseRaw, 200);
     const complementAdresse = sanitizeText(complementRaw, 200);
@@ -305,7 +320,16 @@ export async function POST(request: Request) {
       }),
     ]);
 
-    return NextResponse.json({ success: true, commande_id: orderId });
+    return NextResponse.json({
+      success: true,
+      commande_id: orderId,
+      // Reflète l'état réellement enregistré côté serveur (peut différer du
+      // panier client si le code promo a expiré, atteint son usage_max, ou
+      // si les frais/min ont changé entre validation et submit).
+      codePromoApplique,
+      reductionCents,
+      fraisLivraisonCents: fraisCents,
+    });
   } catch (error) {
     console.error('Erreur API Order:', error);
     return NextResponse.json({ error: 'Erreur interne du serveur lors de la commande.' }, { status: 500 });

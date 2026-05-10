@@ -3,12 +3,16 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { isAdmin } from '@/lib/admin-auth'
 import { getFourchetteBornes } from '@/lib/fourchette'
 import { renderTicketHtml, type TicketOrder } from '@/lib/printableTicketHtml'
+import { isValidUuid } from '@/lib/uuid'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   if (!(await isAdmin())) {
     return new NextResponse('Non autorisé', { status: 401 })
+  }
+  if (!isValidUuid(params.id)) {
+    return new NextResponse('Identifiant invalide', { status: 400 })
   }
 
   const [{ data: order }, fourchette, { data: produitsActuels }] = await Promise.all([

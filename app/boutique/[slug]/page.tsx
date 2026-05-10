@@ -12,6 +12,7 @@ import ProductGallery from '@/components/ProductGallery';
 import ProductTags from '@/components/ProductTags';
 import { SITE } from '@/lib/site';
 import { formatArticleDate, type Article } from '@/lib/article';
+import { breadcrumbJsonLd } from '@/lib/json-ld';
 import type { Metadata } from 'next';
 
 export const revalidate = 3600;
@@ -153,9 +154,16 @@ export default async function ProductPage({ params }: { params: { slug: string }
     ...(offers && { offers }),
   };
 
+  const breadcrumb = breadcrumbJsonLd([
+    { name: 'Accueil', href: '/' },
+    { name: 'Boutique', href: '/boutique' },
+    { name: product.nom, href: `/boutique/${product.slug}` },
+  ]);
+
   return (
     <main className="flex-grow pb-28 min-h-screen bg-neutral-50">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }} />
 
       <div className="max-w-5xl mx-auto px-4 pt-6 pb-4">
         <Link

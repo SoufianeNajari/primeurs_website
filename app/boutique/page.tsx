@@ -7,6 +7,7 @@ import BoutiqueFermee from '@/components/BoutiqueFermee';
 import WelcomeBackBanner from '@/components/WelcomeBackBanner';
 import { isCommandesBloquees } from '@/lib/parametres';
 import { listCategoriesAdmin } from '@/lib/categories';
+import { breadcrumbJsonLd } from '@/lib/json-ld';
 
 export const revalidate = 0; // Force SSR
 
@@ -49,8 +50,14 @@ export default async function BoutiquePage() {
     return 0;
   });
 
+  const breadcrumb = breadcrumbJsonLd([
+    { name: 'Accueil', href: '/' },
+    { name: 'Boutique', href: '/boutique' },
+  ]);
+
   return (
     <main className="flex-grow pb-28 min-h-screen bg-neutral-50">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }} />
       <div className="bg-neutral-50 border-b border-neutral-200 py-10 px-4">
         <div className="max-w-5xl mx-auto text-center">
           <h1 className="text-4xl md:text-5xl font-serif text-neutral-800 mb-4">Notre Boutique</h1>

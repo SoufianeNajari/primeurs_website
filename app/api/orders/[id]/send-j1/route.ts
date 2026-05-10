@@ -6,6 +6,7 @@ import { sendEmail } from '@/lib/mailer';
 import { emailRappelJ1 } from '@/lib/emails/templates';
 import { buildCancelUrl } from '@/lib/cancel-token';
 import { LIVREUR } from '@/lib/site';
+import { badRequestIfNotUuid } from '@/lib/uuid';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,6 +25,8 @@ export async function POST(_request: NextRequest, { params }: { params: { id: st
   if (!(await isAdmin())) {
     return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
   }
+  const badId = badRequestIfNotUuid(params.id);
+  if (badId) return badId;
 
   const { data: cmd, error } = await supabaseAdmin
     .from('commandes')
