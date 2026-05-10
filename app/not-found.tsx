@@ -16,7 +16,7 @@ export default function NotFound() {
         </h1>
         <p className="text-neutral-500 mb-8 leading-relaxed">
           Cette page n&apos;existe pas ou n&apos;est plus disponible. Retrouvez tous nos produits
-          frais en boutique.
+          frais sur la boutique en ligne.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link

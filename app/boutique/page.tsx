@@ -13,11 +13,11 @@ export const revalidate = 0; // Force SSR
 export const metadata: Metadata = {
   title: 'Boutique — Fruits, légumes et fromages de saison',
   description:
-    'Découvrez notre sélection de fruits, légumes et fromages frais. Produits locaux, de saison et bio. Commande en ligne, retrait à Pontault-Combault.',
+    'Découvrez notre sélection de fruits, légumes et fromages frais, sélectionnés à Rungis. Commande en ligne, livraison à domicile mardi et samedi.',
   alternates: { canonical: '/boutique' },
   openGraph: {
-    title: 'Boutique — Pontault Primeurs',
-    description: 'Fruits, légumes et fromages frais. Produits de saison et locaux.',
+    title: 'Boutique — Primeur Chez Vous',
+    description: 'Fruits, légumes et fromages frais, livrés à domicile depuis Rungis.',
     url: '/boutique',
   },
 };

@@ -43,13 +43,13 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const product = await getProductBySlug(params.slug);
-  if (!product) return { title: 'Produit introuvable — Pontault Primeurs' };
+  if (!product) return { title: `Produit introuvable — ${SITE.name}` };
 
   const prix = formatPrixResume(product.options);
   const description =
     product.description_longue?.slice(0, 160) ||
     product.description?.slice(0, 160) ||
-    `${product.nom} ${prix ? `— ${prix}` : ''} — ${product.categorie} chez Pontault Primeurs.`;
+    `${product.nom} ${prix ? `— ${prix}` : ''} — ${product.categorie}, livré à domicile par ${SITE.name}.`;
 
   return {
     title: product.nom,
@@ -250,7 +250,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
           </ul>
 
           <ProductAddButton product={product} />
-          <p className="text-xs text-neutral-500 mt-3 text-center">Le règlement s&apos;effectue en boutique lors du retrait.</p>
+          <p className="text-xs text-neutral-500 mt-3 text-center">Le règlement s&apos;effectue à la livraison.</p>
         </div>
       </div>
 

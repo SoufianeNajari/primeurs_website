@@ -39,14 +39,15 @@ export default function ConfidentialitePage() {
           Lors d&apos;une commande en ligne, nous collectons les données suivantes&nbsp;:
         </p>
         <ul>
-          <li><strong>Nom</strong> (nécessaire pour identifier la commande au retrait)</li>
-          <li><strong>Adresse email</strong> (envoi de la confirmation de commande)</li>
-          <li><strong>Numéro de téléphone</strong> (pour vous joindre en cas de besoin)</li>
-          <li><strong>Détail et créneau de retrait</strong> de votre commande</li>
+          <li><strong>Nom</strong> (nécessaire pour identifier la commande à la livraison)</li>
+          <li><strong>Adresse email</strong> (envoi de la confirmation de commande et du rappel J-1)</li>
+          <li><strong>Numéro de téléphone</strong> (contact du livreur en cas de besoin)</li>
+          <li><strong>Adresse de livraison</strong> (rue, code postal, ville, complément éventuel)</li>
+          <li><strong>Détail et créneau de livraison</strong> de votre commande</li>
         </ul>
         <p>
-          Aucune donnée bancaire n&apos;est collectée sur le site, le paiement s&apos;effectuant exclusivement
-          en boutique.
+          Aucune donnée bancaire n&apos;est collectée sur le site&nbsp;: le règlement s&apos;effectue
+          directement auprès du livreur lors de la livraison.
         </p>
       </section>
 
