@@ -13,11 +13,8 @@ import { formatPrixMontant, cartHasPoidsIncertain, isPoidsIncertain } from '@/li
 import { calcFourchette, formatFourchette } from '@/lib/fourchette';
 import { useFourchetteBornes } from '@/lib/use-fourchette';
 import { useLivraisonConfig } from '@/lib/use-livraison-config';
+import { formatEuros } from '@/lib/format';
 import type { UpsellSuggestion } from '@/app/api/upsell/route';
-
-function formatEuros(cents: number): string {
-  return (cents / 100).toFixed(2).replace('.', ',') + ' €';
-}
 
 export default function CartDrawer() {
   const { cart, isCartOpen, setIsCartOpen, updateQuantity, removeFromCart, addToCart, totalItems, totalEstime, restoreCart } = useCart();
@@ -52,9 +49,6 @@ export default function CartDrawer() {
     }
   }, [isCartOpen, cartItems.length]);
 
-  // Charger des suggestions via /api/upsell — endpoint partagé avec /order,
-  // piloté par produits.mis_en_avant (curation admin). Garantit la cohérence
-  // entre le drawer et la page checkout (mêmes coups de cœur du primeur).
   useEffect(() => {
     if (!isCartOpen || cartItems.length === 0) {
       setSuggestions([]);
@@ -358,20 +352,12 @@ export default function CartDrawer() {
                     <span className="text-base font-serif text-neutral-700">{totalEstime.toFixed(2).replace('.', ',')}&nbsp;€</span>
                   </div>
                 )}
-                {/* Frais de livraison : ligne dédiée pour parité avec /order
-                    (pas de surprise au checkout). Mise en avant verte si offerts. */}
-                {fraisCents > 0 && (
-                  <div className="flex items-baseline justify-between">
-                    <span className="text-xs uppercase tracking-widest text-neutral-500 font-medium">Frais de livraison</span>
-                    <span className="text-base font-serif text-neutral-700">{formatEuros(fraisCents)}</span>
-                  </div>
-                )}
-                {fraisCents === 0 && (
-                  <div className="flex items-baseline justify-between">
-                    <span className="text-xs uppercase tracking-widest text-green-dark font-medium">Frais de livraison</span>
-                    <span className="text-base font-serif text-green-dark italic">Offerts</span>
-                  </div>
-                )}
+                <div className="flex items-baseline justify-between">
+                  <span className={`text-xs uppercase tracking-widest font-medium ${fraisCents === 0 ? 'text-green-dark' : 'text-neutral-500'}`}>Frais de livraison</span>
+                  <span className={`text-base font-serif ${fraisCents === 0 ? 'text-green-dark italic' : 'text-neutral-700'}`}>
+                    {fraisCents === 0 ? 'Offerts' : formatEuros(fraisCents)}
+                  </span>
+                </div>
                 {fourchette && (
                   <div className="flex items-baseline justify-between">
                     <span className="text-xs uppercase tracking-widest text-neutral-500 font-medium">Total final</span>

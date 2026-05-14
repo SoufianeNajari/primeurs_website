@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { sendEmail } from '@/lib/mailer';
 import { supabaseAdmin } from '@/lib/supabase';
-import { emailShop, emailClient, type LigneCommande } from '@/lib/emails/templates';
+import { type LigneCommande } from '@/lib/emails/templates';
+import { sendShopOrderEmail, sendClientOrderEmail, deriveEmailDispatch, persistEmailDispatch } from '@/lib/emails/send-order';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { buildCancelUrl } from '@/lib/cancel-token';
 import { getClientSession } from '@/lib/client-auth';
@@ -9,7 +9,8 @@ import { isCommandesBloquees } from '@/lib/parametres';
 import { getFourchetteBornes } from '@/lib/fourchette';
 import { validateCodePromo, tryConsumeCodeUsage } from '@/lib/codes-promos';
 import { isValidEmail } from '@/lib/email';
-import { genererCodeParrainSiNouveau, traiterUsageSiParrainage, getCodeParrainPourClient, PARRAINAGE_CONFIG } from '@/lib/parrainage';
+import { currentOriginFromRequest } from '@/lib/site';
+import { genererCodeParrainSiNouveau, traiterUsageSiParrainage, getCodeParrainPourClient } from '@/lib/parrainage';
 import {
   VILLES_AUTORISEES,
   CRENEAUX_LIVRAISON,
@@ -204,12 +205,6 @@ export async function POST(request: Request) {
 
     const fraisCents = await getFraisLivraisonCents();
 
-    // Validation code promo + consommation atomique. `validateCodePromo` lit
-    // les règles ; `tryConsumeCodeUsage` fait le UPDATE conditionnel (RPC
-    // migration 027) pour fermer la race condition sur usage_max=1.
-    // Best-effort : si la consommation échoue (épuisé entre validate et insert),
-    // on ignore plutôt que refuser la commande — le client le saura par alert
-    // côté UI (data.codePromoApplique=null).
     let codePromoApplique: string | null = null;
     let reductionCents = 0;
     let codePromoId: string | null = null;
@@ -261,9 +256,6 @@ export async function POST(request: Request) {
 
     const orderId = orderData.id;
 
-    // Note : l'usage du code promo a déjà été consommé atomiquement avant
-    // l'insert (tryConsumeCodeUsage ci-dessus). Reste à traiter le parrainage
-    // si applicable (best-effort, async).
     if (codePromoId) {
       traiterUsageSiParrainage({
         codePromoId,
@@ -282,97 +274,47 @@ export async function POST(request: Request) {
 
     const shopEmailAddr = process.env.SHOP_EMAIL || 'magasin@primeur-test.com';
     const fourchetteBornes = await getFourchetteBornes();
-    const livraisonInfos = {
-      adresse,
-      complementAdresse: complementAdresse || null,
-      ville,
-      codePostal,
-      creneauLabel: creneau.label,
-      dateLivraison: dateLivraisonRaw,
-      fraisLivraisonCents: fraisCents,
-      codePromo: codePromoApplique,
-      reductionCents,
+    const emailCtx = {
+      orderId,
+      prenom: client.prenom,
+      nom: client.nom,
+      email: client.email,
+      telephone: client.telephone,
+      message,
+      lignes: lignesNormalisees,
+      livraisonInfos: {
+        adresse,
+        complementAdresse: complementAdresse || null,
+        ville,
+        codePostal,
+        creneauLabel: creneau.label,
+        dateLivraison: dateLivraisonRaw,
+        fraisLivraisonCents: fraisCents,
+        codePromo: codePromoApplique,
+        reductionCents,
+      },
+      fourchetteBornes,
+      codeParrainage,
     };
-    const [shopHtml, clientHtml] = await Promise.all([
-      emailShop({
-        ...livraisonInfos,
-        prenom: client.prenom,
-        nom: client.nom,
-        email: client.email,
-        telephone: client.telephone,
-        message,
-        lignes: lignesNormalisees,
-        orderId,
-        fourchetteBornes,
-      }),
-      emailClient({
-        ...livraisonInfos,
-        prenom: client.prenom,
-        lignes: lignesNormalisees,
-        fourchetteBornes,
-        codeParrainage,
-        reductionParrainageCents: PARRAINAGE_CONFIG.reductionFilleulCents,
-        panierMinParrainageCents: PARRAINAGE_CONFIG.panierMinCents,
-      }),
-    ]);
-
-    // Envois non-bloquants : si Resend tombe ou si le domaine n'est pas
-    // configuré, la commande reste enregistrée (BDD à jour). Le client reçoit
-    // un 200 — la confirmation visuelle suffit côté UX. L'admin voit le badge
-    // "email non envoyé" dans /admin/orders et peut relancer manuellement.
     const [shopRes, clientRes] = await Promise.allSettled([
-      sendEmail({
-        to: shopEmailAddr,
-        subject: `Nouvelle livraison — ${client.prenom} ${client.nom} — ${creneau.label} — ${ville}`,
-        html: shopHtml,
-      }),
-      sendEmail({
-        to: client.email,
-        subject: `Votre livraison est confirmée — Primeur Chez Vous`,
-        html: clientHtml,
-      }),
+      sendShopOrderEmail(emailCtx, shopEmailAddr),
+      sendClientOrderEmail(emailCtx),
     ]);
-
-    const now = new Date().toISOString();
-    const shopOk = shopRes.status === 'fulfilled';
-    const clientOk = clientRes.status === 'fulfilled';
-    const errorMsg = [
-      shopRes.status === 'rejected' ? `shop: ${shopRes.reason instanceof Error ? shopRes.reason.message : String(shopRes.reason)}` : null,
-      clientRes.status === 'rejected' ? `client: ${clientRes.reason instanceof Error ? clientRes.reason.message : String(clientRes.reason)}` : null,
-    ].filter(Boolean).join(' | ') || null;
-
+    const { shopOk, clientOk, errors, update } = deriveEmailDispatch({ shop: shopRes, client: clientRes });
     if (!shopOk || !clientOk) {
-      console.error('[order] envoi email partiellement échoué', { orderId, errorMsg });
+      console.error('[order] envoi email partiellement échoué', { orderId, errors });
     }
+    persistEmailDispatch(orderId, update).catch(() => {});
 
-    // Tracking BDD — best-effort, l'échec ici ne doit pas masquer la commande.
-    await supabaseAdmin
-      .from('commandes')
-      .update({
-        email_shop_sent_at: shopOk ? now : null,
-        email_client_sent_at: clientOk ? now : null,
-        email_last_error: errorMsg,
-      })
-      .eq('id', orderId);
-
-    // Génère le lien d'annulation signé (7j) avec l'origin de la requête
-    // courante — permet d'afficher le bouton "Annuler ma livraison" sur
-    // /order/confirmation sans attendre l'email J-1.
-    const host = request.headers.get('host') ?? '';
-    const proto = request.headers.get('x-forwarded-proto') ?? (host.startsWith('localhost') ? 'http' : 'https');
-    const cancelUrl = host ? buildCancelUrl(`${proto}://${host}`, orderId, 7) : null;
+    const origin = currentOriginFromRequest(request.headers);
+    const cancelUrl = buildCancelUrl(origin, orderId, 7);
 
     return NextResponse.json({
       success: true,
       commande_id: orderId,
-      // Reflète l'état réellement enregistré côté serveur (peut différer du
-      // panier client si le code promo a expiré, atteint son usage_max, ou
-      // si les frais/min ont changé entre validation et submit).
       codePromoApplique,
       reductionCents,
       fraisLivraisonCents: fraisCents,
-      // Permet à l'UI client de prévenir si l'email de confirmation n'a pas
-      // été envoyé (ex. fallback "vérifiez vos spams" → bouton "renvoyer").
       emailClientSent: clientOk,
       cancelUrl,
     });

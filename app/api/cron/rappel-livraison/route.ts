@@ -4,6 +4,7 @@ import { sendEmail } from '@/lib/mailer';
 import { emailRappelJ1, emailRelanceJ14 } from '@/lib/emails/templates';
 import { buildCancelUrl } from '@/lib/cancel-token';
 import { SITE, LIVREUR } from '@/lib/site';
+import { splitClientNom } from '@/lib/order';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,7 +56,7 @@ async function runRappelJ1(): Promise<{ tomorrowIso: string; sent: number; faile
 
   for (const cmd of commandes ?? []) {
     if (!cmd.client_email || !cmd.date_livraison || !cmd.creneau_livraison || !cmd.adresse) continue;
-    const prenom = cmd.client_nom?.split(/\s+/)[0] || 'à toi';
+    const prenom = splitClientNom(cmd.client_nom).prenom || 'à toi';
     const adresseParts = [cmd.adresse, cmd.complement_adresse, `${cmd.code_postal ?? ''} ${cmd.ville ?? ''}`.trim()]
       .filter(Boolean) as string[];
     const adresseFull = adresseParts.join(', ');
@@ -160,7 +161,7 @@ async function runRelanceJ14(): Promise<{ sent: number; skipped: number; failed:
       continue;
     }
 
-    const prenom = cand.client_nom?.split(/\s+/)[0] || 'à toi';
+    const prenom = splitClientNom(cand.client_nom).prenom || 'à toi';
     try {
       const html = await emailRelanceJ14({
         prenom,

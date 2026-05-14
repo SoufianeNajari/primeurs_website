@@ -1,4 +1,5 @@
 import { supabaseAdmin } from './supabase';
+import { formatEuros } from './format';
 
 export type CodePromo = {
   id: string;
@@ -56,12 +57,10 @@ export function computeReduction(code: CodePromo, panierCents: number): number {
 // Libellé court pour affichage UX ("-10% offerts (jusqu'à 5,00 €)" ou "-5,00 €")
 export function formatCodeLibelle(code: CodePromo): string {
   if (code.type === 'pourcent') {
-    const cap = code.reduction_max_cents != null
-      ? ` (jusqu'à ${(code.reduction_max_cents / 100).toFixed(2).replace('.', ',')} €)`
-      : '';
+    const cap = code.reduction_max_cents != null ? ` (jusqu'à ${formatEuros(code.reduction_max_cents)})` : '';
     return `-${code.valeur}%${cap}`;
   }
-  return `-${(code.valeur / 100).toFixed(2).replace('.', ',')} €`;
+  return `-${formatEuros(code.valeur)}`;
 }
 
 // Charge un code promo depuis la BDD en respectant les conditions d'éligibilité.
@@ -108,10 +107,9 @@ export async function validateCodePromo(
     return { ok: false, raison: 'Vous ne pouvez pas utiliser votre propre code de parrainage.' };
   }
   if (panierCents < code.min_panier_cents) {
-    const min = (code.min_panier_cents / 100).toFixed(2).replace('.', ',');
     return {
       ok: false,
-      raison: `Panier minimum de ${min} € requis pour ce code.`,
+      raison: `Panier minimum de ${formatEuros(code.min_panier_cents)} requis pour ce code.`,
     };
   }
   const reductionCents = computeReduction(code, panierCents);
@@ -121,25 +119,9 @@ export async function validateCodePromo(
   return { ok: true, code, reductionCents, libelle: formatCodeLibelle(code) };
 }
 
-// Incrémente le compteur d'usage de manière atomique via RPC Postgres
-// (`increment_code_usage` — migration 024). L'incrément côté serveur
-// évite la race condition d'un read-then-write JS sur les codes
-// `usage_max=1` (ex. codes MERCI parrainage).
-// Best-effort : on log l'erreur sans faire échouer la commande, car la
-// commande elle-même est déjà enregistrée à ce stade.
-export async function incrementCodeUsage(codeId: string): Promise<void> {
-  const { error } = await supabaseAdmin.rpc('increment_code_usage', {
-    code_id: codeId,
-  });
-  if (error) {
-    console.error('[codes-promos] Erreur incrément usage:', error);
-  }
-}
-
 // Check + increment atomique via RPC Postgres (`try_consume_code_usage` —
-// migration 027). Retourne true si l'usage a pu être incrémenté (plafond pas
-// atteint, code toujours actif/non expiré), false sinon. À utiliser AVANT
-// l'insert commande pour fermer la fenêtre de race condition entre la
+// migration 027). Retourne true si l'usage a pu être incrémenté, false sinon.
+// À utiliser AVANT l'insert commande pour fermer la race condition entre la
 // validation initiale et l'incrément final.
 export async function tryConsumeCodeUsage(codeId: string): Promise<boolean> {
   const { data, error } = await supabaseAdmin.rpc('try_consume_code_usage', {

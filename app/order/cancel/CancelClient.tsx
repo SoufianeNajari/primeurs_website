@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Loader2, AlertTriangle, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { splitClientNom } from '@/lib/order';
 
 type OrderInfo = {
   client_nom: string;
@@ -103,7 +104,7 @@ export default function CancelClient({
             <div>
               <h1 className="text-2xl font-serif text-neutral-800 mb-3">Annuler ma livraison ?</h1>
               <p className="text-neutral-600 leading-relaxed mb-6">
-                Bonjour <strong>{order.client_nom.split(' ')[0]}</strong>, vous êtes sur le point d&apos;annuler votre livraison prévue
+                Bonjour <strong>{splitClientNom(order.client_nom).prenom}</strong>, vous êtes sur le point d&apos;annuler votre livraison prévue
                 {' '}<strong>{formatDateLong(order.date_livraison) ?? 'prochainement'}</strong>
                 {order.creneau_livraison ? <> ({order.creneau_livraison})</> : null}.
               </p>

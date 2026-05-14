@@ -7,6 +7,7 @@ import { calcFourchette, type FourchetteBornes } from '@/lib/fourchette'
 import { Printer, Phone, Mail, Clock, MessageSquare, MessageCircle, Undo2, ChevronDown, ChevronUp, Search, X, Link as LinkIcon, Send } from 'lucide-react'
 import { useToast } from '@/components/admin/Toast'
 import { statutBadgeCls, statutLabel } from '@/lib/orderStatus'
+import { shortOrderId, splitClientNom } from '@/lib/order'
 
 const SEARCH_STORAGE_KEY = 'orders_search'
 
@@ -69,14 +70,6 @@ function buildMapsUrl(adresse: string, codePostal: string | null | undefined, vi
 
 const euro = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-function shortId(id: string): string {
-  return '#' + id.replace(/-/g, '').slice(0, 8).toUpperCase()
-}
-
-function firstName(fullName: string): string {
-  return fullName.trim().split(/\s+/)[0] || ''
-}
-
 // Format E.164 sans le + pour wa.me. Hypothèse FR par défaut (06 → 336…).
 function toWhatsappNumber(raw: string): string {
   const digits = raw.replace(/\D/g, '')
@@ -90,7 +83,7 @@ function whatsappUrl(order: Order): string {
   const dateTxt = order.date_livraison ? formatDateLongue(order.date_livraison) : ''
   const creneauTxt = order.creneau_livraison ? ` (${order.creneau_livraison})` : ''
   const contextTxt = dateTxt ? ` prévue le ${dateTxt}${creneauTxt}` : ''
-  const message = `Bonjour ${firstName(order.client_nom)},\n\nKarim de Primeur Chez Vous, concernant votre commande ${shortId(order.id)}${contextTxt}.\n\n`
+  const message = `Bonjour ${splitClientNom(order.client_nom).prenom},\n\nKarim de Primeur Chez Vous, concernant votre commande ${shortOrderId(order.id)}${contextTxt}.\n\n`
   return `https://wa.me/${number}?text=${encodeURIComponent(message)}`
 }
 
@@ -341,7 +334,7 @@ export default function OrderList({
     return orders.filter(o => {
       if (normalizeText(o.client_nom).includes(qText)) return true
       if (qDigits.length >= 2 && digitsOnly(o.client_telephone).includes(qDigits)) return true
-      if (qText.length >= 3 && shortId(o.id).toLowerCase().includes(qText)) return true
+      if (qText.length >= 3 && shortOrderId(o.id).toLowerCase().includes(qText)) return true
       // Match commentaires de ligne
       if (qText.length >= 3 && o.lignes.some(l => l.commentaire && normalizeText(l.commentaire).includes(qText))) return true
       // Match ville et adresse livraison
@@ -467,7 +460,7 @@ export default function OrderList({
         <div className="flex flex-wrap items-start justify-between gap-3 mb-4 pb-4 border-b border-neutral-100">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap mb-1">
-              <span className="font-mono text-sm font-bold text-neutral-700 bg-neutral-100 px-2 py-0.5">{shortId(order.id)}</span>
+              <span className="font-mono text-sm font-bold text-neutral-700 bg-neutral-100 px-2 py-0.5">{shortOrderId(order.id)}</span>
               <span className={`text-[10px] uppercase tracking-widest font-semibold px-2 py-1 ${statutBadgeCls(order.statut)}`}>{statutLabel(order.statut)}</span>
               <span className="text-xs text-neutral-400 inline-flex items-center gap-1"><Clock size={12} />{formatRelativeTime(order.created_at)}</span>
             </div>
@@ -891,7 +884,7 @@ export default function OrderList({
                 >
                   <div className="flex items-center gap-3 min-w-0 flex-1">
                     {isOpen ? <ChevronUp size={16} className="text-neutral-500 shrink-0" /> : <ChevronDown size={16} className="text-neutral-500 shrink-0" />}
-                    <span className="font-mono text-xs text-neutral-500">{shortId(order.id)}</span>
+                    <span className="font-mono text-xs text-neutral-500">{shortOrderId(order.id)}</span>
                     <span className="font-serif text-neutral-700 truncate">{order.client_nom}</span>
                     <span className="text-xs text-neutral-400 hidden sm:inline">{order.lignes.length} article{order.lignes.length > 1 ? 's' : ''}</span>
                   </div>
@@ -926,7 +919,7 @@ export default function OrderList({
                 >
                   <div className="flex items-center gap-3 min-w-0 flex-1">
                     {isOpen ? <ChevronUp size={16} className="text-neutral-500 shrink-0" /> : <ChevronDown size={16} className="text-neutral-500 shrink-0" />}
-                    <span className="font-mono text-xs text-neutral-500">{shortId(order.id)}</span>
+                    <span className="font-mono text-xs text-neutral-500">{shortOrderId(order.id)}</span>
                     <span className="font-serif text-neutral-700 truncate">{order.client_nom}</span>
                     {order.cancelled_at && (
                       <span className="text-xs text-neutral-500 hidden sm:inline">{formatRelativeTime(order.cancelled_at)}</span>

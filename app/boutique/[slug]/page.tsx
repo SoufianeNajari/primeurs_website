@@ -15,9 +15,7 @@ import { formatArticleDate, type Article } from '@/lib/article';
 import { breadcrumbJsonLd } from '@/lib/json-ld';
 import type { Metadata } from 'next';
 
-// SSR à chaque requête (comme /boutique). Évite l'incohérence "grille à jour
-// vs fiche stale 1h" quand l'admin modifie un prix — la fiche est la source
-// d'achat finale, donc le prix doit y être exact à la seconde.
+// Pas de cache : la fiche est la source d'achat finale, le prix doit être exact.
 export const revalidate = 0;
 
 async function getProductBySlug(slug: string): Promise<Product | null> {

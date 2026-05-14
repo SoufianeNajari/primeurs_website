@@ -2,8 +2,6 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Truck, Sparkles } from 'lucide-react';
 
-// Blur low-res 12px généré à partir de hero.jpg via sharp. Évite le flash
-// blanc/gris pendant le chargement LCP sur mobile 4G.
 const HERO_BLUR =
   'data:image/jpeg;base64,/9j/2wBDAA0JCgsKCA0LCgsODg0PEyAVExISEyccHhcgLikxMC4pLSwzOko+MzZGNywtQFdBRkxOUlNSMj5aYVpQYEpRUk//2wBDAQ4ODhMREyYVFSZPNS01T09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT0//wAARCAAIAAwDASIAAhEBAxEB/8QAFgABAQEAAAAAAAAAAAAAAAAAAAQF/8QAHhAAAgICAgMAAAAAAAAAAAAAAQIAAwQhERJRobH/xAAUAQEAAAAAAAAAAAAAAAAAAAAE/8QAFhEBAQEAAAAAAAAAAAAAAAAAAQAR/9oADAMBAAIRAxEAPwDHx762xmLXIX0W0D08j5J7ame1+FZwDplYL6iINMkgLf/Z';
 

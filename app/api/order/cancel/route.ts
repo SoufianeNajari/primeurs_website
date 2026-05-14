@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { sendEmail } from '@/lib/mailer';
 import { verifyCancelToken } from '@/lib/cancel-token';
+import { shortOrderId } from '@/lib/order';
 
 export const dynamic = 'force-dynamic';
 
@@ -71,7 +72,7 @@ export async function POST(request: Request) {
       const dateText = order.date_livraison ?? '?';
       const creneauText = order.creneau_livraison ?? '?';
       const villeText = order.ville ?? '?';
-      const shortId = '#' + id.replace(/-/g, '').slice(0, 8).toUpperCase();
+      const shortId = shortOrderId(id);
       await sendEmail({
         to: shopEmail,
         subject: `Annulation client — ${order.client_nom} — ${shortId} — ${dateText}`,

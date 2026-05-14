@@ -5,21 +5,11 @@ import { isAdmin } from '@/lib/admin-auth';
 import { sendEmail } from '@/lib/mailer';
 import { emailRappelJ1 } from '@/lib/emails/templates';
 import { buildCancelUrl } from '@/lib/cancel-token';
-import { LIVREUR } from '@/lib/site';
+import { LIVREUR, currentOriginFromRequest } from '@/lib/site';
+import { splitClientNom } from '@/lib/order';
 import { badRequestIfNotUuid } from '@/lib/uuid';
 
 export const dynamic = 'force-dynamic';
-
-// Déclenchement manuel de l'email J-1 depuis /admin/orders.
-// Reproduit le cron mais pour une commande, force l'envoi (ignore le flag),
-// et utilise l'origin de la requête pour que le lien d'annulation pointe sur
-// le déploiement courant (preview Vercel ou prod).
-function currentOrigin(): string {
-  const h = headers();
-  const host = h.get('host') ?? 'localhost:3000';
-  const proto = h.get('x-forwarded-proto') ?? (host.startsWith('localhost') ? 'http' : 'https');
-  return `${proto}://${host}`;
-}
 
 export async function POST(_request: NextRequest, { params }: { params: { id: string } }) {
   if (!(await isAdmin())) {
@@ -47,11 +37,11 @@ export async function POST(_request: NextRequest, { params }: { params: { id: st
     return NextResponse.json({ error: 'Données livraison incomplètes' }, { status: 400 });
   }
 
-  const prenom = cmd.client_nom?.split(/\s+/)[0] || 'à toi';
+  const prenom = splitClientNom(cmd.client_nom).prenom || 'à toi';
   const adresseParts = [cmd.adresse, cmd.complement_adresse, `${cmd.code_postal ?? ''} ${cmd.ville ?? ''}`.trim()]
     .filter(Boolean) as string[];
   const adresseFull = adresseParts.join(', ');
-  const cancelUrl = buildCancelUrl(currentOrigin(), cmd.id, 7);
+  const cancelUrl = buildCancelUrl(currentOriginFromRequest(headers()), cmd.id, 7);
 
   try {
     const html = await emailRappelJ1({

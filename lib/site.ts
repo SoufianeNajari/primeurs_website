@@ -97,3 +97,12 @@ export function absoluteUrl(path: string): string {
   if (path.startsWith('http')) return path;
   return `${SITE.url}${path.startsWith('/') ? '' : '/'}${path}`;
 }
+
+// Origin de la requête courante — préféré à SITE.url dans les routes
+// serveur, pour que les liens (cancel, admin) pointent sur le déploiement
+// servant la requête (preview Vercel, prod, localhost).
+export function currentOriginFromRequest(headers: Headers | { get(name: string): string | null }): string {
+  const host = headers.get('host') ?? 'localhost:3000';
+  const proto = headers.get('x-forwarded-proto') ?? (host.startsWith('localhost') ? 'http' : 'https');
+  return `${proto}://${host}`;
+}

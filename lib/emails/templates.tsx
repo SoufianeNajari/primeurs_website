@@ -13,6 +13,7 @@ import {
 import { render } from '@react-email/render';
 import { SITE } from '@/lib/site';
 import { calcFourchette, type FourchetteBornes } from '@/lib/fourchette';
+import { shortOrderId } from '@/lib/order';
 
 export type LigneCommande = {
   produitId: string;
@@ -270,7 +271,7 @@ function ShopEmail(props: LivraisonInfos & {
       <Body style={main}>
         <Container style={container}>
           <Heading as="h1" style={h1}>
-            Livraison #{props.orderId.slice(0, 8).toUpperCase()}
+            Livraison {shortOrderId(props.orderId)}
           </Heading>
           <Text style={muted}>Reçue le {props.date}</Text>
 

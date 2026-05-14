@@ -6,20 +6,12 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircle2, Truck, Info, AlertTriangle, XCircle } from 'lucide-react';
 import { cartHasPoidsIncertain } from '@/lib/produit';
-
-function shortOrderId(id: string): string {
-  return '#' + id.replace(/-/g, '').slice(0, 8).toUpperCase();
-}
+import { shortOrderId } from '@/lib/order';
 
 function ConfirmationContent() {
   const { clearCart } = useCart();
   const searchParams = useSearchParams();
-  const [creneau, setCreneau] = useState<string | null>(null);
-  const [dateLabel, setDateLabel] = useState<string | null>(null);
   const [hadIncertain, setHadIncertain] = useState(false);
-  const [orderId, setOrderId] = useState<string | null>(null);
-  const [cancelUrl, setCancelUrl] = useState<string | null>(null);
-  const [emailFail, setEmailFail] = useState(false);
 
   useEffect(() => {
     try {
@@ -32,22 +24,21 @@ function ConfirmationContent() {
       // ignore
     }
     clearCart();
-    setCreneau(searchParams.get('creneau'));
-    setOrderId(searchParams.get('id'));
-    // cancelUrl arrive en plein clair, validation côté serveur via signature HMAC
-    const rawCancel = searchParams.get('cancel');
-    if (rawCancel && /^https?:\/\//.test(rawCancel)) setCancelUrl(rawCancel);
-    setEmailFail(searchParams.get('emailFail') === '1');
-    const dateIso = searchParams.get('date');
-    if (dateIso && /^\d{4}-\d{2}-\d{2}$/.test(dateIso)) {
-      const d = new Date(dateIso + 'T00:00:00');
-      if (!Number.isNaN(d.getTime())) {
-        setDateLabel(
-          d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }),
-        );
-      }
+  }, [clearCart]);
+
+  const creneau = searchParams.get('creneau');
+  const orderId = searchParams.get('id');
+  const rawCancel = searchParams.get('cancel');
+  const cancelUrl = rawCancel && /^https?:\/\//.test(rawCancel) ? rawCancel : null;
+  const emailFail = searchParams.get('emailFail') === '1';
+  const dateIso = searchParams.get('date');
+  let dateLabel: string | null = null;
+  if (dateIso && /^\d{4}-\d{2}-\d{2}$/.test(dateIso)) {
+    const d = new Date(dateIso + 'T00:00:00');
+    if (!Number.isNaN(d.getTime())) {
+      dateLabel = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
     }
-  }, [clearCart, searchParams]);
+  }
 
   return (
     <div className="max-w-lg w-full bg-white border border-neutral-200 p-10 md:p-12 text-center animate-fade-in-up">

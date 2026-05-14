@@ -16,6 +16,7 @@ import { useLivraisonConfig } from '@/lib/use-livraison-config';
 import { formatPrixMontant, cartHasPoidsIncertain, isPoidsIncertain } from '@/lib/produit';
 import { calcFourchette, formatFourchette } from '@/lib/fourchette';
 import { useFourchetteBornes } from '@/lib/use-fourchette';
+import { formatEuros } from '@/lib/format';
 import { CUSTOMER_MEMORY_KEY, type CustomerMemory } from '@/components/WelcomeBackBanner';
 import UpsellSuggestions from '@/components/UpsellSuggestions';
 
@@ -48,9 +49,6 @@ type PromoState =
   | { status: 'valid'; code: string; libelle: string; reductionCents: number }
   | { status: 'invalid'; raison: string };
 
-function formatEuros(cents: number): string {
-  return (cents / 100).toFixed(2).replace('.', ',') + ' €';
-}
 
 export default function OrderPage() {
   const { cart, totalItems, totalEstime, removeFromCart, isLoaded, refreshPrices } = useCart();

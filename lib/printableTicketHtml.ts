@@ -1,4 +1,5 @@
 import { calcFourchette, type FourchetteBornes } from '@/lib/fourchette'
+import { shortOrderId } from '@/lib/order'
 
 type Ligne = {
   produitId: string
@@ -44,9 +45,6 @@ function esc(s: string | null | undefined): string {
     .replace(/'/g, '&#39;')
 }
 
-function shortId(id: string): string {
-  return '#' + id.replace(/-/g, '').slice(0, 8).toUpperCase()
-}
 
 function formatDateLongue(iso: string): string {
   return new Date(iso + (iso.length === 10 ? 'T00:00:00' : '')).toLocaleDateString('fr-FR', {
@@ -138,7 +136,7 @@ export function renderTicketHtml(
         <div style="font-size:10pt">${esc(order.client_telephone)}${order.client_email ? ` · ${esc(order.client_email)}` : ''}</div>
       </div>
       <div style="text-align:right">
-        <div style="font-family:monospace;font-size:11pt">${shortId(order.id)}</div>
+        <div style="font-family:monospace;font-size:11pt">${shortOrderId(order.id)}</div>
         <div style="font-size:9pt;text-transform:uppercase">${esc(order.statut)}</div>
       </div>
     </div>
