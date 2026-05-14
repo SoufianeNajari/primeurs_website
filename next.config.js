@@ -8,19 +8,20 @@ const withPWA = require('next-pwa')({
   },
   runtimeCaching: [
     {
+      // Lectures Supabase REST : NetworkOnly. Le cache 5min précédent
+      // ramenait des dispos/prix périmés au prochain reload (ex. un produit
+      // retiré entre-temps restait "disponible" côté CartDrawer/WelcomeBack).
+      // Le client peut toujours naviguer offline grâce au panier localStorage,
+      // et la dispo finale est re-checkée côté serveur dans /api/order.
       urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/.*/,
-      handler: 'NetworkFirst',
-      options: { 
-        cacheName: 'supabase-api', 
-        expiration: { maxEntries: 50, maxAgeSeconds: 300 } 
-      }
+      handler: 'NetworkOnly',
     },
     {
       urlPattern: /\.(png|jpg|jpeg|svg|ico)$/,
       handler: 'CacheFirst',
-      options: { 
-        cacheName: 'images', 
-        expiration: { maxEntries: 50, maxAgeSeconds: 86400 } 
+      options: {
+        cacheName: 'images',
+        expiration: { maxEntries: 50, maxAgeSeconds: 86400 }
       }
     }
   ]
