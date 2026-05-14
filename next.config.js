@@ -12,11 +12,13 @@ const withPWA = require('next-pwa')({
       // au changement de route (RSC payload `?_rsc=...` inclus).
       urlPattern: ({ url }) => url.pathname.startsWith('/admin') || url.pathname.startsWith('/api/'),
       handler: 'NetworkOnly',
+      options: {},
     },
     {
       // Supabase REST : NetworkOnly — prix et dispos doivent être frais.
       urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/.*/,
       handler: 'NetworkOnly',
+      options: {},
     },
     {
       urlPattern: /\.(png|jpg|jpeg|svg|ico)$/,
