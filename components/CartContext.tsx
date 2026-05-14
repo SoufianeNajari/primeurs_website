@@ -79,9 +79,10 @@ function reconcileCartWithProduits(
   let changed = false;
   for (const [key, item] of Object.entries(cart)) {
     const dbProduct = dbMap.get(item.produitId);
-    // Produit absent de la réponse (ex: hors filtre) → on garde tel quel.
+    // /api/products renvoie la liste complète : un produit absent = supprimé.
+    // On l'enlève du panier au lieu de garder un prix périmé.
     if (!dbProduct) {
-      next[key] = item;
+      changed = true;
       continue;
     }
     if (dbProduct.disponible !== true || dbProduct.masque_boutique === true) {
