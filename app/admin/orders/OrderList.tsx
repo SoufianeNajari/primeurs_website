@@ -54,6 +54,9 @@ type Order = {
   reduction_cents?: number | null;
   rappel_j1_envoye_le?: string | null;
   cancelled_at?: string | null;
+  email_client_sent_at?: string | null;
+  email_shop_sent_at?: string | null;
+  email_last_error?: string | null;
 }
 
 type StatusFilter = 'tous' | 'reçue' | 'prête' | 'retirée' | 'annulée';
@@ -251,6 +254,32 @@ export default function OrderList({
       if (next.has(id)) next.delete(id); else next.add(id)
       return next
     })
+  }
+
+  const resendConfirmation = async (order: Order) => {
+    if (!order.client_email) return
+    const confirmMsg = `Renvoyer la confirmation de commande à ${order.client_email} ?`
+    if (!window.confirm(confirmMsg)) return
+    triggerHaptic()
+    try {
+      const res = await fetch(`/api/orders/${order.id}/resend-confirmation`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target: 'client' }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Erreur')
+      toast.success('Confirmation renvoyée')
+      const now = new Date().toISOString()
+      setOrders(prev => prev.map(o => o.id === order.id ? {
+        ...o,
+        email_client_sent_at: now,
+        email_last_error: null,
+      } : o))
+    } catch (e) {
+      console.error(e)
+      toast.error(e instanceof Error ? e.message : 'Échec renvoi confirmation')
+    }
   }
 
   const sendJ1 = async (order: Order) => {
@@ -489,6 +518,17 @@ export default function OrderList({
                 <a href={`mailto:${order.client_email}`} className="inline-flex items-center gap-1.5 text-neutral-500 hover:text-neutral-800 hover:underline text-xs">
                   <Mail size={12} /> {order.client_email}
                 </a>
+              )}
+              {/* Tracking confirmation email — surface si non-envoyé pour relance manuelle */}
+              {order.client_email && order.email_client_sent_at == null && (
+                <button
+                  type="button"
+                  onClick={() => resendConfirmation(order)}
+                  className="inline-flex items-center gap-1.5 text-xs no-print text-amber-700 hover:text-amber-900 font-medium bg-amber-50 border border-amber-200 px-2 py-1"
+                  title={order.email_last_error ? `Échec : ${order.email_last_error}` : 'Email de confirmation non envoyé — cliquer pour renvoyer'}
+                >
+                  <Send size={12} /> Email confirmation non envoyé
+                </button>
               )}
             </div>
           </div>

@@ -135,3 +135,19 @@ export async function incrementCodeUsage(codeId: string): Promise<void> {
     console.error('[codes-promos] Erreur incrément usage:', error);
   }
 }
+
+// Check + increment atomique via RPC Postgres (`try_consume_code_usage` —
+// migration 027). Retourne true si l'usage a pu être incrémenté (plafond pas
+// atteint, code toujours actif/non expiré), false sinon. À utiliser AVANT
+// l'insert commande pour fermer la fenêtre de race condition entre la
+// validation initiale et l'incrément final.
+export async function tryConsumeCodeUsage(codeId: string): Promise<boolean> {
+  const { data, error } = await supabaseAdmin.rpc('try_consume_code_usage', {
+    code_id: codeId,
+  });
+  if (error) {
+    console.error('[codes-promos] Erreur try_consume_code_usage:', error);
+    return false;
+  }
+  return data === true;
+}

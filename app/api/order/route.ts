@@ -6,7 +6,7 @@ import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { getClientSession } from '@/lib/client-auth';
 import { isCommandesBloquees } from '@/lib/parametres';
 import { getFourchetteBornes } from '@/lib/fourchette';
-import { validateCodePromo, incrementCodeUsage } from '@/lib/codes-promos';
+import { validateCodePromo, tryConsumeCodeUsage } from '@/lib/codes-promos';
 import { isValidEmail } from '@/lib/email';
 import { genererCodeParrainSiNouveau, traiterUsageSiParrainage, getCodeParrainPourClient, PARRAINAGE_CONFIG } from '@/lib/parrainage';
 import {
@@ -203,17 +203,24 @@ export async function POST(request: Request) {
 
     const fraisCents = await getFraisLivraisonCents();
 
-    // Validation code promo (best-effort : si invalide, on ignore plutôt que
-    // refuser la commande — le client n'a pas perdu de temps pour rien).
+    // Validation code promo + consommation atomique. `validateCodePromo` lit
+    // les règles ; `tryConsumeCodeUsage` fait le UPDATE conditionnel (RPC
+    // migration 027) pour fermer la race condition sur usage_max=1.
+    // Best-effort : si la consommation échoue (épuisé entre validate et insert),
+    // on ignore plutôt que refuser la commande — le client le saura par alert
+    // côté UI (data.codePromoApplique=null).
     let codePromoApplique: string | null = null;
     let reductionCents = 0;
     let codePromoId: string | null = null;
     if (typeof codePromoRaw === 'string' && codePromoRaw.trim() && !tousIncertains) {
       const validation = await validateCodePromo(codePromoRaw, totalCertainCents, client.email);
       if (validation.ok) {
-        codePromoApplique = validation.code.code;
-        reductionCents = validation.reductionCents;
-        codePromoId = validation.code.id;
+        const consumed = await tryConsumeCodeUsage(validation.code.id);
+        if (consumed) {
+          codePromoApplique = validation.code.code;
+          reductionCents = validation.reductionCents;
+          codePromoId = validation.code.id;
+        }
       }
     }
 
@@ -253,10 +260,10 @@ export async function POST(request: Request) {
 
     const orderId = orderData.id;
 
-    // Incrément non-bloquant du compteur d'usage du code promo
+    // Note : l'usage du code promo a déjà été consommé atomiquement avant
+    // l'insert (tryConsumeCodeUsage ci-dessus). Reste à traiter le parrainage
+    // si applicable (best-effort, async).
     if (codePromoId) {
-      incrementCodeUsage(codePromoId).catch(() => {});
-      // Si c'est un code de parrainage : crédite le parrain (code MERCI + email)
       traiterUsageSiParrainage({
         codePromoId,
         filleulPrenom: client.prenom,
@@ -307,7 +314,12 @@ export async function POST(request: Request) {
         panierMinParrainageCents: PARRAINAGE_CONFIG.panierMinCents,
       }),
     ]);
-    await Promise.all([
+
+    // Envois non-bloquants : si Resend tombe ou si le domaine n'est pas
+    // configuré, la commande reste enregistrée (BDD à jour). Le client reçoit
+    // un 200 — la confirmation visuelle suffit côté UX. L'admin voit le badge
+    // "email non envoyé" dans /admin/orders et peut relancer manuellement.
+    const [shopRes, clientRes] = await Promise.allSettled([
       sendEmail({
         to: shopEmailAddr,
         subject: `Nouvelle livraison — ${client.prenom} ${client.nom} — ${creneau.label} — ${ville}`,
@@ -320,6 +332,28 @@ export async function POST(request: Request) {
       }),
     ]);
 
+    const now = new Date().toISOString();
+    const shopOk = shopRes.status === 'fulfilled';
+    const clientOk = clientRes.status === 'fulfilled';
+    const errorMsg = [
+      shopRes.status === 'rejected' ? `shop: ${shopRes.reason instanceof Error ? shopRes.reason.message : String(shopRes.reason)}` : null,
+      clientRes.status === 'rejected' ? `client: ${clientRes.reason instanceof Error ? clientRes.reason.message : String(clientRes.reason)}` : null,
+    ].filter(Boolean).join(' | ') || null;
+
+    if (!shopOk || !clientOk) {
+      console.error('[order] envoi email partiellement échoué', { orderId, errorMsg });
+    }
+
+    // Tracking BDD — best-effort, l'échec ici ne doit pas masquer la commande.
+    await supabaseAdmin
+      .from('commandes')
+      .update({
+        email_shop_sent_at: shopOk ? now : null,
+        email_client_sent_at: clientOk ? now : null,
+        email_last_error: errorMsg,
+      })
+      .eq('id', orderId);
+
     return NextResponse.json({
       success: true,
       commande_id: orderId,
@@ -329,6 +363,9 @@ export async function POST(request: Request) {
       codePromoApplique,
       reductionCents,
       fraisLivraisonCents: fraisCents,
+      // Permet à l'UI client de prévenir si l'email de confirmation n'a pas
+      // été envoyé (ex. fallback "vérifiez vos spams" → bouton "renvoyer").
+      emailClientSent: clientOk,
     });
   } catch (error) {
     console.error('Erreur API Order:', error);
