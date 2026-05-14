@@ -3,6 +3,7 @@ import { sendEmail } from '@/lib/mailer';
 import { supabaseAdmin } from '@/lib/supabase';
 import { emailShop, emailClient, type LigneCommande } from '@/lib/emails/templates';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
+import { buildCancelUrl } from '@/lib/cancel-token';
 import { getClientSession } from '@/lib/client-auth';
 import { isCommandesBloquees } from '@/lib/parametres';
 import { getFourchetteBornes } from '@/lib/fourchette';
@@ -354,6 +355,13 @@ export async function POST(request: Request) {
       })
       .eq('id', orderId);
 
+    // Génère le lien d'annulation signé (7j) avec l'origin de la requête
+    // courante — permet d'afficher le bouton "Annuler ma livraison" sur
+    // /order/confirmation sans attendre l'email J-1.
+    const host = request.headers.get('host') ?? '';
+    const proto = request.headers.get('x-forwarded-proto') ?? (host.startsWith('localhost') ? 'http' : 'https');
+    const cancelUrl = host ? buildCancelUrl(`${proto}://${host}`, orderId, 7) : null;
+
     return NextResponse.json({
       success: true,
       commande_id: orderId,
@@ -366,6 +374,7 @@ export async function POST(request: Request) {
       // Permet à l'UI client de prévenir si l'email de confirmation n'a pas
       // été envoyé (ex. fallback "vérifiez vos spams" → bouton "renvoyer").
       emailClientSent: clientOk,
+      cancelUrl,
     });
   } catch (error) {
     console.error('Erreur API Order:', error);

@@ -334,6 +334,9 @@ export default function OrderPage() {
         creneau: opt.creneau.label,
         date: opt.iso,
       });
+      if (data?.commande_id) params.set('id', data.commande_id);
+      if (data?.cancelUrl) params.set('cancel', data.cancelUrl);
+      if (data?.emailClientSent === false) params.set('emailFail', '1');
       router.push(`/order/confirmation?${params.toString()}`);
     } catch (err: unknown) {
       if (err instanceof Error) setError(err.message);

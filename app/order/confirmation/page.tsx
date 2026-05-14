@@ -4,8 +4,12 @@ import { useEffect, useState, Suspense } from 'react';
 import { useCart, type CartItem } from '@/components/CartContext';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { CheckCircle2, Truck, Info } from 'lucide-react';
+import { CheckCircle2, Truck, Info, AlertTriangle, XCircle } from 'lucide-react';
 import { cartHasPoidsIncertain } from '@/lib/produit';
+
+function shortOrderId(id: string): string {
+  return '#' + id.replace(/-/g, '').slice(0, 8).toUpperCase();
+}
 
 function ConfirmationContent() {
   const { clearCart } = useCart();
@@ -13,6 +17,9 @@ function ConfirmationContent() {
   const [creneau, setCreneau] = useState<string | null>(null);
   const [dateLabel, setDateLabel] = useState<string | null>(null);
   const [hadIncertain, setHadIncertain] = useState(false);
+  const [orderId, setOrderId] = useState<string | null>(null);
+  const [cancelUrl, setCancelUrl] = useState<string | null>(null);
+  const [emailFail, setEmailFail] = useState(false);
 
   useEffect(() => {
     try {
@@ -26,6 +33,11 @@ function ConfirmationContent() {
     }
     clearCart();
     setCreneau(searchParams.get('creneau'));
+    setOrderId(searchParams.get('id'));
+    // cancelUrl arrive en plein clair, validation côté serveur via signature HMAC
+    const rawCancel = searchParams.get('cancel');
+    if (rawCancel && /^https?:\/\//.test(rawCancel)) setCancelUrl(rawCancel);
+    setEmailFail(searchParams.get('emailFail') === '1');
     const dateIso = searchParams.get('date');
     if (dateIso && /^\d{4}-\d{2}-\d{2}$/.test(dateIso)) {
       const d = new Date(dateIso + 'T00:00:00');
@@ -43,11 +55,29 @@ function ConfirmationContent() {
         <CheckCircle2 size={48} className="text-green-primary" strokeWidth={1.5} />
       </div>
 
-      <h1 className="text-4xl font-serif text-neutral-800 mb-6">Commande validée</h1>
+      <h1 className="text-4xl font-serif text-neutral-800 mb-4">Commande validée</h1>
+
+      {orderId && (
+        <p className="text-xs uppercase tracking-[0.2em] text-neutral-400 font-medium mb-6">
+          Référence&nbsp;: <span className="text-neutral-700">{shortOrderId(orderId)}</span>
+        </p>
+      )}
 
       <p className="text-neutral-600 mb-10 text-lg leading-relaxed">
-        Nous vous remercions de votre confiance. Un e-mail récapitulatif vient de vous être envoyé.
+        Nous vous remercions de votre confiance.
+        {!emailFail && ' Un e-mail récapitulatif vient de vous être envoyé.'}
       </p>
+
+      {emailFail && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-900 p-4 mb-10 flex gap-3 items-start text-left text-sm">
+          <AlertTriangle size={18} strokeWidth={1.5} className="shrink-0 mt-0.5" />
+          <span className="leading-relaxed">
+            Votre commande est bien enregistrée, mais nous n&apos;avons pas pu vous envoyer l&apos;email
+            de confirmation. Notez la référence ci-dessus et appelez-nous si besoin — nous vous rappellerons
+            avant la préparation.
+          </span>
+        </div>
+      )}
 
       {creneau && (
         <div className="bg-neutral-50 border border-neutral-200 p-6 mb-10 flex flex-col items-center">
@@ -78,6 +108,15 @@ function ConfirmationContent() {
         >
           Retour à l&apos;accueil
         </Link>
+        {cancelUrl && (
+          <Link
+            href={cancelUrl}
+            className="flex items-center justify-center gap-2 w-full text-xs uppercase tracking-widest font-medium text-neutral-400 hover:text-red-text transition-colors"
+          >
+            <XCircle size={14} strokeWidth={1.5} />
+            Annuler ma livraison
+          </Link>
+        )}
       </div>
     </div>
   );

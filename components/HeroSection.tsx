@@ -28,7 +28,7 @@ export default function HeroSection() {
       {/* Content */}
       <div className="relative z-20 text-center px-4 max-w-3xl mx-auto flex flex-col items-center">
         <span className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 px-4 py-1.5 mb-6 text-[10px] uppercase tracking-[0.25em] text-white font-medium">
-          <Truck size={14} strokeWidth={1.5} /> Livraison offerte pour le lancement
+          <Truck size={14} strokeWidth={1.5} /> Livraison offerte les premiers mois
         </span>
         <h1 className="text-5xl md:text-7xl font-serif text-white mb-6 tracking-tight drop-shadow-md">
           Primeur Chez Vous
