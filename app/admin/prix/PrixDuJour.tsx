@@ -570,12 +570,35 @@ function OptionPrixRow({
   onSave: (newPrix: number | null) => void;
 }) {
   const [value, setValue] = useState<string>(formatPrixInput(prix));
+  const isFocusedRef = useRef(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    setValue(formatPrixInput(prix));
+    // Si l'utilisateur est en train de taper, on ne touche pas à son input.
+    // Sinon resync avec la valeur serveur (après sauvegarde, undo, etc.).
+    if (!isFocusedRef.current) {
+      setValue(formatPrixInput(prix));
+    }
   }, [prix]);
 
+  // Auto-save debounced : si l'utilisateur tape puis navigue sans déclencher
+  // onBlur (cas mobile fréquent), la valeur est quand même sauvegardée 800ms
+  // après la dernière frappe.
+  useEffect(() => {
+    if (!isFocusedRef.current) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      const parsed = parsePrixInput(value);
+      if (parsed !== prix) onSave(parsed);
+    }, 800);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [value, prix, onSave]);
+
   function handleBlur() {
+    isFocusedRef.current = false;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
     const parsed = parsePrixInput(value);
     setValue(formatPrixInput(parsed));
     onSave(parsed);
@@ -608,6 +631,7 @@ function OptionPrixRow({
           enterKeyHint="next"
           data-prix-input="1"
           value={value}
+          onFocus={() => { isFocusedRef.current = true; }}
           onChange={(e) => setValue(e.target.value)}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}

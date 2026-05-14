@@ -15,5 +15,15 @@ export default async function EditProduitPage({ params }: { params: { id: string
   if (!produit) notFound();
 
   const categories = cats.filter(c => c.actif).map(c => c.nom);
-  return <ProductForm mode={{ kind: 'edit', id: params.id }} initial={produit as Product} categories={categories} />;
+  // Key par hash du produit : si AdminRouterRefresh ramène des données fraîches
+  // (ex : retour sur la page après une modif via router cache), le formulaire
+  // remonte avec les bonnes valeurs au lieu de garder l'ancien state useState.
+  return (
+    <ProductForm
+      key={JSON.stringify(produit)}
+      mode={{ kind: 'edit', id: params.id }}
+      initial={produit as Product}
+      categories={categories}
+    />
+  );
 }

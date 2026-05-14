@@ -116,7 +116,15 @@ export default function ProductGrid({ products }: { products: Product[] }) {
               key={cat}
               onClick={() => {
                 triggerHaptic();
-                setActiveTab(cat);
+                if (cat !== activeTab) {
+                  setActiveTab(cat);
+                  setSearchQuery('');
+                  setFilterBio(false);
+                  setFilterSaison(false);
+                  setFilterLocal(false);
+                  setHideIndispos(false);
+                  setSortMode('pertinence');
+                }
               }}
               className={`whitespace-nowrap px-4 py-3 text-[11px] uppercase tracking-widest font-medium transition-colors focus:outline-none border-b-2 -mb-[2px] ${
                 activeTab === cat ? 'border-green-primary text-green-primary' : 'border-transparent text-neutral-500 hover:text-neutral-800'

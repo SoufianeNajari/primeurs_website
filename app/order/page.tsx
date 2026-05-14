@@ -53,7 +53,7 @@ function formatEuros(cents: number): string {
 }
 
 export default function OrderPage() {
-  const { cart, totalItems, totalEstime, removeFromCart, isLoaded } = useCart();
+  const { cart, totalItems, totalEstime, removeFromCart, isLoaded, refreshPrices } = useCart();
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -80,6 +80,13 @@ export default function OrderPage() {
     () => VILLES_AUTORISEES.find((v) => v.nom === draft.ville) || null,
     [draft.ville],
   );
+
+  // Refresh prix au mount : si l'admin a modifié des prix depuis le dernier
+  // chargement du panier (ou si le SW a servi une réponse Supabase périmée),
+  // on resynchronise avant que le client confirme la commande.
+  useEffect(() => {
+    refreshPrices();
+  }, [refreshPrices]);
 
   useEffect(() => {
     setIsMounted(true);

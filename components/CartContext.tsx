@@ -39,6 +39,7 @@ type CartContextType = {
   setItemCommentaire: (key: string, commentaire: string | null) => void;
   clearCart: () => void;
   restoreCart: (items: CartItem[]) => void;
+  refreshPrices: () => Promise<void>;
   totalItems: number;
   totalEstime: number | null;
   isCartOpen: boolean;
@@ -232,6 +233,48 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const clearCart = React.useCallback(() => setCart({}), []);
 
+  // Refresh prix depuis le serveur (bypass SW cache via /api/products).
+  // À appeler quand le client arrive sur une page sensible aux prix (ex: /order),
+  // pour ne pas afficher un prix périmé mis à jour côté admin il y a < 5 min.
+  const refreshPrices = React.useCallback(async () => {
+    try {
+      const res = await fetch('/api/products', { cache: 'no-store' });
+      if (!res.ok) return;
+      const produits = (await res.json()) as DbProduit[];
+      if (!Array.isArray(produits)) return;
+      const dbMap = new Map(produits.map((p) => [p.id, p]));
+      setCart((prev) => {
+        let changed = false;
+        const next: Record<string, CartItem> = {};
+        for (const [key, item] of Object.entries(prev)) {
+          const dbProduct = dbMap.get(item.produitId);
+          if (!dbProduct) {
+            next[key] = item;
+            continue;
+          }
+          if (dbProduct.disponible === false || dbProduct.masque_boutique === true) {
+            changed = true;
+            continue;
+          }
+          const freshOption = (dbProduct.options || []).find((o) => o.id === item.optionId);
+          if (!freshOption) {
+            changed = true;
+            continue;
+          }
+          if (freshOption.libelle !== item.libelle || (freshOption.prix ?? null) !== (item.prix ?? null)) {
+            next[key] = { ...item, libelle: freshOption.libelle, prix: freshOption.prix ?? null };
+            changed = true;
+          } else {
+            next[key] = item;
+          }
+        }
+        return changed ? next : prev;
+      });
+    } catch {
+      // offline → on garde le panier tel quel
+    }
+  }, []);
+
   const restoreCart = React.useCallback((items: CartItem[]) => {
     const newCart: Record<string, CartItem> = {};
     items.forEach((item) => {
@@ -260,7 +303,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   })();
 
   return (
-    <CartContext.Provider value={{ cart, addToCart, removeFromCart, updateQuantity, setItemCommentaire, clearCart, restoreCart, totalItems, totalEstime, isCartOpen, setIsCartOpen, lastAdded, isLoaded }}>
+    <CartContext.Provider value={{ cart, addToCart, removeFromCart, updateQuantity, setItemCommentaire, clearCart, restoreCart, refreshPrices, totalItems, totalEstime, isCartOpen, setIsCartOpen, lastAdded, isLoaded }}>
       {children}
       <CartDrawer />
       <CartAddedToast />
