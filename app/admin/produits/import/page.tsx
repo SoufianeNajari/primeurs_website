@@ -2,10 +2,10 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Upload, CheckCircle2, AlertCircle, RefreshCw, FileDown, Download } from 'lucide-react';
+import { ArrowLeft, Upload, CheckCircle2, AlertCircle, RefreshCw, FileDown, Download, Minus } from 'lucide-react';
 import type { ImportRowResult } from '@/app/api/admin/produits/import/route';
 
-type Summary = { created: number; updated: number; errors: number };
+type Summary = { created: number; updated: number; unchanged: number; errors: number };
 
 const TEMPLATE_HEADERS = [
   'nom', 'categorie', 'slug', 'description', 'description_longue', 'origine',
@@ -205,7 +205,7 @@ export default function ImportProduitsPage() {
       {summary && (
         <div className="bg-white border border-neutral-200 p-6">
           <h2 className="text-lg font-serif text-neutral-800 mb-4">Rapport d&apos;import</h2>
-          <div className="grid grid-cols-3 gap-3 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
             <div className="border border-green-300 bg-green-50 p-4 text-center">
               <div className="text-2xl font-serif text-green-800">{summary.created}</div>
               <div className="text-[11px] uppercase tracking-widest text-green-700 mt-1">Créés</div>
@@ -213,6 +213,10 @@ export default function ImportProduitsPage() {
             <div className="border border-blue-300 bg-blue-50 p-4 text-center">
               <div className="text-2xl font-serif text-blue-800">{summary.updated}</div>
               <div className="text-[11px] uppercase tracking-widest text-blue-700 mt-1">Mis à jour</div>
+            </div>
+            <div className="border border-neutral-200 bg-neutral-50 p-4 text-center">
+              <div className="text-2xl font-serif text-neutral-500">{summary.unchanged}</div>
+              <div className="text-[11px] uppercase tracking-widest text-neutral-500 mt-1">Inchangés</div>
             </div>
             <div className={`border p-4 text-center ${summary.errors > 0 ? 'border-red-300 bg-red-50' : 'border-neutral-200 bg-neutral-50'}`}>
               <div className={`text-2xl font-serif ${summary.errors > 0 ? 'text-red-800' : 'text-neutral-400'}`}>
@@ -236,7 +240,7 @@ export default function ImportProduitsPage() {
                     <span className="text-neutral-800 truncate">
                       {r.nom}
                       {r.message && (
-                        <span className={`block text-xs mt-0.5 ${r.status === 'error' ? 'text-red-700' : 'text-blue-700'}`}>{r.message}</span>
+                        <span className={`block text-xs mt-0.5 ${r.status === 'error' ? 'text-red-700' : r.status === 'unchanged' ? 'text-neutral-500' : 'text-blue-700'}`}>{r.message}</span>
                       )}
                     </span>
                     <span>
@@ -248,6 +252,11 @@ export default function ImportProduitsPage() {
                       {r.status === 'updated' && (
                         <span className="inline-flex items-center gap-1 text-blue-700 text-xs">
                           <CheckCircle2 size={12} /> Mis à jour
+                        </span>
+                      )}
+                      {r.status === 'unchanged' && (
+                        <span className="inline-flex items-center gap-1 text-neutral-500 text-xs">
+                          <Minus size={12} /> Inchangé
                         </span>
                       )}
                       {r.status === 'error' && (
