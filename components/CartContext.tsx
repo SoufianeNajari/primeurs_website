@@ -55,66 +55,111 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 type DbProduit = { id: string; disponible: boolean; masque_boutique: boolean | null; options: ProduitOption[] | null };
 
+// Fetch la liste fraîche des produits via /api/products (force-dynamic,
+// Cache-Control no-store). Bypass le service worker qui mettait en cache
+// 5 min les réponses Supabase REST — source du bug "nouveau prix puis ancien"
+// observé après une mise à jour côté admin.
+async function fetchProduitsFresh(): Promise<DbProduit[] | null> {
+  try {
+    const res = await fetch('/api/products', { cache: 'no-store' });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return Array.isArray(data) ? (data as DbProduit[]) : null;
+  } catch {
+    return null;
+  }
+}
+
+function reconcileCartWithProduits(
+  cart: Record<string, CartItem>,
+  produits: DbProduit[],
+): { cart: Record<string, CartItem>; changed: boolean } {
+  const dbMap = new Map(produits.map((p) => [p.id, p]));
+  const next: Record<string, CartItem> = {};
+  let changed = false;
+  for (const [key, item] of Object.entries(cart)) {
+    const dbProduct = dbMap.get(item.produitId);
+    // Produit absent de la réponse (ex: hors filtre) → on garde tel quel.
+    if (!dbProduct) {
+      next[key] = item;
+      continue;
+    }
+    if (dbProduct.disponible !== true || dbProduct.masque_boutique === true) {
+      changed = true;
+      continue;
+    }
+    const freshOption = (dbProduct.options || []).find((o) => o.id === item.optionId);
+    if (!freshOption) {
+      changed = true;
+      continue;
+    }
+    if (freshOption.libelle !== item.libelle || (freshOption.prix ?? null) !== (item.prix ?? null)) {
+      next[key] = { ...item, libelle: freshOption.libelle, prix: freshOption.prix ?? null };
+      changed = true;
+    } else {
+      next[key] = item;
+    }
+  }
+  return { cart: next, changed };
+}
+
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<Record<string, CartItem>>({});
   const [isLoaded, setIsLoaded] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [lastAdded, setLastAdded] = useState<LastAddedSignal | null>(null);
   const addSignalRef = useRef(0);
+  // Séquence des fetchs : toute réponse arrivée après une plus récente est
+  // ignorée. Évite qu'un loadCart lent (ex: SW cache) écrase un refreshPrices
+  // récent côté /order.
+  const reconcileSeqRef = useRef(0);
 
-  // Charger le panier depuis localStorage au démarrage
+  const applyFreshProduits = React.useCallback((produits: DbProduit[], seq: number) => {
+    if (seq < reconcileSeqRef.current) return;
+    setCart((prev) => {
+      const { cart: next, changed } = reconcileCartWithProduits(prev, produits);
+      return changed ? next : prev;
+    });
+  }, []);
+
+  // Charger le panier depuis localStorage au démarrage, puis resync prix/libellés
+  // via /api/products (source unique, no-store, bypass SW).
   useEffect(() => {
     const loadCart = async () => {
+      const seq = ++reconcileSeqRef.current;
       const saved = localStorage.getItem('primeur_cart');
+      let initialCart: Record<string, CartItem> = {};
       if (saved) {
         try {
           const parsedCart = JSON.parse(saved) as Record<string, CartItem>;
           // Ignorer les items sans optionId (schéma legacy pré-migration options)
-          const items = Object.values(parsedCart).filter((i) => i && i.produitId && i.optionId);
-          const productIds = Array.from(new Set(items.map((i) => i.produitId)));
-
-          if (productIds.length > 0) {
-            const { data: produitsDb, error } = await supabase
-              .from('produits')
-              .select('id, disponible, masque_boutique, options')
-              .in('id', productIds);
-
-            if (!error && produitsDb) {
-              const validCart: Record<string, CartItem> = {};
-              const dbMap = new Map((produitsDb as DbProduit[]).map((p) => [p.id, p]));
-
-              for (const item of items) {
-                const dbProduct = dbMap.get(item.produitId);
-                if (dbProduct?.disponible !== true) continue;
-                if (dbProduct?.masque_boutique === true) continue;
-                const freshOption = (dbProduct.options || []).find((o) => o.id === item.optionId);
-                if (!freshOption) continue; // option supprimée → on retire du panier
-                const key = cartKey(item.produitId, item.optionId);
-                validCart[key] = {
-                  ...item,
-                  libelle: freshOption.libelle,
-                  prix: freshOption.prix ?? null,
-                };
-              }
-
-              setCart(validCart);
-              localStorage.setItem('primeur_cart', JSON.stringify(validCart));
-            } else {
-              // Fallback : on garde tel quel (offline)
-              const fallback: Record<string, CartItem> = {};
-              for (const i of items) fallback[cartKey(i.produitId, i.optionId)] = i;
-              setCart(fallback);
+          for (const i of Object.values(parsedCart)) {
+            if (i && i.produitId && i.optionId) {
+              initialCart[cartKey(i.produitId, i.optionId)] = i;
             }
           }
         } catch (e) {
           console.error('Erreur lors de la lecture du panier:', e);
+          initialCart = {};
         }
       }
+
+      // Affiche d'abord le panier localStorage (prix peut-être périmé mais
+      // évite un flash vide), puis on resync dès que /api/products répond.
+      setCart(initialCart);
+
+      if (Object.keys(initialCart).length === 0) {
+        setIsLoaded(true);
+        return;
+      }
+
+      const produits = await fetchProduitsFresh();
+      if (produits) applyFreshProduits(produits, seq);
       setIsLoaded(true);
     };
 
     loadCart();
-  }, []);
+  }, [applyFreshProduits]);
 
   // Sauvegarder le panier à chaque modification
   useEffect(() => {
@@ -237,43 +282,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // À appeler quand le client arrive sur une page sensible aux prix (ex: /order),
   // pour ne pas afficher un prix périmé mis à jour côté admin il y a < 5 min.
   const refreshPrices = React.useCallback(async () => {
-    try {
-      const res = await fetch('/api/products', { cache: 'no-store' });
-      if (!res.ok) return;
-      const produits = (await res.json()) as DbProduit[];
-      if (!Array.isArray(produits)) return;
-      const dbMap = new Map(produits.map((p) => [p.id, p]));
-      setCart((prev) => {
-        let changed = false;
-        const next: Record<string, CartItem> = {};
-        for (const [key, item] of Object.entries(prev)) {
-          const dbProduct = dbMap.get(item.produitId);
-          if (!dbProduct) {
-            next[key] = item;
-            continue;
-          }
-          if (dbProduct.disponible === false || dbProduct.masque_boutique === true) {
-            changed = true;
-            continue;
-          }
-          const freshOption = (dbProduct.options || []).find((o) => o.id === item.optionId);
-          if (!freshOption) {
-            changed = true;
-            continue;
-          }
-          if (freshOption.libelle !== item.libelle || (freshOption.prix ?? null) !== (item.prix ?? null)) {
-            next[key] = { ...item, libelle: freshOption.libelle, prix: freshOption.prix ?? null };
-            changed = true;
-          } else {
-            next[key] = item;
-          }
-        }
-        return changed ? next : prev;
-      });
-    } catch {
-      // offline → on garde le panier tel quel
-    }
-  }, []);
+    const seq = ++reconcileSeqRef.current;
+    const produits = await fetchProduitsFresh();
+    if (produits) applyFreshProduits(produits, seq);
+  }, [applyFreshProduits]);
 
   const restoreCart = React.useCallback((items: CartItem[]) => {
     const newCart: Record<string, CartItem> = {};
