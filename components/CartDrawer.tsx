@@ -2,7 +2,7 @@
 
 import { useCart, CartItem, cartKey } from './CartContext';
 import CartItemNote from './CartItemNote';
-import { X, ShoppingBag, Minus, Plus, Trash2, RotateCcw, Loader2, Sparkles } from 'lucide-react';
+import { X, ShoppingBag, Minus, Plus, Trash2, RotateCcw, Loader2, Sparkles, Tag, Check, Info } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { FocusTrap } from 'focus-trap-react';
@@ -12,16 +12,12 @@ import type { ProduitOption } from '@/lib/produit';
 import { formatPrixMontant, cartHasPoidsIncertain, isPoidsIncertain } from '@/lib/produit';
 import { calcFourchette, formatFourchette } from '@/lib/fourchette';
 import { useFourchetteBornes } from '@/lib/use-fourchette';
-import { Info } from 'lucide-react';
+import { useLivraisonConfig } from '@/lib/use-livraison-config';
+import type { UpsellSuggestion } from '@/app/api/upsell/route';
 
-type Suggestion = {
-  id: string;
-  nom: string;
-  categorie: string;
-  slug: string | null;
-  disponible: boolean;
-  options: ProduitOption[] | null;
-};
+function formatEuros(cents: number): string {
+  return (cents / 100).toFixed(2).replace('.', ',') + ' €';
+}
 
 export default function CartDrawer() {
   const { cart, isCartOpen, setIsCartOpen, updateQuantity, removeFromCart, addToCart, totalItems, totalEstime, restoreCart } = useCart();
@@ -29,13 +25,15 @@ export default function CartDrawer() {
   const pathname = usePathname();
   const [lastOrder, setLastOrder] = useState<CartItem[] | null>(null);
   const [isRestoring, setIsRestoring] = useState(false);
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [suggestions, setSuggestions] = useState<UpsellSuggestion[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
 
   const cartItems = Object.values(cart);
   const bornes = useFourchetteBornes();
+  const config = useLivraisonConfig();
   const hasIncertain = cartHasPoidsIncertain(cartItems);
   const fourchette = totalEstime != null && !hasIncertain ? calcFourchette(totalEstime, bornes) : null;
+  const fraisCents = config.fraisCents;
 
   // Charger le dernier panier s'il existe
   useEffect(() => {
@@ -54,55 +52,36 @@ export default function CartDrawer() {
     }
   }, [isCartOpen, cartItems.length]);
 
-  // Charger des suggestions (Cross-selling)
+  // Charger des suggestions via /api/upsell — endpoint partagé avec /order,
+  // piloté par produits.mis_en_avant (curation admin). Garantit la cohérence
+  // entre le drawer et la page checkout (mêmes coups de cœur du primeur).
   useEffect(() => {
-    if (isCartOpen && cartItems.length > 0) {
-      setSuggestionsLoading(true);
-      const fetchSuggestions = async () => {
-        try {
-          const cartIds = Array.from(new Set(cartItems.map((item) => item.produitId)));
-          const { data } = await supabase
-            .from('produits')
-            .select('id, nom, categorie, slug, disponible, options')
-            .eq('disponible', true)
-            .eq('masque_boutique', false)
-            .limit(50);
-
-          if (data) {
-            const availableSuggestions = (data as Suggestion[]).filter((p) => !cartIds.includes(p.id));
-
-            const keywordsInCart = cartItems
-              .map((i) => i.nom.toLowerCase() + ' ' + i.categorie.toLowerCase())
-              .join(' ');
-
-            const scored = availableSuggestions.map((p) => {
-              let score = 0;
-              const n = p.nom.toLowerCase();
-              const c = p.categorie.toLowerCase();
-              if (keywordsInCart.includes('tomate') && (n.includes('basilic') || n.includes('mozzarella') || n.includes('oignon'))) score += 5;
-              if (keywordsInCart.includes('fraise') && (n.includes('crème') || n.includes('sucre') || n.includes('menthe'))) score += 5;
-              if (keywordsInCart.includes('fromage') && (n.includes('confiture') || n.includes('miel') || n.includes('pain') || n.includes('vin'))) score += 5;
-              if (keywordsInCart.includes('salade') && (n.includes('radis') || n.includes('tomate') || n.includes('concombre'))) score += 4;
-              if (keywordsInCart.includes('pomme') && (n.includes('poire') || n.includes('kiwi'))) score += 3;
-              if (keywordsInCart.includes('légume') && c.includes('herbe')) score += 2;
-              score += Math.random();
-              return { p, score };
-            });
-
-            const best = scored.sort((a, b) => b.score - a.score).slice(0, 2).map((s) => s.p);
-            setSuggestions(best);
-          }
-        } catch (e) {
-          console.error(e);
-        } finally {
-          setSuggestionsLoading(false);
-        }
-      };
-      fetchSuggestions();
-    } else {
+    if (!isCartOpen || cartItems.length === 0) {
       setSuggestions([]);
       setSuggestionsLoading(false);
+      return;
     }
+    let cancelled = false;
+    setSuggestionsLoading(true);
+    const cartIds = Array.from(new Set(cartItems.map((i) => i.produitId)));
+    fetch('/api/upsell', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ excludeIds: cartIds }),
+    })
+      .then((r) => (r.ok ? r.json() : { suggestions: [] }))
+      .then((data: { suggestions?: UpsellSuggestion[] }) => {
+        if (cancelled) return;
+        // 2 max dans le drawer (compact mobile), 3 sur /order.
+        setSuggestions((data.suggestions || []).slice(0, 2));
+      })
+      .catch(() => {
+        if (!cancelled) setSuggestions([]);
+      })
+      .finally(() => {
+        if (!cancelled) setSuggestionsLoading(false);
+      });
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCartOpen, cartItems.length]);
 
@@ -170,24 +149,15 @@ export default function CartDrawer() {
 
   if (!isCartOpen) return null;
 
-  const handleAddSuggestion = (s: Suggestion) => {
-    const opts = s.options || [];
-    if (opts.length === 0) return;
-    // Si plusieurs options, on redirige vers la fiche pour laisser le choix
-    if (opts.length > 1) {
-      setIsCartOpen(false);
-      router.push(s.slug ? `/boutique/${s.slug}` : '/boutique');
-      return;
-    }
-    const opt = opts[0];
+  const handleAddSuggestion = (s: UpsellSuggestion) => {
     triggerHaptic();
     addToCart({
       produitId: s.id,
-      optionId: opt.id,
+      optionId: s.option.id,
       nom: s.nom,
       categorie: s.categorie,
-      libelle: opt.libelle,
-      prix: opt.prix ?? null,
+      libelle: s.option.libelle,
+      prix: s.option.prix,
       quantite: 1,
     });
   };
@@ -271,7 +241,7 @@ export default function CartDrawer() {
                         <span className="block text-sm text-green-dark font-medium mt-1">
                           {item.libelle}
                           {isPoidsIncertain(item) ? (
-                            <span className="text-neutral-500 font-normal italic"> · Prix à la remise</span>
+                            <span className="text-neutral-500 font-normal italic"> · Prix à la pesée</span>
                           ) : prixLabel ? (
                             <span className="text-neutral-500 font-normal"> · {prixLabel}</span>
                           ) : null}
@@ -333,23 +303,34 @@ export default function CartDrawer() {
             <div className="mt-8 pt-6 border-t border-neutral-200">
               <h3 className="text-[11px] uppercase tracking-widest font-medium text-neutral-500 mb-4 flex items-center gap-2">
                 <Sparkles size={14} className="text-green-primary" strokeWidth={1.5} />
-                S&apos;accorde parfaitement avec
+                Coups de cœur du primeur
               </h3>
-              <ul className="space-y-4">
+              <ul className="space-y-3">
                 {suggestions.map((s) => {
-                  const multi = (s.options?.length ?? 0) > 1;
+                  const inCart = !!cart[cartKey(s.id, s.option.id)];
                   return (
-                    <li key={s.id} className="flex items-center justify-between bg-neutral-50 border border-neutral-200 p-3">
-                      <div className="min-w-0">
+                    <li key={s.id} className="flex items-center gap-3 bg-neutral-50 border border-neutral-200 p-3">
+                      <div className="min-w-0 flex-1">
                         <span className="font-serif text-neutral-800 block leading-snug truncate">{s.nom}</span>
                         <span className="text-[10px] uppercase tracking-widest text-neutral-400 font-medium">{s.categorie}</span>
+                        <span className="block text-xs text-green-dark mt-0.5">
+                          {s.option.prix != null
+                            ? `${s.option.prix.toFixed(2).replace('.', ',')} € · ${s.option.libelle}`
+                            : `${s.option.libelle} · à la pesée`}
+                        </span>
                       </div>
                       <button
-                        onClick={() => handleAddSuggestion(s)}
-                        className="text-green-primary hover:text-white hover:bg-green-primary border border-green-primary w-10 h-10 flex items-center justify-center transition-colors focus:outline-none shrink-0 ml-3"
-                        aria-label={multi ? `Voir les options pour ${s.nom}` : `Ajouter ${s.nom}`}
+                        type="button"
+                        onClick={() => !inCart && handleAddSuggestion(s)}
+                        disabled={inCart}
+                        className={`shrink-0 w-10 h-10 inline-flex items-center justify-center border transition-colors ${
+                          inCart
+                            ? 'border-green-primary text-green-primary bg-green-soft/30 cursor-default'
+                            : 'border-green-primary text-green-primary hover:bg-green-primary hover:text-white'
+                        }`}
+                        aria-label={inCart ? `${s.nom} déjà dans le panier` : `Ajouter ${s.nom}`}
                       >
-                        <Plus size={16} strokeWidth={1.5} />
+                        {inCart ? <Check size={18} strokeWidth={2} /> : <Plus size={16} strokeWidth={1.5} />}
                       </button>
                     </li>
                   );
@@ -365,8 +346,8 @@ export default function CartDrawer() {
               <div className="flex gap-3 items-start text-xs text-neutral-600 bg-white border border-neutral-200 p-3">
                 <Info size={16} strokeWidth={1.5} className="text-green-primary shrink-0 mt-0.5" />
                 <span className="leading-relaxed">
-                  Votre panier contient des produits dont le poids sera déterminé à la remise.
-                  Le prix final vous sera communiqué lors du retrait. Paiement sur place.
+                  Votre panier contient des produits dont le poids sera pesé à la préparation.
+                  Le prix final vous sera communiqué à la livraison. Paiement à la livraison.
                 </span>
               </div>
             ) : (
@@ -375,6 +356,20 @@ export default function CartDrawer() {
                   <div className="flex items-baseline justify-between">
                     <span className="text-xs uppercase tracking-widest text-neutral-500 font-medium">Sous-total estimé</span>
                     <span className="text-base font-serif text-neutral-700">{totalEstime.toFixed(2).replace('.', ',')}&nbsp;€</span>
+                  </div>
+                )}
+                {/* Frais de livraison : ligne dédiée pour parité avec /order
+                    (pas de surprise au checkout). Mise en avant verte si offerts. */}
+                {fraisCents > 0 && (
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-xs uppercase tracking-widest text-neutral-500 font-medium">Frais de livraison</span>
+                    <span className="text-base font-serif text-neutral-700">{formatEuros(fraisCents)}</span>
+                  </div>
+                )}
+                {fraisCents === 0 && (
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-xs uppercase tracking-widest text-green-dark font-medium">Frais de livraison</span>
+                    <span className="text-base font-serif text-green-dark italic">Offerts</span>
                   </div>
                 )}
                 {fourchette && (
@@ -386,9 +381,13 @@ export default function CartDrawer() {
                 {fourchette && (
                   <div className="flex gap-2 items-start text-[11px] text-neutral-500 leading-relaxed">
                     <Info size={13} strokeWidth={1.5} className="shrink-0 mt-0.5 text-neutral-400" />
-                    <span>Prix indicatif, ajusté à la remise (cours du jour, poids réel). Paiement sur place.</span>
+                    <span>Prix indicatif, ajusté à la pesée (cours du jour, poids réel). Paiement à la livraison.</span>
                   </div>
                 )}
+                <div className="flex items-center gap-2 text-[11px] text-neutral-500">
+                  <Tag size={12} strokeWidth={1.5} className="shrink-0" />
+                  <span>Code promo à saisir à l&apos;étape suivante.</span>
+                </div>
               </>
             )}
             <button
@@ -399,6 +398,13 @@ export default function CartDrawer() {
               className="w-full bg-green-primary text-white py-4 font-serif text-lg hover:bg-green-dark transition-colors border border-green-primary flex justify-center items-center gap-3 shadow-lg"
             >
               Passer la commande
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsCartOpen(false)}
+              className="block w-full text-center text-[11px] uppercase tracking-widest font-medium text-neutral-500 hover:text-green-primary transition-colors"
+            >
+              Continuer mes achats
             </button>
           </div>
         )}
