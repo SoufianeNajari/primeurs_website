@@ -20,6 +20,7 @@ const LINKS = [
   { href: '/admin/arrivages', label: 'Arrivage' },
   { href: '/admin/codes-promos', label: 'Codes promos' },
   { href: '/admin/clients', label: 'Clients' },
+  { href: '/admin/parametres', label: 'Paramètres' },
 ]
 
 function NetworkBadge() {

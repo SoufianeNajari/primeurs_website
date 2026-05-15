@@ -10,9 +10,11 @@ import {
   VILLES_AUTORISEES,
   formatCreneauDate,
   listCreneauOptions,
+  computeFraisLivraisonCents,
   type CreneauOption,
 } from '@/lib/livraison';
 import { useLivraisonConfig } from '@/lib/use-livraison-config';
+import FreeShippingBar from '@/components/FreeShippingBar';
 import { formatPrixMontant, cartHasPoidsIncertain, isPoidsIncertain } from '@/lib/produit';
 import { calcFourchette, formatFourchette } from '@/lib/fourchette';
 import { useFourchetteBornes } from '@/lib/use-fourchette';
@@ -221,7 +223,12 @@ export default function OrderPage() {
   const cartItems = Object.values(cart);
   const hasIncertain = cartHasPoidsIncertain(cartItems);
   const fourchette = totalEstime != null && !hasIncertain ? calcFourchette(totalEstime, bornes) : null;
-  const fraisCents = config.fraisCents;
+  const sousTotalCents = !hasIncertain && totalEstime != null ? Math.round(totalEstime * 100) : null;
+  const fraisCents = computeFraisLivraisonCents(
+    sousTotalCents ?? 0,
+    config.fraisCents,
+    config.seuilGratuitCents,
+  );
   const minCents = config.minCents;
   const minEuros = (minCents / 100).toFixed(2).replace('.', ',');
   // Min commande : on bloque uniquement si on connaît le total (pas d'incertain) et qu'il est en-dessous.
@@ -396,6 +403,16 @@ export default function OrderPage() {
               );
             })}
           </ul>
+          {sousTotalCents != null && (
+            <div className="px-6 py-3 border-t border-neutral-200 bg-neutral-50">
+              <FreeShippingBar
+                sousTotalCents={sousTotalCents}
+                minCents={config.minCents}
+                fraisCents={config.fraisCents}
+                seuilGratuitCents={config.seuilGratuitCents}
+              />
+            </div>
+          )}
           {hasIncertain ? (
             <div className="px-6 py-4 border-t border-neutral-200 bg-neutral-50 flex gap-3 items-start text-sm text-neutral-600">
               <Info size={18} strokeWidth={1.5} className="text-green-primary shrink-0 mt-0.5" />

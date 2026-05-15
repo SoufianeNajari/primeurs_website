@@ -5,16 +5,20 @@ import {
   DEFAULT_CUTOFF_VEILLE_HEURE,
   DEFAULT_FRAIS_LIVRAISON_CENTS,
   DEFAULT_MIN_COMMANDE_CENTS,
+  DEFAULT_SEUIL_LIVRAISON_GRATUITE_CENTS,
 } from './livraison';
 import type { LivraisonConfig } from '@/app/api/parametres/livraison/route';
 
-const STORAGE_KEY = 'primeur_livraison_config_v1';
+// v2 : ajout seuilGratuitCents — bump pour invalider sessionStorage des
+// clients déjà en place sans ce champ.
+const STORAGE_KEY = 'primeur_livraison_config_v2';
 const TTL_MS = 60 * 60 * 1000; // 1 h
 
 const FALLBACK: LivraisonConfig = {
   fraisCents: DEFAULT_FRAIS_LIVRAISON_CENTS,
   minCents: DEFAULT_MIN_COMMANDE_CENTS,
   cutoffHeure: DEFAULT_CUTOFF_VEILLE_HEURE,
+  seuilGratuitCents: DEFAULT_SEUIL_LIVRAISON_GRATUITE_CENTS,
 };
 
 type Cached = { cfg: LivraisonConfig; ts: number };
@@ -59,7 +63,8 @@ export function useLivraisonConfig(): LivraisonConfig {
         if (
           typeof data.fraisCents === 'number' &&
           typeof data.minCents === 'number' &&
-          typeof data.cutoffHeure === 'number'
+          typeof data.cutoffHeure === 'number' &&
+          typeof data.seuilGratuitCents === 'number'
         ) {
           setCfg(data);
           writeCache(data);

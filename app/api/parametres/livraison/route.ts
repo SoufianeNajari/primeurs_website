@@ -3,9 +3,11 @@ import {
   getFraisLivraisonCents,
   getMinCommandeCents,
   getCutoffVeilleHeure,
+  getSeuilLivraisonGratuiteCents,
   DEFAULT_FRAIS_LIVRAISON_CENTS,
   DEFAULT_MIN_COMMANDE_CENTS,
   DEFAULT_CUTOFF_VEILLE_HEURE,
+  DEFAULT_SEUIL_LIVRAISON_GRATUITE_CENTS,
 } from '@/lib/livraison';
 
 // Cache CDN 5 min : ces paramètres changent rarement (admin SQL),
@@ -16,16 +18,18 @@ export type LivraisonConfig = {
   fraisCents: number;
   minCents: number;
   cutoffHeure: number;
+  seuilGratuitCents: number;
 };
 
 export async function GET() {
   try {
-    const [fraisCents, minCents, cutoffHeure] = await Promise.all([
+    const [fraisCents, minCents, cutoffHeure, seuilGratuitCents] = await Promise.all([
       getFraisLivraisonCents(),
       getMinCommandeCents(),
       getCutoffVeilleHeure(),
+      getSeuilLivraisonGratuiteCents(),
     ]);
-    const payload: LivraisonConfig = { fraisCents, minCents, cutoffHeure };
+    const payload: LivraisonConfig = { fraisCents, minCents, cutoffHeure, seuilGratuitCents };
     return NextResponse.json(payload, {
       headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=900' },
     });
@@ -34,6 +38,7 @@ export async function GET() {
       fraisCents: DEFAULT_FRAIS_LIVRAISON_CENTS,
       minCents: DEFAULT_MIN_COMMANDE_CENTS,
       cutoffHeure: DEFAULT_CUTOFF_VEILLE_HEURE,
+      seuilGratuitCents: DEFAULT_SEUIL_LIVRAISON_GRATUITE_CENTS,
     };
     return NextResponse.json(fallback, {
       headers: { 'Cache-Control': 'public, s-maxage=60' },

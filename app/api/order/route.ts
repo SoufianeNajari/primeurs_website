@@ -16,6 +16,8 @@ import {
   CRENEAUX_LIVRAISON,
   getFraisLivraisonCents,
   getMinCommandeCents,
+  getSeuilLivraisonGratuiteCents,
+  computeFraisLivraisonCents,
   getCutoffVeilleHeure,
   nextDateForCreneau,
 } from '@/lib/livraison';
@@ -203,7 +205,17 @@ export async function POST(request: Request) {
       );
     }
 
-    const fraisCents = await getFraisLivraisonCents();
+    const [fraisBaseCents, seuilGratuitCents] = await Promise.all([
+      getFraisLivraisonCents(),
+      getSeuilLivraisonGratuiteCents(),
+    ]);
+    // Livraison offerte si le sous-total certain atteint le seuil
+    // (calcul sur sous-total avant code promo : on récompense le panier brut).
+    const fraisCents = computeFraisLivraisonCents(
+      totalCertainCents,
+      fraisBaseCents,
+      seuilGratuitCents,
+    );
 
     let codePromoApplique: string | null = null;
     let reductionCents = 0;

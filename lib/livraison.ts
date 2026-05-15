@@ -50,10 +50,13 @@ export function getCreneauByKey(key: string): CreneauLivraison | undefined {
 const PARAM_FRAIS = 'frais_livraison_cents';
 const PARAM_MIN = 'min_commande_cents';
 const PARAM_CUTOFF = 'cutoff_veille_heure';
+const PARAM_SEUIL_GRATUIT = 'seuil_livraison_gratuite_cents';
 
 export const DEFAULT_FRAIS_LIVRAISON_CENTS = 0;
 export const DEFAULT_MIN_COMMANDE_CENTS = 2000;
 export const DEFAULT_CUTOFF_VEILLE_HEURE = 18;
+// 0 = pas de seuil, livraison gratuite jamais déclenchée par le montant.
+export const DEFAULT_SEUIL_LIVRAISON_GRATUITE_CENTS = 5000;
 
 export async function getFraisLivraisonCents(): Promise<number> {
   return getParam<number>(PARAM_FRAIS, DEFAULT_FRAIS_LIVRAISON_CENTS);
@@ -65,6 +68,22 @@ export async function getMinCommandeCents(): Promise<number> {
 
 export async function getCutoffVeilleHeure(): Promise<number> {
   return getParam<number>(PARAM_CUTOFF, DEFAULT_CUTOFF_VEILLE_HEURE);
+}
+
+export async function getSeuilLivraisonGratuiteCents(): Promise<number> {
+  return getParam<number>(PARAM_SEUIL_GRATUIT, DEFAULT_SEUIL_LIVRAISON_GRATUITE_CENTS);
+}
+
+// Calcule les frais de livraison effectifs en fonction du sous-total
+// panier (avant code promo). Si `seuilGratuitCents` est > 0 et que le
+// sous-total l'atteint, retourne 0 ; sinon retourne `fraisCents`.
+export function computeFraisLivraisonCents(
+  sousTotalCents: number,
+  fraisCents: number,
+  seuilGratuitCents: number,
+): number {
+  if (seuilGratuitCents > 0 && sousTotalCents >= seuilGratuitCents) return 0;
+  return fraisCents;
 }
 
 // Calcule la prochaine date de livraison pour un créneau donné, en respectant

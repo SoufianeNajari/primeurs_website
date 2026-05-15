@@ -13,6 +13,8 @@ import { formatPrixMontant, cartHasPoidsIncertain, isPoidsIncertain } from '@/li
 import { calcFourchette, formatFourchette } from '@/lib/fourchette';
 import { useFourchetteBornes } from '@/lib/use-fourchette';
 import { useLivraisonConfig } from '@/lib/use-livraison-config';
+import { computeFraisLivraisonCents } from '@/lib/livraison';
+import FreeShippingBar from './FreeShippingBar';
 import { formatEuros } from '@/lib/format';
 import type { UpsellSuggestion } from '@/app/api/upsell/route';
 
@@ -30,7 +32,14 @@ export default function CartDrawer() {
   const config = useLivraisonConfig();
   const hasIncertain = cartHasPoidsIncertain(cartItems);
   const fourchette = totalEstime != null && !hasIncertain ? calcFourchette(totalEstime, bornes) : null;
-  const fraisCents = config.fraisCents;
+  const sousTotalCents = !hasIncertain && totalEstime != null ? Math.round(totalEstime * 100) : null;
+  // Frais effectifs : si seuil atteint, livraison offerte. En cas de poids
+  // incertain, on tombe sur le tarif de base — pas de promesse "offert".
+  const fraisCents = computeFraisLivraisonCents(
+    sousTotalCents ?? 0,
+    config.fraisCents,
+    config.seuilGratuitCents,
+  );
 
   // Charger le dernier panier s'il existe
   useEffect(() => {
@@ -336,6 +345,12 @@ export default function CartDrawer() {
 
         {cartItems.length > 0 && (
           <div className="border-t border-neutral-200 p-6 bg-neutral-50 space-y-4">
+            <FreeShippingBar
+              sousTotalCents={sousTotalCents}
+              minCents={config.minCents}
+              fraisCents={config.fraisCents}
+              seuilGratuitCents={config.seuilGratuitCents}
+            />
             {hasIncertain ? (
               <div className="flex gap-3 items-start text-xs text-neutral-600 bg-white border border-neutral-200 p-3">
                 <Info size={16} strokeWidth={1.5} className="text-green-primary shrink-0 mt-0.5" />
