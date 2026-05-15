@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 export default async function NewArticlePage() {
   const { data } = await supabaseAdmin
     .from('produits')
-    .select('slug, nom')
+    .select('id, slug, nom, options, disponible, masque_boutique')
     .eq('disponible', true)
     .not('slug', 'is', null)
     .order('nom');

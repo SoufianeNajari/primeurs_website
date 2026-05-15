@@ -8,6 +8,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { SITE, absoluteUrl } from '@/lib/site';
 import { formatArticleDate, isPublished, type Article } from '@/lib/article';
 import { breadcrumbJsonLd } from '@/lib/json-ld';
+import RecetteIngredients, { type IngredientLigne } from '@/components/RecetteIngredients';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,6 +45,32 @@ async function getLinkedProduits(slugs: string[]): Promise<LinkedProduit[]> {
   return (data || []) as LinkedProduit[];
 }
 
+async function getRecetteIngredients(articleId: string): Promise<IngredientLigne[]> {
+  const { data, error } = await supabaseAdmin
+    .from('article_ingredients')
+    .select(
+      'quantite_kg_4pers, ordre, produit:produits ( id, nom, categorie, slug, image_url, disponible, masque_boutique, options )',
+    )
+    .eq('article_id', articleId)
+    .order('ordre', { ascending: true });
+  if (error) {
+    console.error('[blog/slug] fetch ingrédients', error);
+    return [];
+  }
+  type Row = {
+    quantite_kg_4pers: number;
+    produit: IngredientLigne['produit'] | IngredientLigne['produit'][] | null;
+  };
+  return ((data ?? []) as Row[])
+    .map((r) => {
+      // PostgREST renvoie soit l'objet, soit un tableau selon la relation détectée.
+      const produit = Array.isArray(r.produit) ? r.produit[0] : r.produit;
+      if (!produit) return null;
+      return { quantite_kg_4pers: Number(r.quantite_kg_4pers), produit };
+    })
+    .filter((x): x is IngredientLigne => x !== null);
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -77,7 +104,10 @@ export default async function ArticlePage({
   const article = await getArticle(params.slug);
   if (!article || !isPublished(article)) notFound();
 
-  const linked = await getLinkedProduits(article.produits_lies || []);
+  const [linked, ingredients] = await Promise.all([
+    getLinkedProduits(article.produits_lies || []),
+    getRecetteIngredients(article.id),
+  ]);
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -147,6 +177,8 @@ export default async function ArticlePage({
             />
           </div>
         )}
+
+        {ingredients.length > 0 && <RecetteIngredients lignes={ingredients} />}
 
         <div className="prose-legal text-neutral-800 leading-relaxed">
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{article.contenu_md}</ReactMarkdown>

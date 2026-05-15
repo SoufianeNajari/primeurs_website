@@ -13,7 +13,15 @@ import { useConfirm } from '@/components/admin/ConfirmModal';
 import { useToast } from '@/components/admin/Toast';
 
 type Mode = { kind: 'create' } | { kind: 'edit'; id: string };
-type ProduitOption = { slug: string; nom: string };
+type ProduitOption = {
+  slug: string;
+  nom: string;
+  id?: string;
+  options?: { id: string; libelle: string; prix?: number | null }[] | null;
+  disponible?: boolean;
+  masque_boutique?: boolean | null;
+};
+type IngredientRow = { produit_id: string; quantite_kg_4pers: number };
 
 type DraftShape = {
   titre: string;
@@ -29,10 +37,12 @@ export default function ArticleForm({
   mode,
   initial,
   produits,
+  initialIngredients,
 }: {
   mode: Mode;
   initial?: Partial<Article>;
   produits: ProduitOption[];
+  initialIngredients?: IngredientRow[];
 }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
@@ -376,6 +386,14 @@ export default function ArticleForm({
         </div>
       </Field>
 
+      {mode.kind === 'edit' && (
+        <RecetteIngredientsEditor
+          articleId={mode.id}
+          produits={produits}
+          initial={initialIngredients || []}
+        />
+      )}
+
       <Field
         label="Date de publication"
         hint="Laisser vide = brouillon. Date future = publication programmée. Clic sur “Publier” publie immédiatement si vide."
@@ -441,5 +459,207 @@ function Field({
       <div className="mt-1">{children}</div>
       {hint && <div className="text-xs text-neutral-400 mt-1">{hint}</div>}
     </label>
+  );
+}
+
+function hasOptionKg(opts: ProduitOption['options']): boolean {
+  if (!opts) return false;
+  return opts.some((o) => /\bkg\b|kilo/i.test(o.libelle));
+}
+
+function RecetteIngredientsEditor({
+  articleId,
+  produits,
+  initial,
+}: {
+  articleId: string;
+  produits: ProduitOption[];
+  initial: IngredientRow[];
+}) {
+  const toast = useToast();
+  const [rows, setRows] = useState<IngredientRow[]>(initial);
+  const [saving, setSaving] = useState(false);
+  const [picker, setPicker] = useState('');
+
+  const produitsById = new Map(produits.filter((p) => p.id).map((p) => [p.id!, p]));
+
+  // Produits dispos pour l'autocomplete : ceux qui ont une option kg ET qui ne sont pas déjà dans la liste.
+  const disponibles = produits.filter(
+    (p) => p.id && hasOptionKg(p.options) && !rows.some((r) => r.produit_id === p.id),
+  );
+  const filtered = picker
+    ? disponibles.filter((p) => p.nom.toLowerCase().includes(picker.toLowerCase()))
+    : disponibles;
+
+  function ajouter(produitId: string) {
+    setRows((prev) => [...prev, { produit_id: produitId, quantite_kg_4pers: 0.5 }]);
+    setPicker('');
+  }
+
+  function modifierQte(produitId: string, valeur: string) {
+    const v = Number(valeur.replace(',', '.'));
+    if (Number.isNaN(v) || v <= 0) return;
+    setRows((prev) =>
+      prev.map((r) => (r.produit_id === produitId ? { ...r, quantite_kg_4pers: v } : r)),
+    );
+  }
+
+  function supprimer(produitId: string) {
+    setRows((prev) => prev.filter((r) => r.produit_id !== produitId));
+  }
+
+  function deplacer(produitId: string, dir: -1 | 1) {
+    setRows((prev) => {
+      const idx = prev.findIndex((r) => r.produit_id === produitId);
+      if (idx < 0) return prev;
+      const j = idx + dir;
+      if (j < 0 || j >= prev.length) return prev;
+      const next = [...prev];
+      [next[idx], next[j]] = [next[j], next[idx]];
+      return next;
+    });
+  }
+
+  async function enregistrer() {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin/articles/${articleId}/ingredients`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ingredients: rows }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || 'Erreur serveur');
+      toast.success(`Ingrédients enregistrés (${rows.length})`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur inconnue');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="border border-neutral-200 bg-white p-4 space-y-3">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <div className="text-xs uppercase tracking-widest text-neutral-500 font-medium">
+            Ingrédients de la recette
+          </div>
+          <p className="text-xs text-neutral-400 mt-1">
+            Quantités en kg pour 4 personnes. Le client ajustera via le slider 1/2/4/6 pers.
+            Seuls les produits avec une option « au kg » sont éligibles.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={enregistrer}
+          disabled={saving}
+          className="bg-green-primary text-white px-4 py-2 text-xs uppercase tracking-widest hover:bg-green-dark disabled:opacity-50"
+        >
+          {saving ? 'Enregistrement…' : 'Enregistrer ingrédients'}
+        </button>
+      </div>
+
+      {rows.length > 0 && (
+        <ul className="border border-neutral-200 divide-y divide-neutral-100">
+          {rows.map((r, idx) => {
+            const p = produitsById.get(r.produit_id);
+            const nom = p ? p.nom : '(produit supprimé)';
+            const indispo = p ? !p.disponible || p.masque_boutique : true;
+            return (
+              <li key={r.produit_id} className="flex items-center gap-2 px-3 py-2">
+                <div className="min-w-0 flex-1">
+                  <div className={`text-sm ${indispo ? 'text-neutral-400 line-through' : 'text-neutral-800'}`}>
+                    {nom}
+                  </div>
+                  {indispo && (
+                    <div className="text-[10px] uppercase tracking-widest text-amber-700">
+                      {p ? 'Indispo en boutique' : 'Produit introuvable'}
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0.1"
+                    max="50"
+                    value={r.quantite_kg_4pers}
+                    onChange={(e) => modifierQte(r.produit_id, e.target.value)}
+                    className="w-20 border border-neutral-300 px-2 py-1 text-sm text-right"
+                  />
+                  <span className="text-xs text-neutral-500">kg</span>
+                </div>
+                <div className="flex items-center gap-1 ml-2">
+                  <button
+                    type="button"
+                    onClick={() => deplacer(r.produit_id, -1)}
+                    disabled={idx === 0}
+                    className="text-neutral-400 hover:text-neutral-700 disabled:opacity-30 px-1"
+                    aria-label="Monter"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => deplacer(r.produit_id, 1)}
+                    disabled={idx === rows.length - 1}
+                    className="text-neutral-400 hover:text-neutral-700 disabled:opacity-30 px-1"
+                    aria-label="Descendre"
+                  >
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => supprimer(r.produit_id)}
+                    className="text-red-600 hover:text-red-800 px-1"
+                    aria-label="Supprimer"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      <div className="border-t border-neutral-100 pt-3">
+        <Field
+          label="Ajouter un ingrédient"
+          hint={
+            disponibles.length === 0
+              ? 'Aucun produit avec option « au kg » disponible.'
+              : `Recherche parmi ${disponibles.length} produit(s) éligible(s).`
+          }
+        >
+          <input
+            value={picker}
+            onChange={(e) => setPicker(e.target.value)}
+            placeholder="Tomate, oignon…"
+            className={inputCls}
+          />
+        </Field>
+        {picker && (
+          <ul className="mt-2 max-h-48 overflow-y-auto border border-neutral-200 divide-y divide-neutral-100">
+            {filtered.length === 0 ? (
+              <li className="px-3 py-2 text-sm text-neutral-500">Aucun résultat.</li>
+            ) : (
+              filtered.slice(0, 20).map((p) => (
+                <li key={p.id}>
+                  <button
+                    type="button"
+                    onClick={() => ajouter(p.id!)}
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-neutral-50"
+                  >
+                    {p.nom}
+                  </button>
+                </li>
+              ))
+            )}
+          </ul>
+        )}
+      </div>
+    </div>
   );
 }
