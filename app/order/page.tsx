@@ -259,6 +259,10 @@ export default function OrderPage() {
       setError('Indique ton adresse de livraison.');
       return;
     }
+    if (!draft.banId) {
+      setError('Sélectionne ton adresse dans la liste de suggestions pour la valider.');
+      return;
+    }
     if (!ville || !VILLES_AUTORISEES.find((v) => v.nom === ville)) {
       setError('Choisis une ville desservie.');
       return;
@@ -547,6 +551,7 @@ export default function OrderPage() {
               <label htmlFor="adresse" className="block text-xs uppercase tracking-wider text-neutral-600">Adresse *</label>
               <AdresseAutocomplete
                 value={draft.adresse}
+                validated={!!draft.banId}
                 onChange={(v) => updateDraft({ adresse: v, banId: '' })}
                 onSelect={(s) => {
                   const ville = VILLES_AUTORISEES.find(
@@ -559,9 +564,6 @@ export default function OrderPage() {
                   });
                 }}
               />
-              <p className="text-[11px] text-neutral-500 italic">
-                Sélectionnez une suggestion pour confirmer l&apos;adresse. Saisie libre acceptée.
-              </p>
             </div>
             <div className="space-y-2">
               <label htmlFor="complementAdresse" className="block text-xs uppercase tracking-wider text-neutral-600">Complément (optionnel)</label>

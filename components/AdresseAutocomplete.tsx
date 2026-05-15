@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { MapPin, Loader2 } from 'lucide-react';
+import { MapPin, Loader2, Check, AlertCircle } from 'lucide-react';
 
 // Composant d'autocomplete d'adresse basé sur la Base Adresse Nationale
 // (api-adresse.data.gouv.fr — gratuit, sans clé, opéré par l'État).
@@ -11,10 +11,10 @@ import { MapPin, Loader2 } from 'lucide-react';
 //  - la ville et le code postal (pour pré-sélection du select Ville)
 //  - le `banId` canonique (clé d'anti-fraude côté codes promos)
 //
-// Si l'utilisateur tape sans sélectionner, on conserve la saisie libre
-// mais `banId` reste null. La commande passera sans check d'adresse —
-// on garde une UX permissive et on accepte la perte d'anti-fraude
-// dans ce cas marginal.
+// Le parent doit refuser la soumission si `validated` n'est pas vrai :
+// sans `banId`, l'anti-fraude par adresse ne s'applique pas. Un visuel
+// (bordure ambre + AlertCircle) signale tant qu'aucune suggestion n'est
+// pickée.
 
 export type AdresseSuggestion = {
   label: string;
@@ -81,11 +81,15 @@ async function fetchSuggestions(q: string, signal: AbortSignal): Promise<Adresse
 
 export default function AdresseAutocomplete({
   value,
+  validated,
   onChange,
   onSelect,
   disabled,
 }: {
   value: string;
+  // True quand l'utilisateur a sélectionné une suggestion BAN — au parent
+  // de remettre à false dès qu'il modifie à nouveau la saisie.
+  validated: boolean;
   onChange: (v: string) => void;
   onSelect: (s: AdresseSuggestion) => void;
   disabled?: boolean;
@@ -183,11 +187,21 @@ export default function AdresseAutocomplete({
           if (suggestions.length > 0) setOpen(true);
         }}
         onKeyDown={onKeyDown}
-        className="w-full px-4 py-3 pr-10 border border-neutral-300 rounded-sm focus:ring-1 focus:ring-green-primary focus:border-green-primary outline-none transition-colors"
+        className={`w-full px-4 py-3 pr-10 border rounded-sm focus:ring-1 outline-none transition-colors ${
+          validated
+            ? 'border-green-primary bg-green-soft/30 focus:ring-green-primary focus:border-green-primary'
+            : value.trim().length >= MIN_CHARS && !loading
+            ? 'border-amber-300 bg-amber-50/40 focus:ring-green-primary focus:border-green-primary'
+            : 'border-neutral-300 focus:ring-green-primary focus:border-green-primary'
+        }`}
       />
       <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
         {loading ? (
           <Loader2 size={16} className="animate-spin text-neutral-400" />
+        ) : validated ? (
+          <Check size={18} className="text-green-primary" strokeWidth={2} />
+        ) : value.trim().length >= MIN_CHARS ? (
+          <AlertCircle size={16} className="text-amber-500" strokeWidth={1.8} />
         ) : (
           <MapPin size={16} className="text-neutral-400" strokeWidth={1.5} />
         )}
@@ -213,11 +227,19 @@ export default function AdresseAutocomplete({
           ))}
         </ul>
       )}
-      {touched && value.trim().length >= MIN_CHARS && !loading && lastFetchHadResults === false && (
-        <p className="text-[11px] text-neutral-500 italic mt-1">
-          Aucune adresse trouvée dans la zone livrée. Précisez le numéro et la rue (ex : « 5 allée des granges pontault »), ou continuez en saisie libre.
+      {validated ? (
+        <p className="text-[11px] text-green-dark mt-1">
+          Adresse validée.
         </p>
-      )}
+      ) : touched && value.trim().length >= MIN_CHARS && !loading && lastFetchHadResults === false ? (
+        <p className="text-[11px] text-amber-700 mt-1">
+          Aucune adresse trouvée dans la zone livrée. Précisez le numéro et la rue (ex : « 5 allée des granges pontault »).
+        </p>
+      ) : value.trim().length >= MIN_CHARS && !loading ? (
+        <p className="text-[11px] text-amber-700 mt-1">
+          Sélectionnez votre adresse dans la liste de suggestions pour la valider.
+        </p>
+      ) : null}
     </div>
   );
 }

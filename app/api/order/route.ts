@@ -123,6 +123,12 @@ export async function POST(request: Request) {
     if (!adresse) {
       return NextResponse.json({ error: 'Adresse de livraison requise.' }, { status: 400 });
     }
+    if (!banId) {
+      return NextResponse.json(
+        { error: 'Adresse non validée : sélectionnez votre adresse dans les suggestions.' },
+        { status: 400 },
+      );
+    }
     const villeAutorisee = VILLES_AUTORISEES.find((v) => v.nom === ville);
     if (!villeAutorisee) {
       return NextResponse.json({ error: 'Ville non desservie par la livraison.' }, { status: 400 });
