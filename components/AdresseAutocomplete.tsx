@@ -37,16 +37,25 @@ type Feature = {
 const BAN_URL = 'https://api-adresse.data.gouv.fr/search/';
 
 // Codes postaux servis — limite la liste des suggestions aux communes
-// que la tournée dessert. Si vide, suggestions globales.
+// que la tournée dessert.
 const POSTCODES = ['77340', '77680', '77330', '77150', '77184', '94420', '94350', '93160'];
 
+// Centre approximatif de la zone livrée (Pontault-Combault) — sert à
+// biaiser le ranking BAN pour que les rues locales remontent en tête,
+// même quand un même nom de rue existe ailleurs en France.
+const BIAS_LAT = '48.795';
+const BIAS_LON = '2.609';
+
+const MIN_CHARS = 3;
+
 async function fetchSuggestions(q: string, signal: AbortSignal): Promise<AdresseSuggestion[]> {
-  if (q.trim().length < 4) return [];
+  if (q.trim().length < MIN_CHARS) return [];
   const params = new URLSearchParams({
     q: q.trim(),
-    limit: '8',
+    limit: '15',
     autocomplete: '1',
-    type: 'housenumber',
+    lat: BIAS_LAT,
+    lon: BIAS_LON,
   });
   const res = await fetch(`${BAN_URL}?${params.toString()}`, { signal });
   if (!res.ok) return [];
@@ -57,9 +66,17 @@ async function fetchSuggestions(q: string, signal: AbortSignal): Promise<Adresse
     codePostal: f.properties.postcode,
     banId: f.properties.id,
   }));
-  // Garde uniquement les communes desservies
-  const filtered = all.filter((s) => POSTCODES.includes(s.codePostal));
-  return filtered.length > 0 ? filtered : [];
+  // Garde uniquement les communes desservies. Dédup sur banId au cas où
+  // la BAN retourne plusieurs entrées pour la même adresse.
+  const seen = new Set<string>();
+  const filtered: AdresseSuggestion[] = [];
+  for (const s of all) {
+    if (!POSTCODES.includes(s.codePostal)) continue;
+    if (seen.has(s.banId)) continue;
+    seen.add(s.banId);
+    filtered.push(s);
+  }
+  return filtered;
 }
 
 export default function AdresseAutocomplete({
@@ -78,6 +95,7 @@ export default function AdresseAutocomplete({
   const [loading, setLoading] = useState(false);
   const [highlight, setHighlight] = useState(0);
   const [touched, setTouched] = useState(false);
+  const [lastFetchHadResults, setLastFetchHadResults] = useState<boolean | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -97,9 +115,10 @@ export default function AdresseAutocomplete({
     if (!touched) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (abortRef.current) abortRef.current.abort();
-    if (value.trim().length < 4) {
+    if (value.trim().length < MIN_CHARS) {
       setSuggestions([]);
       setLoading(false);
+      setLastFetchHadResults(null);
       return;
     }
     setLoading(true);
@@ -111,12 +130,13 @@ export default function AdresseAutocomplete({
           setSuggestions(r);
           setHighlight(0);
           setOpen(r.length > 0);
+          setLastFetchHadResults(r.length > 0);
         })
         .catch(() => {
           // ignore (abort or network)
         })
         .finally(() => setLoading(false));
-    }, 250);
+    }, 180);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
@@ -193,9 +213,9 @@ export default function AdresseAutocomplete({
           ))}
         </ul>
       )}
-      {touched && value.trim().length >= 4 && !loading && suggestions.length === 0 && open === false && (
+      {touched && value.trim().length >= MIN_CHARS && !loading && lastFetchHadResults === false && (
         <p className="text-[11px] text-neutral-500 italic mt-1">
-          Aucune adresse trouvée dans notre zone de livraison. Continuez la saisie ou vérifiez l&apos;orthographe.
+          Aucune adresse trouvée dans la zone livrée. Précisez le numéro et la rue (ex : « 5 allée des granges pontault »), ou continuez en saisie libre.
         </p>
       )}
     </div>
