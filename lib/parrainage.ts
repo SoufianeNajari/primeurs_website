@@ -2,6 +2,17 @@ import { supabaseAdmin } from './supabase';
 import { normalizeEmail, type CodePromo } from './codes-promos';
 import { sendEmail } from './mailer';
 import { emailMerciParrain } from './emails/templates';
+import { getParam } from './parametres';
+
+// Plafond global de codes MERCI crédités à un même parrain (anti-abus).
+// Configurable via /admin/parametres.
+const PARAM_MAX_MERCI = 'parrainage_max_merci_par_parrain';
+const DEFAULT_MAX_MERCI = 5;
+
+export async function getMaxMerciParParrain(): Promise<number> {
+  const v = await getParam<number>(PARAM_MAX_MERCI, DEFAULT_MAX_MERCI);
+  return typeof v === 'number' && v >= 0 ? v : DEFAULT_MAX_MERCI;
+}
 
 // Sprint S2.1 — Parrainage croisé.
 //
@@ -105,6 +116,21 @@ export async function traiterUsageSiParrainage(args: {
   // Anti auto-récompense : déjà bloqué côté validateCodePromo, mais ceinture
   // + bretelles si un futur appel skipperait la validation.
   if (parrainEmail === normalizeEmail(args.filleulEmail)) return;
+
+  // Plafond global MERCI par parrain (anti-abus). Au-delà, le parrainage
+  // continue de fonctionner pour le filleul mais le parrain ne touche plus
+  // de nouveau code.
+  const maxMerci = await getMaxMerciParParrain();
+  if (maxMerci > 0) {
+    const { count } = await supabaseAdmin
+      .from('codes_promos')
+      .select('id', { head: true, count: 'exact' })
+      .eq('client_email_lock', parrainEmail);
+    if ((count ?? 0) >= maxMerci) {
+      console.info('[parrainage] plafond MERCI atteint pour', parrainEmail, '— pas de nouveau code');
+      return;
+    }
+  }
 
   // Génération du code MERCI-XXX
   let codeMerci: string | null = null;

@@ -21,6 +21,7 @@ import { useFourchetteBornes } from '@/lib/use-fourchette';
 import { formatEuros } from '@/lib/format';
 import { CUSTOMER_MEMORY_KEY, type CustomerMemory } from '@/components/WelcomeBackBanner';
 import UpsellSuggestions from '@/components/UpsellSuggestions';
+import AdresseAutocomplete from '@/components/AdresseAutocomplete';
 
 const DRAFT_KEY = 'primeur_order_draft';
 // Brouillon expiré au-delà de 7 jours.
@@ -32,6 +33,7 @@ type Draft = {
   email: string;
   telephone: string;
   adresse: string;
+  banId: string;         // identifiant canonique BAN (anti-fraude codes promos)
   complementAdresse: string;
   ville: string;        // nom de la ville (clé fonctionnelle)
   creneauKey: string;   // ex 'mardi-17-19'
@@ -41,7 +43,7 @@ type Draft = {
 
 const EMPTY_DRAFT: Draft = {
   prenom: '', nom: '', email: '', telephone: '',
-  adresse: '', complementAdresse: '', ville: '',
+  adresse: '', banId: '', complementAdresse: '', ville: '',
   creneauKey: '', message: '', codePromo: '',
 };
 
@@ -190,7 +192,7 @@ export default function OrderPage() {
         const res = await fetch('/api/codes-promos/validate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code, panierCents, email: draft.email || null }),
+          body: JSON.stringify({ code, panierCents, email: draft.email || null, banId: draft.banId || null }),
         });
         const data = await res.json();
         if (data?.ok) {
@@ -210,7 +212,7 @@ export default function OrderPage() {
     return () => {
       if (promoTimer.current) clearTimeout(promoTimer.current);
     };
-  }, [draft.codePromo, draft.email, totalEstime, cart, isMounted]);
+  }, [draft.codePromo, draft.email, draft.banId, totalEstime, cart, isMounted]);
 
   if (!isMounted || !isLoaded || totalItems === 0) {
     return (
@@ -297,6 +299,7 @@ export default function OrderPage() {
           creneauKey,
           dateLivraison: opt.iso,
           codePromo: promo.status === 'valid' ? promo.code : undefined,
+          banId: draft.banId || undefined,
           message,
         }),
       });
@@ -542,14 +545,23 @@ export default function OrderPage() {
             </h2>
             <div className="space-y-2">
               <label htmlFor="adresse" className="block text-xs uppercase tracking-wider text-neutral-600">Adresse *</label>
-              <input
-                type="text" id="adresse" name="adresse" required
-                autoComplete="street-address"
-                placeholder="N° et nom de rue"
+              <AdresseAutocomplete
                 value={draft.adresse}
-                onChange={(e) => updateDraft({ adresse: e.target.value })}
-                className="w-full px-4 py-3 border border-neutral-300 rounded-sm focus:ring-1 focus:ring-green-primary focus:border-green-primary outline-none transition-colors"
+                onChange={(v) => updateDraft({ adresse: v, banId: '' })}
+                onSelect={(s) => {
+                  const ville = VILLES_AUTORISEES.find(
+                    (v) => v.codePostal === s.codePostal,
+                  );
+                  updateDraft({
+                    adresse: s.label.replace(new RegExp(`\\s+${s.codePostal}\\s+.*$`), '').trim() || s.label,
+                    banId: s.banId,
+                    ville: ville?.nom ?? draft.ville,
+                  });
+                }}
               />
+              <p className="text-[11px] text-neutral-500 italic">
+                Sélectionnez une suggestion pour confirmer l&apos;adresse. Saisie libre acceptée.
+              </p>
             </div>
             <div className="space-y-2">
               <label htmlFor="complementAdresse" className="block text-xs uppercase tracking-wider text-neutral-600">Complément (optionnel)</label>

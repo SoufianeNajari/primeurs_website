@@ -7,6 +7,7 @@ import {
   getMinCommandeCents,
   getSeuilLivraisonGratuiteCents,
 } from '@/lib/livraison';
+import { getMaxMerciParParrain } from '@/lib/parrainage';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,12 +16,13 @@ export async function GET() {
     return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
   }
   try {
-    const [fraisCents, minCents, seuilGratuitCents] = await Promise.all([
+    const [fraisCents, minCents, seuilGratuitCents, maxMerciParParrain] = await Promise.all([
       getFraisLivraisonCents(),
       getMinCommandeCents(),
       getSeuilLivraisonGratuiteCents(),
+      getMaxMerciParParrain(),
     ]);
-    return NextResponse.json({ fraisCents, minCents, seuilGratuitCents });
+    return NextResponse.json({ fraisCents, minCents, seuilGratuitCents, maxMerciParParrain });
   } catch (err) {
     console.error('[admin/parametres GET]', err);
     return NextResponse.json({ error: 'Erreur base de données' }, { status: 500 });
@@ -31,6 +33,7 @@ type Body = {
   fraisCents?: unknown;
   minCents?: unknown;
   seuilGratuitCents?: unknown;
+  maxMerciParParrain?: unknown;
 };
 
 function parseCents(raw: unknown): number | null {
@@ -63,16 +66,32 @@ export async function PATCH(request: Request) {
       );
     }
 
-    await Promise.all([
+    let maxMerciParParrain: number | null = null;
+    if (body.maxMerciParParrain !== undefined) {
+      if (typeof body.maxMerciParParrain !== 'number' || !Number.isFinite(body.maxMerciParParrain)) {
+        return NextResponse.json({ error: 'Plafond MERCI invalide.' }, { status: 400 });
+      }
+      const n = Math.round(body.maxMerciParParrain);
+      if (n < 0 || n > 1000) {
+        return NextResponse.json({ error: 'Plafond MERCI hors plage (0–1000).' }, { status: 400 });
+      }
+      maxMerciParParrain = n;
+    }
+
+    const writes: Promise<unknown>[] = [
       setParam('frais_livraison_cents', fraisCents),
       setParam('min_commande_cents', minCents),
       setParam('seuil_livraison_gratuite_cents', seuilGratuitCents),
-    ]);
+    ];
+    if (maxMerciParParrain !== null) {
+      writes.push(setParam('parrainage_max_merci_par_parrain', maxMerciParParrain));
+    }
+    await Promise.all(writes);
 
     // Invalide le cache CDN du GET public.
     revalidatePath('/api/parametres/livraison');
 
-    return NextResponse.json({ fraisCents, minCents, seuilGratuitCents });
+    return NextResponse.json({ fraisCents, minCents, seuilGratuitCents, maxMerciParParrain });
   } catch (err) {
     console.error('[admin/parametres PATCH]', err);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });

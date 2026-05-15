@@ -14,6 +14,7 @@ const patchSchema = z.object({
   min_panier_cents: z.coerce.number().int().min(0).optional(),
   expire_at: z.string().nullish(),
   usage_max: z.coerce.number().int().positive().nullish(),
+  usage_max_par_adresse: z.coerce.number().int().positive().nullish(),
   description: z.string().max(200).nullish(),
 });
 
@@ -36,6 +37,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       updatePayload.expire_at = input.expire_at && input.expire_at.trim() !== '' ? input.expire_at : null;
     }
     if (input.usage_max !== undefined) updatePayload.usage_max = input.usage_max ?? null;
+    if (input.usage_max_par_adresse !== undefined) updatePayload.usage_max_par_adresse = input.usage_max_par_adresse ?? null;
     if (input.description !== undefined) {
       updatePayload.description = input.description?.trim() ? input.description.trim() : null;
     }

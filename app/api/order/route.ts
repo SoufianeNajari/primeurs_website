@@ -10,7 +10,7 @@ import { getFourchetteBornes } from '@/lib/fourchette';
 import { validateCodePromo, tryConsumeCodeUsage } from '@/lib/codes-promos';
 import { isValidEmail } from '@/lib/email';
 import { currentOriginFromRequest } from '@/lib/site';
-import { genererCodeParrainSiNouveau, traiterUsageSiParrainage, getCodeParrainPourClient } from '@/lib/parrainage';
+import { genererCodeParrainSiNouveau, getCodeParrainPourClient } from '@/lib/parrainage';
 import {
   VILLES_AUTORISEES,
   CRENEAUX_LIVRAISON,
@@ -78,6 +78,7 @@ export async function POST(request: Request) {
       creneauKey: creneauKeyRaw,
       dateLivraison: dateLivraisonRaw,
       codePromo: codePromoRaw,
+      banId: banIdRaw,
       message,
     } = body as {
       client: { prenom: string; nom: string; email: string; telephone: string };
@@ -89,8 +90,13 @@ export async function POST(request: Request) {
       creneauKey?: string;
       dateLivraison?: string;
       codePromo?: string;
+      banId?: string;
       message?: string;
     };
+
+    const banId = typeof banIdRaw === 'string' && banIdRaw.trim()
+      ? banIdRaw.trim().slice(0, 80)
+      : null;
 
     if (!client || !client.prenom || !client.nom || !client.email || !client.telephone) {
       return NextResponse.json({ error: 'Champs obligatoires manquants.' }, { status: 400 });
@@ -221,7 +227,7 @@ export async function POST(request: Request) {
     let reductionCents = 0;
     let codePromoId: string | null = null;
     if (typeof codePromoRaw === 'string' && codePromoRaw.trim() && !tousIncertains) {
-      const validation = await validateCodePromo(codePromoRaw, totalCertainCents, client.email);
+      const validation = await validateCodePromo(codePromoRaw, totalCertainCents, client.email, banId);
       if (validation.ok) {
         const consumed = await tryConsumeCodeUsage(validation.code.id);
         if (consumed) {
@@ -256,6 +262,7 @@ export async function POST(request: Request) {
         frais_livraison_cents: fraisCents,
         code_promo: codePromoApplique,
         reduction_cents: reductionCents,
+        ban_id: banId,
         client_id: clientId,
       })
       .select('id')
@@ -268,14 +275,11 @@ export async function POST(request: Request) {
 
     const orderId = orderData.id;
 
-    if (codePromoId) {
-      traiterUsageSiParrainage({
-        codePromoId,
-        filleulPrenom: client.prenom,
-        filleulNom: client.nom,
-        filleulEmail: client.email,
-      }).catch((err) => console.error('[order] traiterUsageSiParrainage:', err));
-    }
+    // Note : le crédit MERCI au parrain est déclenché à la livraison
+    // effective (transition statut → 'retirée'), pas ici. Voir
+    // /api/orders/[id]. On évite ainsi que des commandes annulées
+    // créditent des codes MERCI au passage de commande.
+    void codePromoId;
 
     // Génère (idempotent) le code de parrainage du client pour l'inclure
     // dans son email de confirmation. Best-effort : si la génération échoue,

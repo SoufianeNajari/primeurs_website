@@ -10,6 +10,7 @@ export type CodePromo = {
   min_panier_cents: number;
   usage_max: number | null;
   usage_actuel: number;
+  usage_max_par_adresse: number | null;
   expire_at: string | null;
   actif: boolean;
   description: string | null;
@@ -19,10 +20,23 @@ export type CodePromo = {
   created_at: string;
 };
 
-// Comparaison d'emails insensible à la casse — on utilise lowercase comme
-// référence canonique (les codes lockés sont stockés en lowercase).
+// Comparaison d'emails insensible à la casse + anti-alias Gmail :
+//  - Gmail/Googlemail ignorent les points dans la partie locale et tout ce
+//    qui suit un « + ». Donc john.doe+test@gmail.com ↔ johndoe@gmail.com
+//    pointent vers la même boîte. Sans cette normalisation, un fraudeur
+//    pouvait créer N « filleuls » avec ses propres alias et accumuler des
+//    récompenses MERCI.
 export function normalizeEmail(raw: string | null | undefined): string {
-  return (raw || '').trim().toLowerCase();
+  const lower = (raw || '').trim().toLowerCase();
+  const atIdx = lower.lastIndexOf('@');
+  if (atIdx <= 0) return lower;
+  const local = lower.slice(0, atIdx);
+  const domain = lower.slice(atIdx + 1);
+  if (domain === 'gmail.com' || domain === 'googlemail.com') {
+    const stripped = local.split('+')[0].replace(/\./g, '');
+    return `${stripped}@gmail.com`;
+  }
+  return lower;
 }
 
 export type CodePromoValidation =
@@ -81,6 +95,27 @@ export async function loadActiveCode(codeRaw: string): Promise<CodePromo | null>
   return c;
 }
 
+// Compte combien de fois un code donné a déjà été utilisé sur les
+// commandes existantes pour une adresse BAN donnée. Utilisé pour
+// faire respecter `usage_max_par_adresse`.
+//
+// On compte sur le `code_promo` textuel (déjà stocké côté commande)
+// plutôt que sur l'id, pour rester robuste si le code est renommé.
+export async function countUsageParAdresse(codeText: string, banId: string): Promise<number> {
+  if (!codeText || !banId) return 0;
+  const { count, error } = await supabaseAdmin
+    .from('commandes')
+    .select('id', { head: true, count: 'exact' })
+    .eq('ban_id', banId)
+    .eq('code_promo', codeText)
+    .neq('statut', 'annulée');
+  if (error) {
+    console.error('[codes-promos] countUsageParAdresse:', error);
+    return 0;
+  }
+  return count ?? 0;
+}
+
 // Valide un code et calcule la réduction. Aucune mutation BDD.
 // Utilisé par /api/codes-promos/validate (avant commande) et par /api/order
 // (re-validation atomique au moment de l'enregistrement).
@@ -90,10 +125,15 @@ export async function loadActiveCode(codeRaw: string): Promise<CodePromo | null>
 //    crédités à un parrain particulier)
 //  - permet de rejeter le cas où un parrain essaie d'utiliser son propre
 //    code de parrainage sur sa propre commande (auto-récompense bloquée)
+//
+// `banId` (optionnel) : identifiant canonique d'adresse fourni par la BAN
+// au moment du checkout. Si renseigné et si le code définit
+// `usage_max_par_adresse`, on rejette si ce foyer a déjà épuisé son quota.
 export async function validateCodePromo(
   codeRaw: string,
   panierCents: number,
   clientEmail?: string | null,
+  banId?: string | null,
 ): Promise<CodePromoValidation> {
   const code = await loadActiveCode(codeRaw);
   if (!code) {
@@ -111,6 +151,12 @@ export async function validateCodePromo(
       ok: false,
       raison: `Panier minimum de ${formatEuros(code.min_panier_cents)} requis pour ce code.`,
     };
+  }
+  if (code.usage_max_par_adresse != null && banId) {
+    const used = await countUsageParAdresse(code.code, banId);
+    if (used >= code.usage_max_par_adresse) {
+      return { ok: false, raison: 'Ce code a déjà été utilisé pour cette adresse.' };
+    }
   }
   const reductionCents = computeReduction(code, panierCents);
   if (reductionCents <= 0) {

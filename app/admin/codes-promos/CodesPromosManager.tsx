@@ -235,6 +235,9 @@ export default function CodesPromosManager({ initialCodes }: { initialCodes: Cod
                     <span><strong>{formatValeur(c)}</strong></span>
                     {c.min_panier_cents > 0 && <span>panier ≥ {euro.format(c.min_panier_cents / 100)}</span>}
                     <span>usages : {usageStr}</span>
+                    {c.usage_max_par_adresse != null && (
+                      <span>max {c.usage_max_par_adresse}/adresse</span>
+                    )}
                     {c.expire_at && <span>expire {formatDate(c.expire_at)}</span>}
                     <span className="text-neutral-400">créé {formatDate(c.created_at)}</span>
                   </div>
@@ -320,6 +323,7 @@ function CreateCodeModal({ onClose, onCreated }: { onClose: () => void; onCreate
   const [reductionMaxEur, setReductionMaxEur] = useState('');
   const [minPanierEur, setMinPanierEur] = useState('30');
   const [usageMax, setUsageMax] = useState('');
+  const [usageMaxParAdresse, setUsageMaxParAdresse] = useState('1');
   const [expireAt, setExpireAt] = useState('');
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
@@ -347,6 +351,7 @@ function CreateCodeModal({ onClose, onCreated }: { onClose: () => void; onCreate
         reduction_max_cents: type === 'pourcent' && reductionMaxEur.trim() ? Math.round(Number(reductionMaxEur) * 100) : null,
         min_panier_cents: minPanierEur.trim() ? Math.round(Number(minPanierEur) * 100) : 0,
         usage_max: usageMax.trim() ? Math.round(Number(usageMax)) : null,
+        usage_max_par_adresse: usageMaxParAdresse.trim() ? Math.round(Number(usageMaxParAdresse)) : null,
         expire_at: expireAt.trim() ? new Date(expireAt).toISOString() : null,
         description: description.trim() || null,
         actif: true,
@@ -448,7 +453,7 @@ function CreateCodeModal({ onClose, onCreated }: { onClose: () => void; onCreate
                 placeholder="30"
               />
             </Field>
-            <Field label="Usages max" hint="Vide = illimité">
+            <Field label="Usages max global" hint="Vide = illimité">
               <input
                 type="number"
                 value={usageMax}
@@ -460,6 +465,18 @@ function CreateCodeModal({ onClose, onCreated }: { onClose: () => void; onCreate
               />
             </Field>
           </div>
+
+          <Field label="Usages max par adresse" hint="Anti-fraude : plafonne combien de fois un même foyer (adresse BAN) peut utiliser ce code. Vide = illimité, 1 = un usage par adresse à vie.">
+            <input
+              type="number"
+              value={usageMaxParAdresse}
+              onChange={(e) => setUsageMaxParAdresse(e.target.value)}
+              step="1"
+              min="1"
+              className={inputCls}
+              placeholder="1"
+            />
+          </Field>
 
           <Field label="Date d'expiration" hint="Vide = jamais">
             <input
@@ -524,6 +541,9 @@ function EditCodeModal({ code, onClose, onUpdated }: { code: CodePromo; onClose:
   );
   const [minPanierEur, setMinPanierEur] = useState((code.min_panier_cents / 100).toFixed(2));
   const [usageMax, setUsageMax] = useState(code.usage_max != null ? String(code.usage_max) : '');
+  const [usageMaxParAdresse, setUsageMaxParAdresse] = useState(
+    code.usage_max_par_adresse != null ? String(code.usage_max_par_adresse) : '',
+  );
   const [expireAt, setExpireAt] = useState(toDatetimeLocal(code.expire_at));
   const [description, setDescription] = useState(code.description || '');
   const [saving, setSaving] = useState(false);
@@ -560,6 +580,7 @@ function EditCodeModal({ code, onClose, onUpdated }: { code: CodePromo; onClose:
         reduction_max_cents: type === 'pourcent' && reductionMaxEur.trim() ? Math.round(Number(reductionMaxEur) * 100) : null,
         min_panier_cents: minPanierEur.trim() ? Math.round(Number(minPanierEur) * 100) : 0,
         usage_max: usageMax.trim() ? Math.round(Number(usageMax)) : null,
+        usage_max_par_adresse: usageMaxParAdresse.trim() ? Math.round(Number(usageMaxParAdresse)) : null,
         expire_at: expireAt.trim() ? new Date(expireAt).toISOString() : null,
         description: description.trim() || null,
       };
@@ -649,7 +670,7 @@ function EditCodeModal({ code, onClose, onUpdated }: { code: CodePromo; onClose:
                 className={inputCls}
               />
             </Field>
-            <Field label="Usages max" hint={`Vide = illimité. Actuel : ${code.usage_actuel}`}>
+            <Field label="Usages max global" hint={`Vide = illimité. Actuel : ${code.usage_actuel}`}>
               <input
                 type="number"
                 value={usageMax}
@@ -661,6 +682,18 @@ function EditCodeModal({ code, onClose, onUpdated }: { code: CodePromo; onClose:
               />
             </Field>
           </div>
+
+          <Field label="Usages max par adresse" hint="Anti-fraude : plafonne combien de fois un même foyer peut utiliser ce code. Vide = illimité.">
+            <input
+              type="number"
+              value={usageMaxParAdresse}
+              onChange={(e) => setUsageMaxParAdresse(e.target.value)}
+              step="1"
+              min="1"
+              className={inputCls}
+              placeholder="∞"
+            />
+          </Field>
 
           <Field label="Date d'expiration" hint="Vide = jamais">
             <input

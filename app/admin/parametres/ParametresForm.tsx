@@ -9,6 +9,7 @@ type Values = {
   fraisCents: number;
   minCents: number;
   seuilGratuitCents: number;
+  maxMerciParParrain: number;
 };
 
 function centsToInput(cents: number): string {
@@ -29,6 +30,7 @@ export default function ParametresForm({ initial }: { initial: Values }) {
   const [frais, setFrais] = useState(centsToInput(initial.fraisCents));
   const [min, setMin] = useState(centsToInput(initial.minCents));
   const [seuil, setSeuil] = useState(centsToInput(initial.seuilGratuitCents));
+  const [maxMerci, setMaxMerci] = useState(String(initial.maxMerciParParrain));
   const [saving, setSaving] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -36,8 +38,13 @@ export default function ParametresForm({ initial }: { initial: Values }) {
     const fraisCents = inputToCents(frais);
     const minCents = inputToCents(min);
     const seuilGratuitCents = inputToCents(seuil);
+    const maxMerciNum = Math.round(Number(maxMerci));
     if (fraisCents === null || minCents === null || seuilGratuitCents === null) {
       toast.error('Valeurs numériques invalides.');
+      return;
+    }
+    if (!Number.isFinite(maxMerciNum) || maxMerciNum < 0 || maxMerciNum > 1000) {
+      toast.error('Plafond MERCI invalide (0 à 1000).');
       return;
     }
     if (seuilGratuitCents > 0 && seuilGratuitCents < minCents) {
@@ -49,7 +56,7 @@ export default function ParametresForm({ initial }: { initial: Values }) {
       const res = await fetch('/api/admin/parametres', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fraisCents, minCents, seuilGratuitCents }),
+        body: JSON.stringify({ fraisCents, minCents, seuilGratuitCents, maxMerciParParrain: maxMerciNum }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -85,6 +92,30 @@ export default function ParametresForm({ initial }: { initial: Values }) {
         value={seuil}
         onChange={setSeuil}
       />
+
+      <div className="pt-4 border-t border-neutral-100">
+        <h3 className="text-base font-medium text-neutral-800 mb-3">Anti-abus parrainage</h3>
+        <label className="block">
+          <span className="block text-sm font-medium text-neutral-800 mb-1">Plafond de codes MERCI par parrain</span>
+          <div className="relative">
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={1000}
+              step={1}
+              value={maxMerci}
+              onChange={(e) => setMaxMerci(e.target.value)}
+              className="w-full border border-neutral-300 rounded px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-green-dark/40"
+              placeholder="5"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400">codes</span>
+          </div>
+          <span className="block text-xs text-neutral-500 mt-1">
+            Combien de codes cadeaux « MERCI » un même parrain peut accumuler au total. Au-delà, le parrainage continue de marcher pour ses filleuls mais le parrain ne reçoit plus de nouveau code. 0 = aucun crédit, jamais.
+          </span>
+        </label>
+      </div>
 
       <div className="pt-2 border-t border-neutral-100 flex items-center justify-end">
         <button

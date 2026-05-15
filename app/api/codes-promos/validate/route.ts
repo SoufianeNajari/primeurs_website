@@ -27,6 +27,7 @@ export async function POST(request: Request) {
     const codeRaw = typeof body?.code === 'string' ? body.code : '';
     const panierCents = Number.isFinite(body?.panierCents) ? Math.round(body.panierCents) : 0;
     const emailRaw = typeof body?.email === 'string' ? body.email : null;
+    const banId = typeof body?.banId === 'string' && body.banId.trim() ? body.banId.trim() : null;
 
     if (!codeRaw) {
       return NextResponse.json({ ok: false, raison: 'Code requis.' }, { status: 400 });
@@ -38,7 +39,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = await validateCodePromo(codeRaw, panierCents, emailRaw);
+    const result = await validateCodePromo(codeRaw, panierCents, emailRaw, banId);
     if (!result.ok) {
       return NextResponse.json(result, { status: 200 });
     }
