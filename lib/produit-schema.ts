@@ -20,6 +20,7 @@ export const produitInputSchema = z.object({
   local: z.coerce.boolean().optional(),
   variete: z.string().max(120).nullish(),
   qualite: z.string().max(60).nullish(),
+  calibre: z.string().max(60).nullish(),
   disponible: z.coerce.boolean().optional(),
   mis_en_avant: z.coerce.boolean().optional(),
   ordre: z.coerce.number().int().nullish(),
@@ -46,6 +47,7 @@ export function normalizeProduitInput(raw: unknown): ProduitInput {
     local: parsed.local ?? false,
     variete: parsed.variete && parsed.variete.trim() !== '' ? parsed.variete.trim() : null,
     qualite: parsed.qualite && parsed.qualite.trim() !== '' ? parsed.qualite.trim() : null,
+    calibre: parsed.calibre && parsed.calibre.trim() !== '' ? parsed.calibre.trim() : null,
     disponible: parsed.disponible ?? true,
     mis_en_avant: parsed.mis_en_avant ?? false,
     options: parsed.options.map((o) => ({

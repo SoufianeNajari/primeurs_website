@@ -52,6 +52,7 @@ export default function ProductForm({ mode, initial, categories }: { mode: Mode;
   const [local, setLocal] = useState(initial?.local ?? false);
   const [variete, setVariete] = useState(initial?.variete || '');
   const [qualite, setQualite] = useState(initial?.qualite || '');
+  const [calibre, setCalibre] = useState(initial?.calibre || '');
   const [disponible, setDisponible] = useState(initial?.disponible ?? true);
   const [misEnAvant, setMisEnAvant] = useState(initial?.mis_en_avant ?? false);
   const [moisDebut, setMoisDebut] = useState<string>(initial?.mois_debut ? String(initial.mois_debut) : '');
@@ -145,6 +146,7 @@ export default function ProductForm({ mode, initial, categories }: { mode: Mode;
       local,
       variete: variete || null,
       qualite: qualite || null,
+      calibre: calibre || null,
       disponible,
       mis_en_avant: misEnAvant,
       mois_debut: moisDebut === '' ? null : Number(moisDebut),
@@ -256,6 +258,9 @@ export default function ProductForm({ mode, initial, categories }: { mode: Mode;
           <datalist id="qualite-suggestions">
             {QUALITE_SUGGESTIONS.map((q) => <option key={q} value={q} />)}
           </datalist>
+        </Field>
+        <Field label="Calibre" hint="Taille ou nombre de pièces au kilo. Le mot « Calibre » est ajouté automatiquement — saisissez juste la valeur. Ex : « 5 » ou « 4-5 / kg ».">
+          <input value={calibre} onChange={(e) => setCalibre(e.target.value)} className={inputCls} maxLength={60} placeholder="4-5 / kg" />
         </Field>
         <Field label="Saison — mois début">
           <select value={moisDebut} onChange={(e) => setMoisDebut(e.target.value)} className={inputCls}>

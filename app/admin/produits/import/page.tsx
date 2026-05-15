@@ -9,7 +9,7 @@ type Summary = { created: number; updated: number; unchanged: number; errors: nu
 
 const TEMPLATE_HEADERS = [
   'nom', 'categorie', 'slug', 'description', 'description_longue', 'origine',
-  'bio', 'local', 'variete', 'qualite', 'mois_debut', 'mois_fin', 'ordre',
+  'bio', 'local', 'variete', 'qualite', 'calibre', 'mois_debut', 'mois_fin', 'ordre',
   'disponible', 'image_url', 'conseils_conservation',
   'opt1_libelle', 'opt1_prix', 'opt2_libelle', 'opt2_prix',
   'opt3_libelle', 'opt3_prix', 'opt4_libelle', 'opt4_prix',
@@ -18,11 +18,11 @@ const TEMPLATE_HEADERS = [
 
 const TEMPLATE_EXAMPLES = [
   // produit kg simple
-  ['Pommes Golden', 'Fruits', '', 'Pommes croquantes et sucrées', '', 'France', 'false', 'false', 'Golden', 'Extra', '9', '3', '1', 'true', '', '', 'au kg', '4,30', '', '', '', '', '', '', '', '', '', ''],
+  ['Pommes Golden', 'Fruits', '', 'Pommes croquantes et sucrées', '', 'France', 'false', 'false', 'Golden', 'Extra', '5', '9', '3', '1', 'true', '', '', 'au kg', '4,30', '', '', '', '', '', '', '', '', '', ''],
   // multi-options avec prix
-  ['Tomates cerise locales', 'Légumes', '', '', '', 'France, Île-de-France', 'false', 'true', '', 'Catégorie 1', '6', '9', '2', 'true', '', '', 'la barquette', '2,50', 'au kg', '8,00', '', '', '', '', '', '', '', ''],
+  ['Tomates cerise locales', 'Légumes', '', '', '', 'France, Île-de-France', 'false', 'true', '', 'Catégorie 1', '', '6', '9', '2', 'true', '', '', 'la barquette', '2,50', 'au kg', '8,00', '', '', '', '', '', '', '', ''],
   // produit "à peser" (prix vide = poids incertain)
-  ['Comté 18 mois', 'Fromages', '', '', '', 'France, Jura', 'false', 'false', '', '', '', '', '3', 'true', '', '', 'au kg', '32,00', 'à la coupe', '', '', '', '', '', '', '', '', ''],
+  ['Comté 18 mois', 'Fromages', '', '', '', 'France, Jura', 'false', 'false', '', '', '', '', '', '3', 'true', '', '', 'au kg', '32,00', 'à la coupe', '', '', '', '', '', '', '', '', ''],
 ];
 
 function csvEscape(v: string): string {
@@ -136,6 +136,7 @@ export default function ImportProduitsPage() {
               <FormatRow col="bio / local / disponible" detail="true / false / oui / non / 1 / 0 / x" />
               <FormatRow col="variete" detail="Ex : Golden, Mara des Bois (max 120)" />
               <FormatRow col="qualite" detail="Ex : Extra, Catégorie 1 (max 60)" />
+              <FormatRow col="calibre" detail="Ex : 5, 4-5 / kg (max 60, ne pas inclure le mot « Calibre »)" />
               <FormatRow col="mois_debut / mois_fin" detail="Saison. Entiers 1–12." />
               <FormatRow col="ordre" detail="Entier de tri." />
               <FormatRow col="image_url" detail="URL https complète." />

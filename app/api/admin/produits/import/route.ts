@@ -32,6 +32,7 @@ type ExistingProduit = {
   local: boolean;
   variete: string | null;
   qualite: string | null;
+  calibre: string | null;
   disponible: boolean | null;
   mis_en_avant: boolean;
   ordre: number | null;
@@ -76,7 +77,7 @@ function nullish(v: unknown): unknown {
 const COMPARED_FIELDS = [
   'nom', 'categorie', 'slug',
   'description', 'description_longue', 'origine', 'conseils_conservation',
-  'bio', 'local', 'variete', 'qualite',
+  'bio', 'local', 'variete', 'qualite', 'calibre',
   'disponible', 'mis_en_avant',
   'ordre', 'mois_debut', 'mois_fin',
   'image_url',
@@ -142,7 +143,7 @@ export async function POST(request: Request) {
   // les paniers clients à chaque réimport).
   const { data: existing } = await supabaseAdmin
     .from('produits')
-    .select('id, nom, categorie, categorie_id, slug, description, description_longue, origine, conseils_conservation, bio, local, variete, qualite, disponible, mis_en_avant, ordre, mois_debut, mois_fin, image_url, options');
+    .select('id, nom, categorie, categorie_id, slug, description, description_longue, origine, conseils_conservation, bio, local, variete, qualite, calibre, disponible, mis_en_avant, ordre, mois_debut, mois_fin, image_url, options');
   const slugToExisting = new Map<string, ExistingProduit>();
   for (const p of (existing || []) as ExistingProduit[]) {
     if (p.slug) slugToExisting.set(p.slug, p);
@@ -181,6 +182,7 @@ export async function POST(request: Request) {
         local: parseBool(row.local) ?? false,
         variete: row.variete || null,
         qualite: row.qualite || null,
+        calibre: row.calibre || null,
         disponible: parseBool(row.disponible) ?? true,
         // mis_en_avant : pas de colonne CSV → on hérite de la ligne existante
         // pour ne pas écraser silencieusement les "coup de coeur" pilotés via

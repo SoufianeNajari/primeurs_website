@@ -14,6 +14,7 @@ const HEADERS = [
   'local',
   'variete',
   'qualite',
+  'calibre',
   'mois_debut',
   'mois_fin',
   'ordre',
@@ -33,7 +34,7 @@ type Row = {
   nom: string; categorie: string; slug: string;
   description: string | null; description_longue: string | null;
   origine: string | null; bio: boolean; local: boolean;
-  variete: string | null; qualite: string | null;
+  variete: string | null; qualite: string | null; calibre: string | null;
   mois_debut: number | null; mois_fin: number | null;
   ordre: number | null; disponible: boolean;
   image_url: string | null; conseils_conservation: string | null;
@@ -48,7 +49,7 @@ export async function GET(request: Request) {
 
   const { data, error } = await supabaseAdmin
     .from('produits')
-    .select('nom, categorie, slug, description, description_longue, origine, bio, local, variete, qualite, mois_debut, mois_fin, ordre, disponible, image_url, conseils_conservation, options')
+    .select('nom, categorie, slug, description, description_longue, origine, bio, local, variete, qualite, calibre, mois_debut, mois_fin, ordre, disponible, image_url, conseils_conservation, options')
     .order('categorie', { ascending: true })
     .order('nom', { ascending: true });
 
@@ -78,6 +79,7 @@ export async function GET(request: Request) {
       r.local ? 'true' : 'false',
       csvEscape(r.variete),
       csvEscape(r.qualite),
+      csvEscape(r.calibre),
       r.mois_debut ?? '',
       r.mois_fin ?? '',
       r.ordre ?? '',

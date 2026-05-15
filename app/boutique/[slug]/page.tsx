@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ChevronLeft, Leaf, MapPin, Refrigerator, CalendarRange, Sprout, Award } from 'lucide-react';
+import { ChevronLeft, Leaf, MapPin, Refrigerator, CalendarRange, Sprout, Award, Ruler } from 'lucide-react';
 import { supabaseAdmin } from '@/lib/supabase';
 import { formatPrixResume, getProductTags, isEnSaison, type Product } from '@/lib/produit';
 import { isCommandesBloquees } from '@/lib/parametres';
@@ -214,6 +214,15 @@ export default async function ProductPage({ params }: { params: { slug: string }
                 <div>
                   <div className="text-xs uppercase tracking-widest text-neutral-500 mb-0.5">Qualité</div>
                   <div className="text-sm text-neutral-800">{product.qualite}</div>
+                </div>
+              </li>
+            )}
+            {product.calibre && (
+              <li className="flex items-start gap-3 py-3">
+                <Ruler size={18} className="text-green-primary mt-0.5 shrink-0" strokeWidth={1.5} />
+                <div>
+                  <div className="text-xs uppercase tracking-widest text-neutral-500 mb-0.5">Calibre</div>
+                  <div className="text-sm text-neutral-800">{product.calibre}</div>
                 </div>
               </li>
             )}

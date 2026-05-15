@@ -57,6 +57,11 @@ export default function ProductCard({ product }: { product: Product }) {
           {product.variete}
         </div>
       )}
+      {product.calibre && (
+        <div className="text-[11px] text-neutral-500 mb-1 sm:mb-2 truncate">
+          Calibre&nbsp;: {product.calibre}
+        </div>
+      )}
       {prixResume && (
         <div className="text-sm font-medium text-green-dark mb-2 sm:mb-3">{prixResume}</div>
       )}

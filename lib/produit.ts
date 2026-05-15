@@ -23,6 +23,7 @@ export type Product = {
   local?: boolean | null;
   variete?: string | null;
   qualite?: string | null;
+  calibre?: string | null;
   mois_debut?: number | null;
   mois_fin?: number | null;
   ordre?: number | null;
