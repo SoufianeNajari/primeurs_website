@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Flyer A5 — Primeur Chez Vous</title>
+<style>
+  /* ---- Couleurs de marque (extraites de app/globals.css) ---- */
+  :root{
+    --green:#2C5530;        /* vert sapin */
+    --green-dark:#1E3D22;
+    --green-light:#F4F7F4;
+    --paper:#FAF9F7;
+    --ink:#333333;
+    --brick:#9B3A3A;
+    --brick-soft:#FDF8F6;
+    --gold:#C8A24B;
+  }
+
+  /* ---- Format A5 portrait ---- */
+  @page { size:148mm 210mm; margin:0; }
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  html,body{ background:#e9e9e9; }
+  body{ font-family:"Helvetica Neue",Arial,sans-serif; color:var(--ink); -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+
+  .page{
+    width:148mm; height:210mm; margin:18px auto; background:var(--paper);
+    position:relative; overflow:hidden; box-shadow:0 6px 30px rgba(0,0,0,.18);
+    display:flex; flex-direction:column;
+  }
+
+  /* ---- Bandeau marque ---- */
+  .header{
+    background:var(--green); color:#fff; padding:9mm 10mm 8mm;
+    text-align:center; position:relative;
+  }
+  .header::after{ content:""; position:absolute; left:0; right:0; bottom:0; height:3px;
+    background:linear-gradient(90deg,var(--gold),#e6c878,var(--gold)); }
+  .leaf{ font-size:20px; line-height:1; }
+  .brand{ font-size:34px; font-weight:800; letter-spacing:.3px; font-family:Georgia,"Times New Roman",serif; }
+  .brand .by{ display:block; font-family:"Helvetica Neue",Arial,sans-serif; font-size:9.5px; font-weight:600;
+    letter-spacing:3px; text-transform:uppercase; opacity:.82; margin-top:5px; }
+
+  /* ---- Hero ---- */
+  .hero{ padding:8mm 10mm 5mm; text-align:center; }
+  .hero h1{ font-family:Georgia,serif; font-size:25px; line-height:1.18; color:var(--green-dark); font-weight:700; }
+  .hero h1 em{ color:var(--brick); font-style:italic; }
+  .hero p{ font-size:12.5px; color:#5a5a5a; margin-top:7px; line-height:1.5; }
+  .hero p b{ color:var(--green); }
+
+  /* ---- Badges promo ---- */
+  .promos{ display:flex; gap:6mm; padding:2mm 10mm 4mm; }
+  .promo{ flex:1; border-radius:12px; padding:5mm 4mm; text-align:center; position:relative; }
+  .promo.p1{ background:var(--brick-soft); border:1.5px dashed var(--brick); }
+  .promo.p2{ background:var(--green-light); border:1.5px solid var(--green); }
+  .promo .big{ font-family:Georgia,serif; font-weight:800; line-height:1; }
+  .promo.p1 .big{ font-size:30px; color:var(--brick); }
+  .promo.p2 .big{ font-size:21px; color:var(--green); }
+  .promo .lbl{ font-size:10.5px; font-weight:600; color:var(--ink); margin-top:4px; line-height:1.3; }
+  .promo .code{ display:inline-block; margin-top:6px; font-size:10px; font-weight:700; letter-spacing:1px;
+    background:var(--brick); color:#fff; padding:3px 9px; border-radius:5px; }
+  .promo .note{ font-size:8.5px; color:#888; margin-top:5px; }
+
+  /* ---- Étapes ---- */
+  .steps{ padding:3mm 10mm 4mm; }
+  .steps h2{ text-align:center; font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--green);
+    font-weight:700; margin-bottom:5mm; }
+  .step-row{ display:flex; gap:4mm; }
+  .step{ flex:1; text-align:center; }
+  .step .num{ width:30px; height:30px; border-radius:50%; background:var(--green); color:#fff;
+    font-weight:800; font-size:15px; display:flex; align-items:center; justify-content:center; margin:0 auto 6px; }
+  .step .t{ font-size:11px; font-weight:700; color:var(--green-dark); }
+  .step .d{ font-size:9.5px; color:#6a6a6a; margin-top:2px; line-height:1.35; }
+
+  /* ---- Villes ---- */
+  .villes{ padding:3mm 10mm; text-align:center; }
+  .villes .lab{ font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--brick); font-weight:700; margin-bottom:5px; }
+  .pills{ display:flex; flex-wrap:wrap; gap:5px; justify-content:center; }
+  .pill{ font-size:9.5px; font-weight:600; color:var(--green-dark); background:#fff;
+    border:1px solid #dfe7df; border-radius:20px; padding:3px 9px; }
+
+  /* ---- Footer QR ---- */
+  .foot{ margin-top:auto; background:var(--green-dark); color:#fff; padding:6mm 10mm; display:flex; align-items:center; gap:6mm; }
+  .foot .qr{ background:#fff; padding:6px; border-radius:8px; line-height:0; }
+  .foot .qr img{ width:78px; height:78px; display:block; }
+  .foot .cta{ flex:1; }
+  .foot .cta .scan{ font-size:9.5px; opacity:.75; letter-spacing:1px; text-transform:uppercase; }
+  .foot .cta .url{ font-family:Georgia,serif; font-size:19px; font-weight:700; margin:2px 0 6px; }
+  .foot .cta .tel{ font-size:13px; font-weight:600; }
+  .foot .cta .tel .wa{ color:#bfe6c2; }
+  .foot .cta .days{ font-size:9.5px; opacity:.8; margin-top:3px; }
+
+  /* ---- Aide impression (écran seulement) ---- */
+  .hint{ max-width:148mm; margin:0 auto 30px; font:13px/1.5 Arial,sans-serif; color:#555; text-align:center; }
+  @media print{ .hint{ display:none; } html,body{ background:#fff; } .page{ margin:0; box-shadow:none; } }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <div class="header">
+    <div class="leaf">🌿</div>
+    <div class="brand">Primeur Chez Vous
+      <span class="by">by Pontault Primeurs · depuis 1992</span>
+    </div>
+  </div>
+
+  <div class="hero">
+    <h1>Le marché de Rungis,<br><em>livré chez vous.</em></h1>
+    <p>Fruits, légumes &amp; fromages affinés <b>sélectionnés chaque matin</b><br>dans les allées de Rungis. Sans intermédiaire superflu.</p>
+  </div>
+
+  <div class="promos">
+    <div class="promo p1">
+      <div class="big">-5€</div>
+      <div class="lbl">sur votre 1<sup>re</sup> commande</div>
+      <span class="code">CODE&nbsp;: BIENVENUE</span>
+      <div class="note">à saisir au panier</div>
+    </div>
+    <div class="promo p2">
+      <div class="big">Livraison<br>OFFERTE</div>
+      <div class="lbl">dès 50€ d'achat</div>
+      <div class="note">&nbsp;</div>
+    </div>
+  </div>
+
+  <div class="steps">
+    <h2>Comment ça marche</h2>
+    <div class="step-row">
+      <div class="step"><div class="num">1</div><div class="t">Commandez en ligne</div><div class="d">sur primeurchezvous.fr</div></div>
+      <div class="step"><div class="num">2</div><div class="t">On choisit à Rungis</div><div class="d">au petit matin, pour vous</div></div>
+      <div class="step"><div class="num">3</div><div class="t">Livré &amp; payé chez vous</div><div class="d">paiement à la réception</div></div>
+    </div>
+  </div>
+
+  <div class="villes">
+    <div class="lab">Livraison mardi &amp; samedi · communes desservies</div>
+    <div class="pills">
+      <span class="pill">Pontault-Combault</span>
+      <span class="pill">Roissy-en-Brie</span>
+      <span class="pill">Ozoir-la-Ferrière</span>
+      <span class="pill">Lésigny</span>
+      <span class="pill">Émerainville</span>
+      <span class="pill">Le Plessis-Trévise</span>
+      <span class="pill">Villiers-sur-Marne</span>
+      <span class="pill">Noisy-le-Grand</span>
+    </div>
+  </div>
+
+  <div class="foot">
+    <div class="qr"><img src="data:image/png;base64,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Uw0AAFMNAABTDQAAUw0AAFMNAABTDQAAUw0AAFMNAABTDQAAU3/yofd+8oXjOvOF937yheM685X3fvKF4zrzhfd+8kve+8mvee8nXziuM1947yd867jO8Nd7P+Fb7/3kC8d15pc0AABMNQAATDUAAEw1AABMNQAATDUAAEw1AABMNQAATDUAAEw1AABMNQAATDUAAEw1AABMNQAATDUAAEw1AABMNQAATDUAAEw1AABMNQAATDUAAEz9yYeO68wX3vvJF47rDH+995MvHNeZX/LeT37NcZ35wns/+cJxnfk17/3kl7z3E/46rjNfeO8nX3jvJ185rjN8pwEAYKoBAGCqAQBgqgEAYKoBAGCqAQBgqgEAYKoBAGCqAQBgqgEAYKoBAGCqAQBgqgEAYKoBAGCqAQBgqgEAYKoBAGCqAQBgqgEAYKoBAGCqAQBg6l///o/8mOM684X3fvJrjuvMF977Cd86rjNfeO8n/HVcZ/jOez/hr+M684X3fvJrjuvMF977yS9pAACYagAAmGoAAJhqAACYagAAmGoAAJhqAACYagAAmGoAAJhqAACYagAAmGoAAJhqAACYagAAmGoAAJhqAACYagAAmGoAAJhqAACYagAAmGoAAJj617//Ix85rjNfeO8nXziuM1947yf8dVxnvvDeT75wXGf4672f/JrjOvOF937yS47rDPxv7/2E7zQAAEw1AABMNQAATDUAAEw1AABMNQAATDUAAEw1AABMNQAATDUAAEw1AABMNQAATDUAAEw1AABMNQAATDUAAEw1AABMNQAATDUAAEw1AABMNQAATP3Jh977yS957yd8672f8Nd7PyE5rjO/5rjOfOG9n/yS937CX8d1hr+O68wvee8nX2gAAJhqAACYagAAmGoAAJhqAACYagAAmGoAAJhqAACYagAAmGoAAJhqAACYagAAmGoAAJhqAACYagAAmGoAAJhqAACYagAAmGoAAJhqAACYagAAmGoAAJj6kw8d1xn4J7z3ky+895Nfc1xnvvDeT37Nez/5Jcd1hr+O68wX3vsJ/BMaAACmGgAAphoAAKYaAACmGgAAphoAAKYaAACmGgAAphoAAKYaAACmGgAAphoAAKYaAACmGgAAphoAAKYaAACmGgAAphoAAKYaAACmGgAAphoAAKb+5Ae99xN+03GdgX/KcZ35Je/95AvHdebXvPcT+GUNAABTDQAAUw0AAFMNAABTDQAAUw0AAFMNAABTDQAAUw0AAFMNAABTDQAAUw0AAFMNAABTDQAAUw0AAFMNAABTDQAAUw0AAFMNAABTDQAAUw0AAFN/wv84rjP89d5PSI7rDPxv7/2E5LjOwP/23k9IGgAAphoAAKYaAACmGgAAphoAAKYaAACmGgAAphoAAKYaAACmGgAAphoAAKYaAACmGgAAphoAAKYaAACmGgAAphoAAKYaAACmGgAAphoAAKYaAACm/gT4v3rvJ7/muM7wreM684X3fvKF937CX8d1hr+O68wX3vsJSQMAwFQDAMBUAwDAVAMAwFQDAMBUAwDAVAMAwFQDAMBUAwDAVAMAwFQDAMBUAwDAVAMAwFQDAMBUAwDAVAMAwFQDAMBUAwDAVAMAwFQDAMBUAwDAVAMAwNSfAP9Xx3UG/inHdeaXvPeTX/PeT75wXGe+8N5P+Ou4znzhvZ98oQEAYKoBAGCqAQBgqgEAYKoBAGCqAQBgqgEAYKoBAGCqAQBgqgEAYKoBAGCqAQBgqgEAYKoBAGCqAQBgqgEAYKoBAGCqAQBgqgEAYKoBAGCqAQBg6k/4H+/9BP7bez/5Ncd1Bn7dcZ35wns/+SXHdeYr7/3kC8d15gvv/eSXNAAATDUAAEw1AABMNQAATDUAAEw1AABMNQAATDUAAEw1AABMNQAATDUAAEw1AABMNQAATDUAAEw1AABMNQAATDUAAEw1AABMNQAATDUAAEw1AABM/ckPOq4z8E84rjO/5r2ffOG4zsB/O64zv+a4znzhvZ/wreM684X3fvKFBgCAqQYAgKkGAICpBgCAqQYAgKkGAICpBgCAqQYAgKkGAICpBgCAqQYAgKkGAICpBgCAqQYAgKkGAICpBgCAqQYAgKkGAICpBgCAqQYAgKkGAICpf/37PwIAwEwDAMBUAwDAVAMAwFQDAMBUAwDAVAMAwFQDAMBUAwDAVAMAwFQDAMBUAwDAVAMAwFQDAMBUAwDAVAMAwFQDAMBUAwDAVAMAwFQDAMBUAwDAVAMAwNT/A/BWi8Vu2h3YAAAAAElFTkSuQmCC" alt="QR primeurchezvous.fr"></div>
+    <div class="cta">
+      <div class="scan">Scannez &amp; commandez</div>
+      <div class="url">primeurchezvous.fr</div>
+      <div class="tel">📞 06 XX XX XX XX&nbsp;&nbsp;<span class="wa">· WhatsApp</span></div>
+      <div class="days">Commandez la veille avant 18h</div>
+    </div>
+  </div>
+</div>
+
+<p class="hint">Aperçu A5. Pour imprimer/exporter en PDF : <b>Ctrl/Cmd + P</b> → format <b>A5</b> → marges <b>Aucune</b> → cocher « Graphiques d'arrière-plan ».</p>
+
+</body>
+</html>

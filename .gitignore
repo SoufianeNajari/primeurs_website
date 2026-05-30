@@ -52,3 +52,7 @@ public/fallback-*.js
 
 # Claude Code local artefacts
 .claude/
+
+# Local tooling artefacts
+.mcp.json
+.aider*
