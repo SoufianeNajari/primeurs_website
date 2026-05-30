@@ -7,12 +7,14 @@ import { buildCancelUrl } from '@/lib/cancel-token';
 import { getClientSession } from '@/lib/client-auth';
 import { isCommandesBloquees } from '@/lib/parametres';
 import { getFourchetteBornes } from '@/lib/fourchette';
-import { validateCodePromo, tryConsumeCodeUsage } from '@/lib/codes-promos';
+import { validateCodePromo, tryConsumeCodeUsage, tryConsumeAddressUsage, releaseAddressUsage } from '@/lib/codes-promos';
 import { isValidEmail } from '@/lib/email';
+import { isValidUuid } from '@/lib/uuid';
 import { currentOriginFromRequest } from '@/lib/site';
 import { genererCodeParrainSiNouveau, getCodeParrainPourClient } from '@/lib/parrainage';
 import {
   VILLES_AUTORISEES,
+  isBanIdServed,
   CRENEAUX_LIVRAISON,
   getFraisLivraisonCents,
   getMinCommandeCents,
@@ -129,6 +131,16 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+    // Re-validation serveur du ban_id : format BAN (« <insee>_… ») + commune
+    // desservie. On ne fait pas confiance au champ `ville` du client : le
+    // préfixe INSEE du ban_id est la source de vérité. Bloque les ban_id forgés
+    // (contournement du quota par adresse) et les adresses hors zone.
+    if (!/^[0-9a-z]{5}(_[0-9a-z]+){0,3}$/i.test(banId) || !isBanIdServed(banId)) {
+      return NextResponse.json(
+        { error: 'Adresse non reconnue ou hors zone de livraison. Re-sélectionnez votre adresse dans les suggestions.' },
+        { status: 400 },
+      );
+    }
     const villeAutorisee = VILLES_AUTORISEES.find((v) => v.nom === ville);
     if (!villeAutorisee) {
       return NextResponse.json({ error: 'Ville non desservie par la livraison.' }, { status: 400 });
@@ -160,11 +172,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Le panier est vide.' }, { status: 400 });
     }
 
+    // Validation stricte des lignes panier : on ne fait pas confiance au client
+    // sur les quantités (un entier 0/négatif/fractionnaire/énorme fausserait le
+    // sous-total, le minimum de commande, la livraison offerte et le code promo)
+    // ni sur le format des identifiants produit (un id non-UUID déclenche une
+    // erreur Postgres 22P02 en 500 au lieu d'un 400 propre).
+    for (const item of panier) {
+      if (!item || !isValidUuid(item.produitId) || typeof item.optionId !== 'string' || !item.optionId) {
+        return NextResponse.json({ error: 'Panier invalide.' }, { status: 400 });
+      }
+      if (!Number.isInteger(item.quantite) || item.quantite <= 0 || item.quantite > 999) {
+        return NextResponse.json({ error: 'Quantité invalide dans le panier.' }, { status: 400 });
+      }
+    }
+
     // Re-vérif disponibilité + lecture fraîche des prix
     const produitIds = panier.map((item) => item.produitId);
     const { data: produitsDb, error: produitsError } = await supabaseAdmin
       .from('produits')
-      .select('id, nom, disponible, options')
+      .select('id, nom, disponible, options, masque_boutique')
       .in('id', produitIds);
 
     if (produitsError) {
@@ -172,14 +198,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Erreur interne lors de la vérification de la disponibilité.' }, { status: 500 });
     }
 
-    type ProduitRow = { id: string; nom: string; disponible: boolean; options: ProduitOption[] | null };
+    type ProduitRow = { id: string; nom: string; disponible: boolean; options: ProduitOption[] | null; masque_boutique: boolean | null };
     const produitsDbMap = new Map((produitsDb as ProduitRow[] | null)?.map((p) => [p.id, p]) || []);
     const nomsIndisponibles: string[] = [];
 
     const lignesNormalisees: LigneCommande[] = panier.map((item) => {
       const db = produitsDbMap.get(item.produitId);
       const option = db?.options?.find((o) => o.id === item.optionId);
-      if (!db || !db.disponible || !option) {
+      // Un produit masqué de la boutique est traité comme indisponible (le
+      // couplage masquer→indispo est applicatif, pas garanti en base : on
+      // revérifie ici, sinon un panier localStorage non resync pourrait
+      // commander un produit masqué resté `disponible=true`).
+      if (!db || !db.disponible || db.masque_boutique === true || !option) {
         nomsIndisponibles.push(item.nom);
       }
       const commentaire = sanitizeCommentaireServer(item.commentaire);
@@ -235,11 +265,24 @@ export async function POST(request: Request) {
     if (typeof codePromoRaw === 'string' && codePromoRaw.trim() && !tousIncertains) {
       const validation = await validateCodePromo(codePromoRaw, totalCertainCents, client.email, banId);
       if (validation.ok) {
-        const consumed = await tryConsumeCodeUsage(validation.code.id);
-        if (consumed) {
-          codePromoApplique = validation.code.code;
-          reductionCents = validation.reductionCents;
-          codePromoId = validation.code.id;
+        const code = validation.code;
+        // 1. Quota par adresse, atomique (migration 033). Court-circuité si
+        //    illimité (usage_max_par_adresse null).
+        const addrLimit = code.usage_max_par_adresse;
+        const addrConsumed =
+          addrLimit == null ? true : await tryConsumeAddressUsage(code.code, banId, addrLimit);
+        if (addrConsumed) {
+          // 2. Plafond global, atomique (migration 027).
+          const consumed = await tryConsumeCodeUsage(code.id);
+          if (consumed) {
+            codePromoApplique = code.code;
+            reductionCents = validation.reductionCents;
+            codePromoId = code.id;
+          } else if (addrLimit != null) {
+            // Global épuisé après réservation adresse : on relâche pour ne pas
+            // « brûler » un usage adresse sur une commande sans code appliqué.
+            await releaseAddressUsage(code.code, banId);
+          }
         }
       }
     }

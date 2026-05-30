@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { isAdmin } from '@/lib/admin-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,8 +51,12 @@ function csvCell(value: unknown): string {
 }
 
 export async function GET(request: NextRequest) {
-  // Le middleware vérifie déjà le cookie admin pour /api/admin/*. Ici on fait
-  // confiance à l'auth en amont.
+  // Le middleware garde déjà /api/admin/*, mais cette route exporte des PII
+  // clients : on ajoute une garde interne (défense en profondeur) au cas où le
+  // matcher du middleware changerait.
+  if (!(await isAdmin())) {
+    return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+  }
 
   const month = request.nextUrl.searchParams.get('month');
   if (!month || !/^\d{4}-\d{2}$/.test(month)) {

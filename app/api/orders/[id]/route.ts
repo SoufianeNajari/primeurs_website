@@ -5,40 +5,58 @@ import { badRequestIfNotUuid } from '@/lib/uuid';
 import { loadActiveCode } from '@/lib/codes-promos';
 import { traiterUsageSiParrainage } from '@/lib/parrainage';
 
-const STATUTS_AUTORISES = ['en_attente', 'confirmée', 'préparée', 'retirée', 'annulée'] as const;
+// Vocabulaire de statuts réel de l'app et de la base — doit rester aligné sur
+// la contrainte CHECK `commandes_statut_check` (migration 001) et sur
+// lib/orderStatus.ts. NE PAS y mettre en_attente/confirmée/préparée : ces
+// valeurs sont rejetées par la base et cassaient la transition « → Prête ».
+const STATUTS_AUTORISES = ['reçue', 'prête', 'retirée', 'annulée'] as const;
 
 // Tente de créditer un code MERCI au parrain quand la commande passe en
-// statut « retirée » (= livrée). Idempotent : la colonne merci_credite_at
-// empêche tout double-crédit si l'admin re-clique sur le statut.
+// statut « retirée » (= livrée).
+//
+// Idempotence ATOMIQUE : on « réserve » la commande via un UPDATE conditionnel
+// (merci_credite_at IS NULL) — un seul appel concurrent peut gagner cette
+// course, ce qui empêche tout double-crédit même si deux PATCH « retirée »
+// arrivent simultanément (ou sur double-clic admin). Si le crédit échoue
+// ensuite, on relâche le verrou pour permettre une nouvelle tentative.
 async function tenterCreditMerciSiLivree(id: string) {
-  const { data, error } = await supabaseAdmin
-    .from('commandes')
-    .select('id, client_nom, client_email, code_promo, merci_credite_at')
-    .eq('id', id)
-    .maybeSingle();
-  if (error || !data) return;
-  if (!data.code_promo) return;
-  if (data.merci_credite_at) return;
-
-  const code = await loadActiveCode(data.code_promo);
-  // loadActiveCode rejette les codes inactifs/épuisés mais on a juste
-  // besoin de retrouver l'id + savoir si c'est un code parrainage. On
-  // accepte le risque qu'un code désactivé depuis ne crédite plus.
-  if (!code || !code.est_parrainage) return;
-
-  const fullName = data.client_nom || '';
-  const [prenom, ...rest] = fullName.split(' ');
-  await traiterUsageSiParrainage({
-    codePromoId: code.id,
-    filleulPrenom: prenom || '',
-    filleulNom: rest.join(' ') || '',
-    filleulEmail: data.client_email || '',
-  });
-
-  await supabaseAdmin
+  const { data: claimed, error: claimErr } = await supabaseAdmin
     .from('commandes')
     .update({ merci_credite_at: new Date().toISOString() })
-    .eq('id', id);
+    .eq('id', id)
+    .is('merci_credite_at', null)
+    .select('id, client_nom, client_email, code_promo')
+    .maybeSingle();
+  // Pas de ligne réservée → déjà crédité (ou commande introuvable).
+  if (claimErr || !claimed) return;
+  // Pas de code promo sur la commande → rien à créditer (verrou posé = traité).
+  if (!claimed.code_promo) return;
+
+  try {
+    const code = await loadActiveCode(claimed.code_promo);
+    // loadActiveCode rejette les codes inactifs/épuisés mais on a juste
+    // besoin de retrouver l'id + savoir si c'est un code parrainage. On
+    // accepte le risque qu'un code désactivé depuis ne crédite plus.
+    if (!code || !code.est_parrainage) return;
+
+    const fullName = claimed.client_nom || '';
+    const [prenom, ...rest] = fullName.split(' ');
+    await traiterUsageSiParrainage({
+      codePromoId: code.id,
+      filleulPrenom: prenom || '',
+      filleulNom: rest.join(' ') || '',
+      filleulEmail: claimed.client_email || '',
+    });
+  } catch (err) {
+    // Échec dur du crédit : on relâche le verrou pour qu'un nouveau passage en
+    // « retirée » puisse re-tenter (sans risque de double-crédit, le verrou
+    // était posé pendant la tentative).
+    await supabaseAdmin
+      .from('commandes')
+      .update({ merci_credite_at: null })
+      .eq('id', id);
+    throw err;
+  }
 }
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {

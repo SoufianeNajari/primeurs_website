@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { isValidUuid } from '@/lib/uuid';
 import type { Product, ProduitOption } from '@/lib/produit';
 
 export const dynamic = 'force-dynamic';
@@ -57,7 +58,10 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     if (Array.isArray(body?.excludeIds)) {
-      excludeIds = body.excludeIds.filter((x: unknown) => typeof x === 'string').slice(0, 50);
+      // Filtre strict sur des UUID valides : ces ids sont interpolés dans un
+      // filtre PostgREST `.not('id','in',...)` ; un id contenant " ou )
+      // pourrait altérer la requête.
+      excludeIds = body.excludeIds.filter((x: unknown) => isValidUuid(x)).slice(0, 50);
     }
   } catch {
     // body optionnel

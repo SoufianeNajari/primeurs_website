@@ -95,25 +95,59 @@ export async function loadActiveCode(codeRaw: string): Promise<CodePromo | null>
   return c;
 }
 
-// Compte combien de fois un code donné a déjà été utilisé sur les
-// commandes existantes pour une adresse BAN donnée. Utilisé pour
-// faire respecter `usage_max_par_adresse`.
+// Compte combien de fois un code donné a déjà été consommé pour une adresse
+// BAN donnée. Source de vérité = la table compteur `code_usage_adresse`
+// (migration 033), alimentée atomiquement à la consommation (voir
+// `tryConsumeAddressUsage`). Sert au pré-check UX dans `validateCodePromo` ;
+// l'enforcement réel est atomique côté consommation.
 //
-// On compte sur le `code_promo` textuel (déjà stocké côté commande)
-// plutôt que sur l'id, pour rester robuste si le code est renommé.
+// On compte sur le `code_promo` textuel (clé du compteur) plutôt que sur l'id,
+// cohérent avec la consommation.
 export async function countUsageParAdresse(codeText: string, banId: string): Promise<number> {
   if (!codeText || !banId) return 0;
-  const { count, error } = await supabaseAdmin
-    .from('commandes')
-    .select('id', { head: true, count: 'exact' })
-    .eq('ban_id', banId)
+  const { data, error } = await supabaseAdmin
+    .from('code_usage_adresse')
+    .select('usage_count')
     .eq('code_promo', codeText)
-    .neq('statut', 'annulée');
+    .eq('ban_id', banId)
+    .maybeSingle();
   if (error) {
     console.error('[codes-promos] countUsageParAdresse:', error);
     return 0;
   }
-  return count ?? 0;
+  return data?.usage_count ?? 0;
+}
+
+// Consomme une unité du quota par adresse de façon ATOMIQUE (RPC migration 033).
+// Retourne true si la consommation a réussi (sous le plafond), false si le
+// plafond est déjà atteint. À appeler AVANT l'application du code dans /api/order
+// pour fermer la race entre le pré-check (countUsageParAdresse) et l'insert.
+export async function tryConsumeAddressUsage(
+  codeText: string,
+  banId: string,
+  limit: number,
+): Promise<boolean> {
+  const { data, error } = await supabaseAdmin.rpc('try_consume_address_usage', {
+    p_code: codeText,
+    p_ban_id: banId,
+    p_limit: limit,
+  });
+  if (error) {
+    console.error('[codes-promos] try_consume_address_usage:', error);
+    return false;
+  }
+  return data === true;
+}
+
+// Relâche (décrémente) une réservation par adresse — best-effort. Utilisé si la
+// consommation du compteur global échoue juste après, pour ne pas « brûler » un
+// usage adresse sur une commande qui n'a finalement pas appliqué le code.
+export async function releaseAddressUsage(codeText: string, banId: string): Promise<void> {
+  const { error } = await supabaseAdmin.rpc('release_address_usage', {
+    p_code: codeText,
+    p_ban_id: banId,
+  });
+  if (error) console.error('[codes-promos] release_address_usage:', error);
 }
 
 // Valide un code et calcule la réduction. Aucune mutation BDD.

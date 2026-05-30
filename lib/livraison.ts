@@ -24,23 +24,39 @@ export const CRENEAUX_LIVRAISON: CreneauLivraison[] = [
 export type VilleLivraison = {
   nom: string;
   codePostal: string;
+  insee: string; // code INSEE commune — préfixe des identifiants BAN (ban_id)
 };
 
 // 8 communes desservies (10-15 min voiture autour de Pontault-Combault).
+// `insee` vérifié via api-adresse.data.gouv.fr (type=municipality).
 export const VILLES_AUTORISEES: VilleLivraison[] = [
-  { nom: 'Pontault-Combault',   codePostal: '77340' },
-  { nom: 'Roissy-en-Brie',      codePostal: '77680' },
-  { nom: 'Ozoir-la-Ferrière',   codePostal: '77330' },
-  { nom: 'Lésigny',             codePostal: '77150' },
-  { nom: 'Émerainville',        codePostal: '77184' },
-  { nom: 'Le Plessis-Trévise',  codePostal: '94420' },
-  { nom: 'Villiers-sur-Marne',  codePostal: '94350' },
-  { nom: 'Noisy-le-Grand',      codePostal: '93160' },
+  { nom: 'Pontault-Combault',   codePostal: '77340', insee: '77373' },
+  { nom: 'Roissy-en-Brie',      codePostal: '77680', insee: '77390' },
+  { nom: 'Ozoir-la-Ferrière',   codePostal: '77330', insee: '77350' },
+  { nom: 'Lésigny',             codePostal: '77150', insee: '77249' },
+  { nom: 'Émerainville',        codePostal: '77184', insee: '77169' },
+  { nom: 'Le Plessis-Trévise',  codePostal: '94420', insee: '94059' },
+  { nom: 'Villiers-sur-Marne',  codePostal: '94350', insee: '94079' },
+  { nom: 'Noisy-le-Grand',      codePostal: '93160', insee: '93051' },
 ];
 
 export function isVilleAutorisee(nom: string): boolean {
   const norm = nom.trim().toLowerCase();
   return VILLES_AUTORISEES.some((v) => v.nom.toLowerCase() === norm);
+}
+
+// Codes INSEE des communes desservies.
+const SERVED_INSEE = new Set(VILLES_AUTORISEES.map((v) => v.insee));
+
+// Re-validation serveur d'un identifiant BAN. Un ban_id de la Base Adresse
+// Nationale s'écrit « <insee>_<voie>_<numero> » (ou plus court) : les 5 premiers
+// chiffres sont le code INSEE de la commune. On vérifie que ce préfixe
+// appartient à une commune desservie — sans faire confiance au champ `ville`
+// envoyé par le client. Rejette les ban_id forgés (chaîne arbitraire) ou hors
+// zone, et donc le contournement du quota par adresse via faux ban_id.
+export function isBanIdServed(banId: string): boolean {
+  const m = /^(\d{5})(?:_|$)/.exec(banId);
+  return m != null && SERVED_INSEE.has(m[1]);
 }
 
 export function getCreneauByKey(key: string): CreneauLivraison | undefined {
