@@ -24,6 +24,7 @@ Copy `.env.local.example` to `.env.local` and fill in:
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public anon key (browser queries) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Admin key (server-side only) |
 | `RESEND_API_KEY` | Email delivery via Resend |
+| `RESEND_FROM` | Sender address on a **verified** Resend domain. While empty, falls back to `onboarding@resend.dev`, which only delivers to the Resend account owner — customer confirmation emails never arrive. Setup: `docs/RESEND_DOMAIN_SETUP.md` |
 | `ADMIN_PASSWORD` | Plain-text password for `/admin` login |
 | `SHOP_EMAIL` | Recipient for order notification emails |
 
