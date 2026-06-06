@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'Recettes & conseils',
-  description: `Recettes de saison, conseils de conservation et idées d'accords autour des fruits, légumes et fromages de ${SITE.name}.`,
+  description: `Recettes de saison, conseils de conservation et idées d'accords autour des fruits et légumes de ${SITE.name}.`,
   alternates: { canonical: '/blog' },
   openGraph: {
     title: `Recettes & conseils — ${SITE.name}`,

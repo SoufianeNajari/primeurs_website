@@ -13,7 +13,7 @@ const FAQ_ITEMS: QA[] = [
     reponse: (
       <ol className="list-decimal pl-5 space-y-1.5">
         <li>Vous choisissez vos produits sur la boutique en ligne.</li>
-        <li>Vous sélectionnez votre créneau (mardi 17 h-19 h ou samedi 15 h-19 h) avant la veille 18 h.</li>
+        <li>Vous sélectionnez votre créneau (mardi ou vendredi après-midi, créneaux de 2 h entre 15 h et 21 h) avant la veille 18 h.</li>
         <li>Le livreur passe à l&apos;heure prévue avec votre commande fraîchement préparée.</li>
         <li>Vous réglez à la livraison, en carte ou en espèces.</li>
       </ol>
@@ -78,8 +78,8 @@ const FAQ_ITEMS: QA[] = [
     question: 'Quels sont les frais et le minimum de commande ?',
     reponse: (
       <p>
-        Pour le lancement, la livraison est <strong>offerte</strong> sur les
-        8 villes desservies, à partir de <strong>20 €</strong> de commande.
+        Le minimum de commande est de <strong>30 €</strong>. La livraison est
+        <strong> offerte dès 55 €</strong> de commande sur les 8 villes desservies.
         Aucun abonnement, aucun frais caché.
       </p>
     ),

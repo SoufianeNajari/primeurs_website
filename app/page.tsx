@@ -7,7 +7,7 @@ import VillesDesservies from '@/components/VillesDesservies';
 import LivreurSection from '@/components/LivreurSection';
 import ArrivageRungis from '@/components/ArrivageRungis';
 import HomeFAQ from '@/components/HomeFAQ';
-import { Sunrise, Leaf, ShieldCheck, Phone } from 'lucide-react';
+import { Sunrise, Leaf, ShieldCheck, MessageCircle } from 'lucide-react';
 import { SITE } from '@/lib/site';
 
 export const revalidate = 3600;
@@ -33,10 +33,9 @@ export default function LandingPage() {
       {/* 4. Section "Notre sélection" */}
       <section className="py-20 max-w-6xl mx-auto px-4 w-full">
         <h2 className="text-3xl md:text-4xl font-serif text-center text-neutral-800 mb-12">Notre sélection</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8 max-w-3xl mx-auto">
           <CategoryCard title="Fruits" imageSrc="/images/fruits.jpg" />
           <CategoryCard title="Légumes" imageSrc="/images/legumes.jpg" />
-          <CategoryCard title="Fromages" imageSrc="/images/fromages.jpg" />
         </div>
       </section>
 
@@ -55,8 +54,9 @@ export default function LandingPage() {
             </h2>
             <p className="text-neutral-600 max-w-2xl mx-auto leading-relaxed">
               Chaque matin avant le lever du jour, nous parcourons les allées du marché de Rungis — premier
-              marché de produits frais au monde — pour sélectionner les meilleurs fruits, légumes et fromages
-              affinés. Livrés chez vous dans la foulée, sans intermédiaire superflu.
+              marché de produits frais au monde — pour sélectionner, cageot par cageot, les meilleurs fruits
+              et légumes de saison. Une sélection exigeante : on goûte, on compare, on ne retient que le haut
+              du panier. Livrés chez vous dans la foulée, sans intermédiaire superflu.
             </p>
           </div>
 
@@ -72,7 +72,7 @@ export default function LandingPage() {
               <Leaf size={28} className="text-green-primary mx-auto mb-4" strokeWidth={1.5} />
               <h3 className="font-serif text-lg text-neutral-800 mb-2">Saison &amp; maturité</h3>
               <p className="text-sm text-neutral-600 leading-relaxed">
-                Fruits cueillis à maturité, légumes du moment, fromages affinés à point. Pas de vitrine,
+                Fruits cueillis à maturité, légumes du moment, choisis un à un. Pas de vitrine,
                 pas de transport longue distance inutile.
               </p>
             </div>
@@ -99,15 +99,26 @@ export default function LandingPage() {
         <div className="max-w-2xl mx-auto px-4 text-center">
           <h2 className="text-2xl md:text-3xl font-serif text-neutral-800 mb-3">Une question ?</h2>
           <p className="text-neutral-600 mb-6">
-            Notre équipe répond directement, du mardi au samedi.
+            Écrivez-nous sur WhatsApp, on vous répond directement, <strong>7j/7</strong>.
           </p>
           <a
-            href={`tel:${SITE.telephone.replace(/\s/g, '')}`}
-            className="inline-flex items-center gap-3 text-2xl font-serif text-green-primary hover:text-green-dark transition-colors"
+            href={`https://wa.me/${SITE.whatsapp}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-3 bg-[#25D366] text-white px-7 py-4 text-lg font-medium hover:bg-[#1da851] transition-colors"
           >
-            <Phone size={24} strokeWidth={1.5} />
-            {SITE.telephoneDisplay}
+            <MessageCircle size={24} strokeWidth={1.5} />
+            {SITE.whatsappDisplay}
           </a>
+          <p className="text-sm text-neutral-500 mt-5">
+            Ou par téléphone :{' '}
+            <a
+              href={`tel:${SITE.telephone.replace(/\s/g, '')}`}
+              className="text-green-primary hover:text-green-dark transition-colors font-medium"
+            >
+              {SITE.telephoneDisplay}
+            </a>
+          </p>
         </div>
       </section>
     </main>

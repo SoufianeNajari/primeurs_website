@@ -14,7 +14,7 @@ export default function VillesDesservies() {
             Nous livrons 8 communes
           </h2>
           <p className="text-sm text-neutral-500 max-w-md">
-            Mardi 17h-19h ou samedi 15h-19h.
+            Mardi ou vendredi après-midi, créneaux de 2 h entre 15h et 21h.
           </p>
         </div>
 

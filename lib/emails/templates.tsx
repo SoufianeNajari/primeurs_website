@@ -968,7 +968,7 @@ function RelanceJ14Email(props: {
           </Section>
 
           <Text style={{ ...muted, textAlign: 'center' as const, fontSize: '12px', marginTop: '8px' }}>
-            Livraison à votre porte sur les créneaux du mardi et du samedi.
+            Livraison à votre porte sur les créneaux du mardi et du vendredi après-midi.
           </Text>
 
           <Hr style={hr} />

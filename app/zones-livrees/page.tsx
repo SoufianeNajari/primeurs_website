@@ -7,7 +7,7 @@ import { SITE } from '@/lib/site';
 export const metadata: Metadata = {
   title: 'Zones desservies',
   description:
-    'Liste des communes desservies par Primeur Chez Vous : livraison à domicile de fruits, légumes et fromages affinés autour de Pontault-Combault.',
+    'Liste des communes desservies par Primeur Chez Vous : livraison à domicile de fruits et légumes frais autour de Pontault-Combault.',
   alternates: { canonical: '/zones-livrees' },
 };
 
@@ -72,7 +72,8 @@ export default function ZonesLivreesPage() {
             ))}
           </ul>
           <p className="text-sm text-neutral-600 mt-6 leading-relaxed">
-            Minimum de commande&nbsp;: <strong>20 €</strong>. Paiement à la livraison (CB ou espèces). Aucun acompte demandé.
+            Minimum de commande&nbsp;: <strong>30 €</strong>. Livraison <strong>offerte dès 55 €</strong> de commande.
+            Paiement à la livraison (CB ou espèces). Aucun acompte demandé.
           </p>
         </section>
 

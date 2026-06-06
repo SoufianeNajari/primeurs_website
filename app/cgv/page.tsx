@@ -36,8 +36,8 @@ export default function CgvPage() {
       <section>
         <h2>Article 2 — Produits</h2>
         <p>
-          Les produits proposés sont des denrées alimentaires fraîches, notamment fruits, légumes et
-          fromages. Ils sont vendus au poids ou à la pièce, selon les indications portées sur chaque fiche
+          Les produits proposés sont des denrées alimentaires fraîches, notamment fruits et
+          légumes. Ils sont vendus au poids ou à la pièce, selon les indications portées sur chaque fiche
           produit. Les photographies et descriptifs sont fournis à titre indicatif et n&apos;engagent pas
           le Vendeur en cas de variations mineures (calibre, couleur, maturité) inhérentes aux produits
           frais.
@@ -96,7 +96,7 @@ export default function CgvPage() {
         <p>
           Les livraisons sont effectuées sur les communes listées dans la page{' '}
           <a href="/zones-livrees">Zones desservies</a>, dans les créneaux annoncés (actuellement&nbsp;:
-          mardi 17h-19h et samedi 15h-19h). La date de cutoff est fixée à <strong>la veille du créneau,
+          mardi et vendredi après-midi, créneaux de 2 h entre 15h et 21h). La date de cutoff est fixée à <strong>la veille du créneau,
           18h</strong>&nbsp;: au-delà, seul le créneau suivant est proposé.
         </p>
         <p>

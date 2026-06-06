@@ -29,7 +29,7 @@ export const SITE = {
   fullName: 'Primeur Chez Vous · by Pontault Primeurs',
   shortName: 'Primeur Chez Vous',
   description:
-    'Livraison à domicile de fruits, légumes et fromages frais, sélectionnés chaque matin au marché de Rungis. Mardi et samedi, paiement à la réception.',
+    'Livraison à domicile de fruits et légumes frais, sélectionnés chaque matin au marché de Rungis. Mardi et vendredi après-midi, paiement à la réception.',
   // Boutique partenaire (Pontault Primeurs) — sert de référence historique pour les avis Google.
   // Cf. option A validée 2026-05-06 : on capitalise sur les avis sans réintroduire le co-branding partout.
   partenaire: {
@@ -46,6 +46,10 @@ export const SITE = {
   locale: 'fr_FR',
   telephone: '+33160296298',
   telephoneDisplay: '01 60 29 62 98',
+  // Ligne WhatsApp directe (joignable 7j/7) — affichée dans la section contact
+  // de la home et le footer. Format international sans « + » pour les liens wa.me.
+  whatsapp: '33764383935',
+  whatsappDisplay: '07 64 38 39 35',
   // Email de contact public. Vide tant qu'aucune adresse dédiée n'est créée :
   //  les composants qui l'utilisent (Footer, mentions légales, confidentialité,
   //  zones-livrées, JSON-LD localbusiness) gèrent le cas vide en affichant
@@ -84,7 +88,7 @@ export const LIVREUR = {
   prenom: 'Karim',
   nomComplet: '',
   bio:
-    "Bonjour, moi c'est Karim. Chaque mardi et samedi, je me lève à 4 h pour sélectionner moi-même, dans les allées de Rungis, les fruits, légumes et fromages affinés que je vous livrerai dans la journée. Une question sur un produit, un fromage à commander, un créneau à décaler ? Vous m'appelez direct. C'est ça, ma promesse.",
+    "Bonjour, moi c'est Karim. Chaque mardi et vendredi, je me lève à 4 h pour sélectionner moi-même, dans les allées de Rungis, les fruits et légumes que je vous livrerai l'après-midi. Je choisis chaque produit comme s'il était pour ma table : à maturité, au meilleur de sa saison. Une question, un créneau à décaler ? Vous m'écrivez direct sur WhatsApp. C'est ça, ma promesse.",
   photoUrl:
     'https://images.unsplash.com/photo-1566753323558-f4e0952af115?auto=format&fit=crop&w=800&q=80',
   photoAlt: 'Portrait du livreur Primeur Chez Vous',

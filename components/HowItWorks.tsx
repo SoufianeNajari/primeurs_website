@@ -5,13 +5,13 @@ export default function HowItWorks() {
     {
       id: 1,
       title: 'Choisissez vos produits',
-      desc: 'Composez votre panier dans la boutique, minimum 20 €.',
+      desc: 'Composez votre panier dans la boutique, minimum 30 €.',
       icon: <ShoppingBag size={28} className="text-green-primary" strokeWidth={1.5} />,
     },
     {
       id: 2,
       title: 'Choisissez votre créneau',
-      desc: 'Mardi 17h-19h ou samedi 15h-19h, jusqu\'à la veille 18h.',
+      desc: 'Mardi ou vendredi après-midi (créneaux de 2 h, 15h-21h), jusqu\'à la veille 18h.',
       icon: <Truck size={28} className="text-green-primary" strokeWidth={1.5} />,
     },
     {

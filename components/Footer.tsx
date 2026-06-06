@@ -11,12 +11,20 @@ export default function Footer() {
               {SITE.name}
             </h2>
             <p className="text-sm leading-relaxed">
-              Livraison à domicile de fruits, légumes et fromages frais, sélectionnés chaque matin à Rungis.
+              Livraison à domicile de fruits et légumes frais, sélectionnés chaque matin à Rungis.
             </p>
             <p className="text-sm mt-4">
               <a
-                href={`tel:${SITE.telephone}`}
+                href={`https://wa.me/${SITE.whatsapp}`}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="hover:text-white transition-colors block"
+              >
+                WhatsApp 7j/7 · {SITE.whatsappDisplay}
+              </a>
+              <a
+                href={`tel:${SITE.telephone}`}
+                className="hover:text-white transition-colors block mt-1"
               >
                 {SITE.telephoneDisplay}
               </a>

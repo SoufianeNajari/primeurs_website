@@ -1,18 +1,16 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { Phone, Sunrise, Heart, MessageCircle, ArrowLeft } from 'lucide-react';
+import { Sunrise, Heart, MessageCircle, ArrowLeft } from 'lucide-react';
 import { LIVREUR, SITE } from '@/lib/site';
 
 export const metadata: Metadata = {
   title: `Qui livre ? — ${LIVREUR.prenom} | ${SITE.name}`,
-  description: `Découvrez ${LIVREUR.prenom}, votre livreur Primeur Chez Vous. Sélection à Rungis chaque matin de livraison, livraison à domicile mardi et samedi.`,
+  description: `Découvrez ${LIVREUR.prenom}, votre livreur Primeur Chez Vous. Sélection à Rungis chaque matin de livraison, livraison à domicile mardi et vendredi après-midi.`,
   alternates: { canonical: '/qui-livre' },
 };
 
 export default function QuiLivrePage() {
-  const phoneHref = `tel:${SITE.telephone.replace(/\s/g, '')}`;
-
   return (
     <main className="bg-[#FAF9F7] min-h-screen">
       <div className="max-w-4xl mx-auto px-4 py-12 md:py-20">
@@ -67,9 +65,9 @@ export default function QuiLivrePage() {
           </div>
           <div className="bg-white border border-neutral-200 p-6">
             <MessageCircle size={24} className="text-green-primary mb-3" strokeWidth={1.5} />
-            <h3 className="font-serif text-lg text-neutral-800 mb-2">Une question ? Vous m&apos;appelez</h3>
+            <h3 className="font-serif text-lg text-neutral-800 mb-2">Une question ? WhatsApp 7j/7</h3>
             <p className="text-sm text-neutral-600 leading-relaxed">
-              Pas de standard, pas de chatbot. Mon numéro direct est sur chaque commande.
+              Pas de standard, pas de chatbot. Vous m&apos;écrivez directement sur WhatsApp, 7 jours sur 7.
             </p>
           </div>
         </div>
@@ -77,7 +75,7 @@ export default function QuiLivrePage() {
         <div className="bg-white border border-neutral-200 p-8 text-center">
           <h2 className="text-2xl font-serif text-neutral-800 mb-3">Prêt à commander ?</h2>
           <p className="text-neutral-600 mb-6 max-w-xl mx-auto">
-            Passez commande avant la veille 18 h pour une livraison le lendemain (mardi ou samedi).
+            Passez commande avant la veille 18 h pour une livraison le lendemain (mardi ou vendredi après-midi).
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link
@@ -87,10 +85,12 @@ export default function QuiLivrePage() {
               Voir la boutique
             </Link>
             <a
-              href={phoneHref}
+              href={`https://wa.me/${SITE.whatsapp}`}
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-2 border border-green-primary text-green-primary px-6 py-3 text-sm uppercase tracking-widest font-medium hover:bg-green-primary hover:text-white transition-colors"
             >
-              <Phone size={16} strokeWidth={1.5} /> {SITE.telephoneDisplay}
+              <MessageCircle size={16} strokeWidth={1.5} /> WhatsApp 7j/7
             </a>
           </div>
         </div>

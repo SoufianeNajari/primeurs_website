@@ -1,12 +1,12 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { Phone, ArrowRight } from 'lucide-react';
+import { MessageCircle, ArrowRight } from 'lucide-react';
 import { LIVREUR, SITE } from '@/lib/site';
 
 // Bloc home présentant le livreur (visage humain de la marque).
 // Une version condensée du contenu de /qui-livre, avec CTA vers la page complète.
 export default function LivreurSection() {
-  const phoneHref = `tel:${SITE.telephone.replace(/\s/g, '')}`;
+  const whatsappHref = `https://wa.me/${SITE.whatsapp}`;
 
   return (
     <section className="py-16 md:py-20 bg-[#FAF9F7] border-t border-neutral-200">
@@ -25,7 +25,7 @@ export default function LivreurSection() {
 
           <div>
             <span className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.25em] text-green-primary font-medium mb-4">
-              Votre livreur
+              Notre service
             </span>
             <h2 className="text-3xl md:text-4xl font-serif text-neutral-800 mb-5">
               {LIVREUR.prenom}, votre primeur de quartier
@@ -42,10 +42,12 @@ export default function LivreurSection() {
                 En savoir plus <ArrowRight size={16} strokeWidth={1.5} />
               </Link>
               <a
-                href={phoneHref}
+                href={whatsappHref}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="inline-flex items-center justify-center gap-2 border border-green-primary text-green-primary px-6 py-3 text-sm uppercase tracking-widest font-medium hover:bg-green-primary hover:text-white transition-colors"
               >
-                <Phone size={16} strokeWidth={1.5} /> {SITE.telephoneDisplay}
+                <MessageCircle size={16} strokeWidth={1.5} /> WhatsApp 7j/7
               </a>
             </div>
           </div>

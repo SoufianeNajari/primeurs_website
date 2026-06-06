@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     locale: SITE.locale,
     url: SITE.url,
     siteName: SITE.name,
-    title: `${SITE.name} — Livraison de fruits, légumes et fromages frais`,
+    title: `${SITE.name} — Livraison de fruits & légumes frais`,
     description: SITE.description,
     images: [{ url: DEFAULT_OG_IMAGE, width: 1200, height: 630, alt: SITE.name }],
   },

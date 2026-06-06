@@ -12,13 +12,13 @@ import { breadcrumbJsonLd } from '@/lib/json-ld';
 export const revalidate = 0; // Force SSR
 
 export const metadata: Metadata = {
-  title: 'Boutique — Fruits, légumes et fromages de saison',
+  title: 'Boutique — Fruits & légumes de saison',
   description:
-    'Découvrez notre sélection de fruits, légumes et fromages frais, sélectionnés à Rungis. Commande en ligne, livraison à domicile mardi et samedi.',
+    'Découvrez notre sélection de fruits et légumes frais, sélectionnés à Rungis. Commande en ligne, livraison à domicile mardi et vendredi après-midi.',
   alternates: { canonical: '/boutique' },
   openGraph: {
     title: 'Boutique — Primeur Chez Vous',
-    description: 'Fruits, légumes et fromages frais, livrés à domicile depuis Rungis.',
+    description: 'Fruits & légumes frais, livrés à domicile depuis Rungis.',
     url: '/boutique',
   },
 };

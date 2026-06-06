@@ -95,6 +95,28 @@ export async function loadActiveCode(codeRaw: string): Promise<CodePromo | null>
   return c;
 }
 
+// Sur le chemin d'échec (loadActiveCode → null), refait une lecture brute pour
+// distinguer la cause réelle et renvoyer un message précis au client. Évite le
+// fourre-tout « invalide ou expiré » qui masquait pourquoi un code refusait
+// (inexistant vs inactif vs expiré vs plafond atteint).
+async function explainInvalidCode(codeRaw: string): Promise<string> {
+  const code = normalizeCode(codeRaw);
+  if (!code) return 'Code promo invalide.';
+  const { data } = await supabaseAdmin
+    .from('codes_promos')
+    .select('actif, expire_at, usage_max, usage_actuel')
+    .eq('code', code)
+    .maybeSingle();
+  if (!data) return 'Ce code promo n\'existe pas.';
+  const c = data as Pick<CodePromo, 'actif' | 'expire_at' | 'usage_max' | 'usage_actuel'>;
+  if (!c.actif) return 'Ce code promo n\'est plus actif.';
+  if (c.expire_at && new Date(c.expire_at) <= new Date()) return 'Ce code promo a expiré.';
+  if (c.usage_max != null && c.usage_actuel >= c.usage_max) {
+    return 'Ce code promo a atteint sa limite d\'utilisation.';
+  }
+  return 'Code promo invalide.';
+}
+
 // Compte combien de fois un code donné a déjà été consommé pour une adresse
 // BAN donnée. Source de vérité = la table compteur `code_usage_adresse`
 // (migration 033), alimentée atomiquement à la consommation (voir
@@ -171,7 +193,7 @@ export async function validateCodePromo(
 ): Promise<CodePromoValidation> {
   const code = await loadActiveCode(codeRaw);
   if (!code) {
-    return { ok: false, raison: 'Code promo invalide ou expiré.' };
+    return { ok: false, raison: await explainInvalidCode(codeRaw) };
   }
   const emailNorm = normalizeEmail(clientEmail);
   if (code.client_email_lock && (!emailNorm || emailNorm !== normalizeEmail(code.client_email_lock))) {

@@ -32,7 +32,7 @@ export default function HeroSection() {
           Primeur Chez Vous
         </h1>
         <p className="text-lg md:text-xl text-white/90 font-light mb-4 drop-shadow-sm max-w-xl">
-          Fruits, légumes et fromages affinés. Sélection chaque matin à Rungis, livrés chez vous.
+          Fruits &amp; légumes de saison. Sélection chaque matin à Rungis, livrés chez vous.
         </p>
         <p className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.25em] text-white/70 font-medium mb-10">
           <Sparkles size={12} strokeWidth={1.5} /> Sélection quotidienne au marché de Rungis

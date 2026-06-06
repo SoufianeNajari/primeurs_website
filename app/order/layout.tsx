@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   title: 'Passer commande',
   description:
-    'Finalisez votre commande de fruits, légumes et fromages. Choisissez votre créneau de livraison à domicile.',
+    'Finalisez votre commande de fruits et légumes. Choisissez votre créneau de livraison à domicile.',
   alternates: { canonical: '/order' },
   robots: { index: false, follow: true },
 };

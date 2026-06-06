@@ -22,7 +22,7 @@ const TEMPLATE_EXAMPLES = [
   // multi-options avec prix
   ['Tomates cerise locales', 'Légumes', '', '', '', 'France, Île-de-France', 'false', 'true', '', 'Catégorie 1', '', '6', '9', '2', 'true', '', '', 'la barquette', '2,50', 'au kg', '8,00', '', '', '', '', '', '', '', ''],
   // produit "à peser" (prix vide = poids incertain)
-  ['Comté 18 mois', 'Fromages', '', '', '', 'France, Jura', 'false', 'false', '', '', '', '', '', '3', 'true', '', '', 'au kg', '32,00', 'à la coupe', '', '', '', '', '', '', '', '', ''],
+  ['Cerises Burlat', 'Fruits', '', '', '', 'France, Provence', 'false', 'false', '', '', '5', '7', '', '3', 'true', '', '', 'au kg', '8,90', 'la barquette 500g', '', '', '', '', '', '', '', '', ''],
 ];
 
 function csvEscape(v: string): string {

@@ -2,7 +2,7 @@
 //
 // Sources de vérité :
 // - Villes desservies (8) : sélection 10-15 min voiture autour de Pontault.
-// - Créneaux fixes hebdo (2) : Mardi 17h-19h et Samedi 15h-19h.
+// - Créneaux fixes hebdo : Mardi et Vendredi, 3 créneaux de 2 h (15h-17h, 17h-19h, 19h-21h).
 // - Cutoff : la veille à H heures (param BDD `cutoff_veille_heure`, défaut 18h).
 // - Frais et min commande : params BDD (`frais_livraison_cents`, `min_commande_cents`).
 
@@ -17,8 +17,12 @@ export type CreneauLivraison = {
 };
 
 export const CRENEAUX_LIVRAISON: CreneauLivraison[] = [
-  { key: 'mardi-17-19',  jourSemaine: 2, heureDebut: 17, heureFin: 19, label: 'Mardi 17h-19h' },
-  { key: 'samedi-15-19', jourSemaine: 6, heureDebut: 15, heureFin: 19, label: 'Samedi 15h-19h' },
+  { key: 'mardi-15-17',    jourSemaine: 2, heureDebut: 15, heureFin: 17, label: 'Mardi 15h-17h' },
+  { key: 'mardi-17-19',    jourSemaine: 2, heureDebut: 17, heureFin: 19, label: 'Mardi 17h-19h' },
+  { key: 'mardi-19-21',    jourSemaine: 2, heureDebut: 19, heureFin: 21, label: 'Mardi 19h-21h' },
+  { key: 'vendredi-15-17', jourSemaine: 5, heureDebut: 15, heureFin: 17, label: 'Vendredi 15h-17h' },
+  { key: 'vendredi-17-19', jourSemaine: 5, heureDebut: 17, heureFin: 19, label: 'Vendredi 17h-19h' },
+  { key: 'vendredi-19-21', jourSemaine: 5, heureDebut: 19, heureFin: 21, label: 'Vendredi 19h-21h' },
 ];
 
 export type VilleLivraison = {
@@ -69,10 +73,10 @@ const PARAM_CUTOFF = 'cutoff_veille_heure';
 const PARAM_SEUIL_GRATUIT = 'seuil_livraison_gratuite_cents';
 
 export const DEFAULT_FRAIS_LIVRAISON_CENTS = 0;
-export const DEFAULT_MIN_COMMANDE_CENTS = 2000;
+export const DEFAULT_MIN_COMMANDE_CENTS = 3000;
 export const DEFAULT_CUTOFF_VEILLE_HEURE = 18;
 // 0 = pas de seuil, livraison gratuite jamais déclenchée par le montant.
-export const DEFAULT_SEUIL_LIVRAISON_GRATUITE_CENTS = 5000;
+export const DEFAULT_SEUIL_LIVRAISON_GRATUITE_CENTS = 5500;
 
 export async function getFraisLivraisonCents(): Promise<number> {
   return getParam<number>(PARAM_FRAIS, DEFAULT_FRAIS_LIVRAISON_CENTS);

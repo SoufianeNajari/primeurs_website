@@ -61,7 +61,7 @@ type Order = {
 }
 
 type StatusFilter = 'tous' | 'reçue' | 'prête' | 'retirée' | 'annulée';
-type CreneauFilter = 'tous' | 'mardi' | 'samedi';
+type CreneauFilter = 'tous' | 'mardi' | 'vendredi';
 
 function buildMapsUrl(adresse: string, codePostal: string | null | undefined, ville: string | null | undefined): string {
   const q = encodeURIComponent(`${adresse}, ${codePostal ?? ''} ${ville ?? ''}, France`.trim());
@@ -360,7 +360,7 @@ export default function OrderList({
   const creneauCounts = useMemo(() => ({
     tous: filteredBySearch.length,
     mardi: filteredBySearch.filter(o => (o.creneau_livraison || '').toLowerCase().startsWith('mardi')).length,
-    samedi: filteredBySearch.filter(o => (o.creneau_livraison || '').toLowerCase().startsWith('samedi')).length,
+    vendredi: filteredBySearch.filter(o => (o.creneau_livraison || '').toLowerCase().startsWith('vendredi')).length,
   }), [filteredBySearch])
 
   const setStatusWithToast = async (id: string, newStatus: string, currentStatus: string, label: string, withUndo = false) => {
@@ -830,7 +830,7 @@ export default function OrderList({
 
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-[10px] uppercase tracking-widest text-neutral-400 font-medium pr-1">Créneau</span>
-          {(['tous', 'mardi', 'samedi'] as CreneauFilter[]).map(c => (
+          {(['tous', 'mardi', 'vendredi'] as CreneauFilter[]).map(c => (
             <button
               key={c}
               onClick={() => setCreneauFilter(c)}
@@ -840,7 +840,7 @@ export default function OrderList({
                   : 'border-neutral-200 text-neutral-500 hover:border-neutral-400 hover:text-neutral-800'
               }`}
             >
-              {c === 'tous' ? 'Tous' : c === 'mardi' ? 'Mardi' : 'Samedi'} <span className="text-neutral-400 ml-1">({creneauCounts[c]})</span>
+              {c === 'tous' ? 'Tous' : c === 'mardi' ? 'Mardi' : 'Vendredi'} <span className="text-neutral-400 ml-1">({creneauCounts[c]})</span>
             </button>
           ))}
         </div>
