@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import CancelClient from './CancelClient';
 import { verifyCancelToken } from '@/lib/cancel-token';
 import { supabaseAdmin } from '@/lib/supabase';
+import { getCutoffVeilleHeure, isCancellationOpen, DEFAULT_CUTOFF_VEILLE_HEURE } from '@/lib/livraison';
+import { SITE } from '@/lib/site';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,6 +39,11 @@ export default async function CancelPage({ searchParams }: { searchParams: Searc
     order = data ?? null;
   }
 
+  // Même cutoff que côté API : on pré-désactive le bouton si le délai est passé,
+  // pour montrer directement le message de contact plutôt qu'un échec au clic.
+  const cutoffHeure = order ? await getCutoffVeilleHeure() : DEFAULT_CUTOFF_VEILLE_HEURE;
+  const cancellationOpen = order ? isCancellationOpen(order.date_livraison, cutoffHeure, new Date()) : true;
+
   return (
     <CancelClient
       tokenOk={tokenOk}
@@ -44,6 +51,12 @@ export default async function CancelPage({ searchParams }: { searchParams: Searc
       exp={exp}
       sig={sig}
       order={order}
+      cancellationOpen={cancellationOpen}
+      cutoffHeure={cutoffHeure}
+      telephone={SITE.telephone}
+      telephoneDisplay={SITE.telephoneDisplay}
+      whatsapp={SITE.whatsapp}
+      whatsappDisplay={SITE.whatsappDisplay}
     />
   );
 }

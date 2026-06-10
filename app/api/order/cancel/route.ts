@@ -3,6 +3,8 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { sendEmail } from '@/lib/mailer';
 import { verifyCancelToken } from '@/lib/cancel-token';
 import { shortOrderId } from '@/lib/order';
+import { getCutoffVeilleHeure, isCancellationOpen } from '@/lib/livraison';
+import { SITE } from '@/lib/site';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,6 +55,20 @@ export async function POST(request: Request) {
   // Déjà retirée : on refuse l'annulation
   if (order.statut === 'retirée') {
     return NextResponse.json({ error: 'Commande déjà livrée, annulation impossible.' }, { status: 409 });
+  }
+
+  // Cutoff d'annulation : la veille de la livraison à H heures (défaut 18h, Paris).
+  // Au-delà, la marchandise est déjà achetée/préparée à Rungis → on refuse le
+  // self-service et on renvoie vers le contact direct.
+  const cutoffHeure = await getCutoffVeilleHeure();
+  if (!isCancellationOpen(order.date_livraison, cutoffHeure, new Date())) {
+    return NextResponse.json(
+      {
+        error: `Il est trop tard pour annuler en ligne (au-delà de la veille de la livraison à ${cutoffHeure}h). Contactez-nous au ${SITE.telephoneDisplay} ou sur WhatsApp au ${SITE.whatsappDisplay}.`,
+        tooLate: true,
+      },
+      { status: 409 },
+    );
   }
 
   const { error: updateErr } = await supabaseAdmin

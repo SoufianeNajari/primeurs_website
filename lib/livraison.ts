@@ -31,17 +31,16 @@ export type VilleLivraison = {
   insee: string; // code INSEE commune — préfixe des identifiants BAN (ban_id)
 };
 
-// 8 communes desservies (10-15 min voiture autour de Pontault-Combault).
+// 7 communes desservies (10-15 min voiture autour de Pontault-Combault).
 // `insee` vérifié via api-adresse.data.gouv.fr (type=municipality).
 export const VILLES_AUTORISEES: VilleLivraison[] = [
-  { nom: 'Pontault-Combault',   codePostal: '77340', insee: '77373' },
-  { nom: 'Roissy-en-Brie',      codePostal: '77680', insee: '77390' },
-  { nom: 'Ozoir-la-Ferrière',   codePostal: '77330', insee: '77350' },
-  { nom: 'Lésigny',             codePostal: '77150', insee: '77249' },
-  { nom: 'Émerainville',        codePostal: '77184', insee: '77169' },
-  { nom: 'Le Plessis-Trévise',  codePostal: '94420', insee: '94059' },
-  { nom: 'Villiers-sur-Marne',  codePostal: '94350', insee: '94079' },
-  { nom: 'Noisy-le-Grand',      codePostal: '93160', insee: '93051' },
+  { nom: 'Le Plessis-Trévise',      codePostal: '94420', insee: '94059' },
+  { nom: 'Pontault-Combault',       codePostal: '77340', insee: '77373' },
+  { nom: 'Sucy-en-Brie',            codePostal: '94370', insee: '94071' },
+  { nom: 'Chennevières-sur-Marne',  codePostal: '94430', insee: '94019' },
+  { nom: 'Villiers-sur-Marne',      codePostal: '94350', insee: '94079' },
+  { nom: 'La Queue-en-Brie',        codePostal: '94510', insee: '94060' },
+  { nom: 'Bry-sur-Marne',           codePostal: '94360', insee: '94015' },
 ];
 
 export function isVilleAutorisee(nom: string): boolean {
@@ -156,4 +155,69 @@ export function formatCreneauDate(date: Date): string {
     day: 'numeric',
     month: 'long',
   });
+}
+
+// ───── Cutoff d'annulation client ─────
+//
+// L'annulation en ligne (lien signé reçu par email) reste possible tant qu'on
+// n'a pas dépassé le même cutoff que la commande, appliqué à la livraison : la
+// veille du jour de livraison à `cutoffVeilleHeure` (défaut 18h), heure de
+// Paris. Au-delà, le père a déjà acheté/préparé la marchandise à Rungis : on
+// bloque le self-service et on renvoie le client vers le téléphone / WhatsApp.
+
+const PARIS_TZ = 'Europe/Paris';
+
+// Offset d'Europe/Paris (en ms, ex +7_200_000 l'été) pour un instant donné.
+// Robuste DST : on lit l'horloge murale Paris via Intl puis on compare à l'UTC.
+function parisOffsetMs(instant: Date): number {
+  const dtf = new Intl.DateTimeFormat('en-US', {
+    timeZone: PARIS_TZ,
+    hour12: false,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  });
+  const p = Object.fromEntries(dtf.formatToParts(instant).map((x) => [x.type, x.value]));
+  const asUtc = Date.UTC(
+    Number(p.year), Number(p.month) - 1, Number(p.day),
+    Number(p.hour), Number(p.minute), Number(p.second),
+  );
+  return asUtc - instant.getTime();
+}
+
+// Convertit une horloge murale parisienne (Y/M/D Hh) en instant epoch (ms UTC).
+function parisWallClockToMs(year: number, month: number, day: number, hour: number): number {
+  const guess = Date.UTC(year, month - 1, day, hour, 0, 0);
+  // L'offset au voisinage du guess est le même qu'à l'instant réel : les bascules
+  // DST ont lieu vers 1h/3h du matin un dimanche, jamais autour de 18h.
+  const offset = parisOffsetMs(new Date(guess));
+  return guess - offset;
+}
+
+// Instant (epoch ms) du cutoff d'annulation pour une livraison donnée : la
+// veille de `dateLivraisonIso` (YYYY-MM-DD) à `cutoffVeilleHeure`, heure Paris.
+// Retourne null si la date est absente ou mal formée.
+export function cancellationCutoffMs(
+  dateLivraisonIso: string | null | undefined,
+  cutoffVeilleHeure: number,
+): number | null {
+  if (!dateLivraisonIso) return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateLivraisonIso);
+  if (!m) return null;
+  const veille = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+  veille.setUTCDate(veille.getUTCDate() - 1);
+  return parisWallClockToMs(
+    veille.getUTCFullYear(), veille.getUTCMonth() + 1, veille.getUTCDate(), cutoffVeilleHeure,
+  );
+}
+
+// L'annulation self-service est-elle encore ouverte ? Fail-open si la date de
+// livraison est inconnue (anciennes commandes) : on ne bloque pas.
+export function isCancellationOpen(
+  dateLivraisonIso: string | null | undefined,
+  cutoffVeilleHeure: number,
+  now: Date = new Date(),
+): boolean {
+  const cutoff = cancellationCutoffMs(dateLivraisonIso, cutoffVeilleHeure);
+  if (cutoff == null) return true;
+  return now.getTime() < cutoff;
 }

@@ -835,6 +835,7 @@ function RappelJ1Email(props: {
   adresseFull: string;
   cancelUrl: string;
   livreurPrenom: string;
+  cutoffHeure: number;
 }) {
   const dateLong = formatDateLong(props.dateLivraison) ?? props.dateLivraison;
   return (
@@ -903,7 +904,8 @@ function RappelJ1Email(props: {
             </EmailLink>
           </Section>
           <Text style={{ ...muted, textAlign: 'center' as const, fontSize: '12px' }}>
-            Annulation gratuite et immédiate, sans débit.
+            Annulation en ligne gratuite jusqu&apos;à la veille de la livraison à {props.cutoffHeure}h.
+            Passé ce délai, un appel suffit.
           </Text>
 
           <Footer />
@@ -920,6 +922,7 @@ export type EmailRappelJ1Args = {
   adresseFull: string;
   cancelUrl: string;
   livreurPrenom: string;
+  cutoffHeure: number;
 };
 
 export async function emailRappelJ1(args: EmailRappelJ1Args): Promise<string> {

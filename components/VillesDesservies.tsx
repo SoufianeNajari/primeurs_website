@@ -11,7 +11,7 @@ export default function VillesDesservies() {
             <MapPin size={14} strokeWidth={1.5} /> Zone de livraison
           </span>
           <h2 className="text-2xl md:text-3xl font-serif text-neutral-800 mb-2">
-            Nous livrons 8 communes
+            Nous livrons 7 communes
           </h2>
           <p className="text-sm text-neutral-500 max-w-md">
             Mardi ou vendredi après-midi, créneaux de 2 h entre 15h et 21h.

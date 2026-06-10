@@ -5,6 +5,7 @@ import { isAdmin } from '@/lib/admin-auth';
 import { sendEmail } from '@/lib/mailer';
 import { emailRappelJ1 } from '@/lib/emails/templates';
 import { buildCancelUrl } from '@/lib/cancel-token';
+import { getCutoffVeilleHeure } from '@/lib/livraison';
 import { LIVREUR, currentOriginFromRequest } from '@/lib/site';
 import { splitClientNom } from '@/lib/order';
 import { badRequestIfNotUuid } from '@/lib/uuid';
@@ -42,6 +43,7 @@ export async function POST(_request: NextRequest, { params }: { params: { id: st
     .filter(Boolean) as string[];
   const adresseFull = adresseParts.join(', ');
   const cancelUrl = buildCancelUrl(currentOriginFromRequest(headers()), cmd.id, 7);
+  const cutoffHeure = await getCutoffVeilleHeure();
 
   try {
     const html = await emailRappelJ1({
@@ -51,6 +53,7 @@ export async function POST(_request: NextRequest, { params }: { params: { id: st
       adresseFull,
       cancelUrl,
       livreurPrenom: LIVREUR.prenom,
+      cutoffHeure,
     });
     await sendEmail({
       to: cmd.client_email,

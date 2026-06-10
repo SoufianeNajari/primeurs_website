@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Loader2, AlertTriangle, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { Loader2, AlertTriangle, CheckCircle2, ArrowLeft, Phone, MessageCircle } from 'lucide-react';
 import { splitClientNom } from '@/lib/order';
 
 type OrderInfo = {
@@ -28,12 +28,24 @@ export default function CancelClient({
   exp,
   sig,
   order,
+  cancellationOpen,
+  cutoffHeure,
+  telephone,
+  telephoneDisplay,
+  whatsapp,
+  whatsappDisplay,
 }: {
   tokenOk: boolean;
   orderId: string;
   exp: number;
   sig: string;
   order: OrderInfo | null;
+  cancellationOpen: boolean;
+  cutoffHeure: number;
+  telephone: string;
+  telephoneDisplay: string;
+  whatsapp: string;
+  whatsappDisplay: string;
 }) {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(order?.cancelled_at != null);
@@ -99,6 +111,30 @@ export default function CancelClient({
               <AlertTriangle className="mx-auto text-amber-600 mb-4" size={36} strokeWidth={1.5} />
               <h1 className="text-2xl font-serif text-neutral-800 mb-3">Commande déjà livrée</h1>
               <p className="text-neutral-600">Cette commande a déjà été livrée et ne peut plus être annulée.</p>
+            </div>
+          ) : !cancellationOpen ? (
+            <div className="text-center">
+              <AlertTriangle className="mx-auto text-amber-600 mb-4" size={36} strokeWidth={1.5} />
+              <h1 className="text-2xl font-serif text-neutral-800 mb-3">Annulation en ligne fermée</h1>
+              <p className="text-neutral-600 leading-relaxed">
+                Le délai d&apos;annulation en ligne (la veille de la livraison à {cutoffHeure}h) est dépassé&nbsp;:
+                votre commande est déjà en préparation. Pour un empêchement de dernière minute, contactez-nous
+                directement, on fait au mieux ensemble.
+              </p>
+              <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+                <a
+                  href={`tel:${telephone}`}
+                  className="inline-flex items-center justify-center gap-2 border border-neutral-300 text-neutral-700 px-6 py-3 text-sm font-medium hover:border-green-primary hover:text-green-primary transition-colors"
+                >
+                  <Phone size={16} strokeWidth={1.5} /> {telephoneDisplay}
+                </a>
+                <a
+                  href={`https://wa.me/${whatsapp}`}
+                  className="inline-flex items-center justify-center gap-2 border border-neutral-300 text-neutral-700 px-6 py-3 text-sm font-medium hover:border-green-primary hover:text-green-primary transition-colors"
+                >
+                  <MessageCircle size={16} strokeWidth={1.5} /> WhatsApp {whatsappDisplay}
+                </a>
+              </div>
             </div>
           ) : (
             <div>

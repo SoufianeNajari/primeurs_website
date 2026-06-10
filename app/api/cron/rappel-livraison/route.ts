@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { sendEmail } from '@/lib/mailer';
 import { emailRappelJ1, emailRelanceJ14 } from '@/lib/emails/templates';
 import { buildCancelUrl } from '@/lib/cancel-token';
+import { getCutoffVeilleHeure } from '@/lib/livraison';
 import { SITE, LIVREUR } from '@/lib/site';
 import { splitClientNom } from '@/lib/order';
 
@@ -51,6 +52,7 @@ async function runRappelJ1(): Promise<{ tomorrowIso: string; sent: number; faile
     return { tomorrowIso, sent: 0, failed: 0 };
   }
 
+  const cutoffHeure = await getCutoffVeilleHeure();
   let sent = 0;
   let failed = 0;
 
@@ -70,6 +72,7 @@ async function runRappelJ1(): Promise<{ tomorrowIso: string; sent: number; faile
         adresseFull,
         cancelUrl,
         livreurPrenom: LIVREUR.prenom,
+        cutoffHeure,
       });
       await sendEmail({
         to: cmd.client_email,

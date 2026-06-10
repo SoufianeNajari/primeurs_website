@@ -21,7 +21,7 @@ export default function ZonesLivreesPage() {
           </span>
           <h1 className="text-4xl md:text-5xl font-serif text-neutral-800 mb-4">Zones desservies</h1>
           <p className="text-neutral-600 max-w-xl mx-auto leading-relaxed">
-            Nous livrons 8 communes en Île-de-France, à l&apos;est de Paris.
+            Nous livrons 7 communes en Île-de-France, à l&apos;est de Paris.
           </p>
         </header>
 

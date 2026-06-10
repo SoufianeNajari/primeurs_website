@@ -105,6 +105,14 @@ export default function CgvPage() {
           <a href={`tel:${SITE.telephone}`}>{SITE.telephoneDisplay}</a>.
         </p>
         <p>
+          <strong>Annulation</strong>&nbsp;: une commande peut être annulée gratuitement, sans frais ni débit, via
+          le lien d&apos;annulation reçu par email, <strong>jusqu&apos;à la veille du jour de livraison à 18h</strong>
+          {' '}(même échéance que le cutoff de commande). Au-delà de ce délai, les produits frais ayant déjà été
+          sélectionnés et préparés pour le client, l&apos;annulation en ligne n&apos;est plus possible&nbsp;: le client
+          doit contacter directement le Vendeur au <a href={`tel:${SITE.telephone}`}>{SITE.telephoneDisplay}</a>, qui
+          examinera la demande au cas par cas.
+        </p>
+        <p>
           Toute commande non honorée par le client (absence à l&apos;adresse, absence de réponse) sans information
           préalable pourra entraîner&nbsp;: (i) la remise en vente des produits frais, (ii) le refus de toute
           nouvelle commande en cas de récidive.

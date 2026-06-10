@@ -79,7 +79,7 @@ const FAQ_ITEMS: QA[] = [
     reponse: (
       <p>
         Le minimum de commande est de <strong>30 €</strong>. La livraison est
-        <strong> offerte dès 55 €</strong> de commande sur les 8 villes desservies.
+        <strong> offerte dès 55 €</strong> de commande sur les 7 villes desservies.
         Aucun abonnement, aucun frais caché.
       </p>
     ),

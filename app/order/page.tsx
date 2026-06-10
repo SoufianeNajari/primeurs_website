@@ -590,7 +590,7 @@ export default function OrderPage() {
                     <option key={v.nom} value={v.nom}>{v.nom}</option>
                   ))}
                 </select>
-                <p className="text-[11px] text-neutral-500 italic">Nous livrons 8 communes autour de Pontault-Combault.</p>
+                <p className="text-[11px] text-neutral-500 italic">Nous livrons 7 communes autour de Pontault-Combault.</p>
               </div>
               <div className="space-y-2">
                 <label htmlFor="codePostal" className="block text-xs uppercase tracking-wider text-neutral-600">Code postal</label>

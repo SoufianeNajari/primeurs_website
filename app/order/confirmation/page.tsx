@@ -100,13 +100,18 @@ function ConfirmationContent() {
           Retour à l&apos;accueil
         </Link>
         {cancelUrl && (
-          <Link
-            href={cancelUrl}
-            className="flex items-center justify-center gap-2 w-full text-xs uppercase tracking-widest font-medium text-neutral-400 hover:text-red-text transition-colors"
-          >
-            <XCircle size={14} strokeWidth={1.5} />
-            Annuler ma livraison
-          </Link>
+          <div className="w-full flex flex-col items-center gap-1">
+            <Link
+              href={cancelUrl}
+              className="flex items-center justify-center gap-2 w-full text-xs uppercase tracking-widest font-medium text-neutral-400 hover:text-red-text transition-colors"
+            >
+              <XCircle size={14} strokeWidth={1.5} />
+              Annuler ma livraison
+            </Link>
+            <p className="text-[11px] text-neutral-400 text-center">
+              Annulation gratuite en ligne jusqu&apos;à la veille de la livraison à 18h.
+            </p>
+          </div>
         )}
       </div>
     </div>
