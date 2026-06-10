@@ -6,7 +6,7 @@ import { sendEmail } from '@/lib/mailer';
 import { emailRappelJ1 } from '@/lib/emails/templates';
 import { buildCancelUrl } from '@/lib/cancel-token';
 import { getCutoffVeilleHeure } from '@/lib/livraison';
-import { LIVREUR, currentOriginFromRequest } from '@/lib/site';
+import { currentOriginFromRequest } from '@/lib/site';
 import { splitClientNom } from '@/lib/order';
 import { badRequestIfNotUuid } from '@/lib/uuid';
 
@@ -52,12 +52,11 @@ export async function POST(_request: NextRequest, { params }: { params: { id: st
       creneauLabel: cmd.creneau_livraison,
       adresseFull,
       cancelUrl,
-      livreurPrenom: LIVREUR.prenom,
       cutoffHeure,
     });
     await sendEmail({
       to: cmd.client_email,
-      subject: 'Votre livraison Primeur Chez Vous demain',
+      subject: 'Votre livraison Primeurs Chez Vous demain',
       html,
     });
     await supabaseAdmin

@@ -27,7 +27,7 @@ export default function LandingPage() {
       {/* 2ter. Ce matin à Rungis — alimenté par /admin/arrivages, masqué si rien à publier */}
       <ArrivageRungis />
 
-      {/* 3. Coups de cœur du primeur (piloté par produits.mis_en_avant) */}
+      {/* 3. Coups de cœur des primeurs (piloté par produits.mis_en_avant) */}
       <CoupsDeCoeurSection />
 
       {/* 4. Section "Notre sélection" */}
@@ -53,8 +53,8 @@ export default function LandingPage() {
               Au plus près des producteurs
             </h2>
             <p className="text-neutral-600 max-w-2xl mx-auto leading-relaxed">
-              Chaque matin avant le lever du jour, nous parcourons les allées du marché de Rungis — premier
-              marché de produits frais au monde — pour sélectionner, cageot par cageot, les meilleurs fruits
+              Chaque matin avant le lever du jour, nous parcourons les allées du marché de Rungis : premier
+              marché de produits frais au monde pour sélectionner, cageot par cageot, les meilleurs fruits
               et légumes de saison. Une sélection exigeante : on goûte, on compare, on ne retient que le haut
               du panier. Livrés chez vous dans la foulée, sans intermédiaire superflu.
             </p>

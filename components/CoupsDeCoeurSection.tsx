@@ -28,9 +28,9 @@ export default async function CoupsDeCoeurSection() {
           <div>
             <div className="flex items-center gap-2 text-green-primary text-xs uppercase tracking-[0.2em] font-medium mb-2">
               <Sparkles size={14} strokeWidth={1.5} />
-              Coups de cœur du primeur
+              Coups de cœur des primeurs
             </div>
-            <h2 className="text-3xl md:text-4xl font-serif text-neutral-800">La sélection de Karim</h2>
+            <h2 className="text-3xl md:text-4xl font-serif text-neutral-800">Notre sélection du moment</h2>
           </div>
           <Link
             href="/boutique"

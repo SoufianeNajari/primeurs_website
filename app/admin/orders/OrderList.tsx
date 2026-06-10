@@ -83,7 +83,7 @@ function whatsappUrl(order: Order): string {
   const dateTxt = order.date_livraison ? formatDateLongue(order.date_livraison) : ''
   const creneauTxt = order.creneau_livraison ? ` (${order.creneau_livraison})` : ''
   const contextTxt = dateTxt ? ` prévue le ${dateTxt}${creneauTxt}` : ''
-  const message = `Bonjour ${splitClientNom(order.client_nom).prenom},\n\nKarim de Primeur Chez Vous, concernant votre commande ${shortOrderId(order.id)}${contextTxt}.\n\n`
+  const message = `Bonjour ${splitClientNom(order.client_nom).prenom},\n\nPrimeurs Chez Vous, concernant votre commande ${shortOrderId(order.id)}${contextTxt}.\n\n`
   return `https://wa.me/${number}?text=${encodeURIComponent(message)}`
 }
 

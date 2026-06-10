@@ -61,7 +61,7 @@ export async function sendClientOrderEmail(ctx: OrderEmailContext): Promise<void
   });
   await sendEmail({
     to: ctx.email,
-    subject: 'Votre livraison est confirmée — Primeur Chez Vous',
+    subject: 'Votre livraison est confirmée — Primeurs Chez Vous',
     html,
   });
 }

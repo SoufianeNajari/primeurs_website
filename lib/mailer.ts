@@ -23,8 +23,8 @@ export async function sendEmail({ to, subject, html }: SendMailOptions) {
     // Par défaut, Resend permet d'envoyer depuis onboarding@resend.dev vers l'adresse
     // avec laquelle vous avez créé le compte Resend (pour tester gratuitement).
     // Une fois un nom de domaine configuré sur Resend (cf TODO domaine custom),
-    // basculer sur "Primeur Chez Vous <contact@[domaine].fr>".
-    const fromAddress = process.env.RESEND_FROM || 'Primeur Chez Vous <onboarding@resend.dev>';
+    // basculer sur "Primeurs Chez Vous <contact@[domaine].fr>".
+    const fromAddress = process.env.RESEND_FROM || 'Primeurs Chez Vous <onboarding@resend.dev>';
     const data = await resend.emails.send({
       from: fromAddress,
       to: Array.isArray(to) ? to : [to],

@@ -306,7 +306,7 @@ export default function CartDrawer() {
             <div className="mt-8 pt-6 border-t border-neutral-200">
               <h3 className="text-[11px] uppercase tracking-widest font-medium text-neutral-500 mb-4 flex items-center gap-2">
                 <Sparkles size={14} className="text-green-primary" strokeWidth={1.5} />
-                Coups de cœur du primeur
+                Coups de cœur des primeurs
               </h3>
               <ul className="space-y-3">
                 {suggestions.map((s) => {

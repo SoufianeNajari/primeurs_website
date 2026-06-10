@@ -43,12 +43,12 @@ export default async function GoogleReviews() {
             <Store size={14} strokeWidth={1.5} /> Notre boutique partenaire
           </div>
           <h2 className="text-3xl md:text-4xl font-serif text-neutral-800 mb-4">
-            {SITE.partenaire.name}, primeur depuis {SITE.partenaire.anneeFondation}
+            {SITE.partenaire.name}, primeurs depuis {SITE.partenaire.anneeFondation}
           </h2>
           <p className="text-neutral-600 max-w-2xl leading-relaxed mb-6 text-[15px]">
-            Primeur Chez Vous est le service de livraison à domicile opéré en partenariat avec{' '}
-            <strong className="text-neutral-800">{SITE.partenaire.name}</strong>, primeur de proximité
-            installé à Pontault-Combault depuis {new Date().getFullYear() - SITE.partenaire.anneeFondation}{' '}
+            Primeurs Chez Vous est le service de livraison à domicile opéré en partenariat avec{' '}
+            <strong className="text-neutral-800">{SITE.partenaire.name}</strong>, primeurs de proximité
+            installés à Pontault-Combault depuis {new Date().getFullYear() - SITE.partenaire.anneeFondation}{' '}
             ans. C&apos;est leur sélection, leur savoir-faire et leur réseau Rungis que nous livrons chez vous.
           </p>
           <div className="flex items-center gap-3">
@@ -104,7 +104,7 @@ export default async function GoogleReviews() {
           </a>
           <p className="text-xs text-neutral-400 mt-3 max-w-xl mx-auto">
             Avis collectés sur la fiche Google de notre boutique partenaire.
-            Primeur Chez Vous est un service de livraison juridiquement distinct.
+            Primeurs Chez Vous est un service de livraison juridiquement distinct.
           </p>
         </div>
       </div>

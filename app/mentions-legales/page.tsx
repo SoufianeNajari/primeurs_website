@@ -14,7 +14,7 @@ export default function MentionsLegalesPage() {
     <LegalLayout title="Mentions légales" lastUpdate="6 mai 2026">
       <section>
         <div style={{ background: '#FFF4E5', border: '2px dashed #E0A030', padding: '12px 16px', marginBottom: '24px', color: '#7A4A00' }}>
-          <strong>⚠️ À COMPLÉTER avant mise en production</strong> — La marque Primeur Chez Vous est portée
+          <strong>⚠️ À COMPLÉTER avant mise en production</strong> — La marque Primeurs Chez Vous est portée
           par une micro-entreprise indépendante (en cours de création). Les coordonnées ci-dessous sont des
           placeholders à remplacer par les informations officielles de la micro-entreprise dès son immatriculation.
         </div>

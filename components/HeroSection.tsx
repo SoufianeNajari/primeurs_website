@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { Truck, Sparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 
 const HERO_BLUR =
   'data:image/jpeg;base64,/9j/2wBDAA0JCgsKCA0LCgsODg0PEyAVExISEyccHhcgLikxMC4pLSwzOko+MzZGNywtQFdBRkxOUlNSMj5aYVpQYEpRUk//2wBDAQ4ODhMREyYVFSZPNS01T09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT0//wAARCAAIAAwDASIAAhEBAxEB/8QAFgABAQEAAAAAAAAAAAAAAAAAAAQF/8QAHhAAAgICAgMAAAAAAAAAAAAAAQIAAwQhERJRobH/xAAUAQEAAAAAAAAAAAAAAAAAAAAE/8QAFhEBAQEAAAAAAAAAAAAAAAAAAQAR/9oADAMBAAIRAxEAPwDHx762xmLXIX0W0D08j5J7ame1+FZwDplYL6iINMkgLf/Z';
@@ -11,7 +11,7 @@ export default function HeroSection() {
       {/* Background Image */}
       <Image
         src="/images/hero.jpg"
-        alt="Primeur Chez Vous"
+        alt="Primeurs Chez Vous"
         fill
         style={{ objectFit: 'cover' }}
         priority
@@ -25,11 +25,8 @@ export default function HeroSection() {
 
       {/* Content */}
       <div className="relative z-20 text-center px-4 max-w-3xl mx-auto flex flex-col items-center">
-        <span className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 px-4 py-1.5 mb-6 text-[10px] uppercase tracking-[0.25em] text-white font-medium">
-          <Truck size={14} strokeWidth={1.5} /> Livraison offerte les premiers mois
-        </span>
         <h1 className="text-5xl md:text-7xl font-serif text-white mb-6 tracking-tight drop-shadow-md">
-          Primeur Chez Vous
+          Primeurs Chez Vous
         </h1>
         <p className="text-lg md:text-xl text-white/90 font-light mb-4 drop-shadow-sm max-w-xl">
           Fruits &amp; légumes de saison. Sélection chaque matin à Rungis, livrés chez vous.

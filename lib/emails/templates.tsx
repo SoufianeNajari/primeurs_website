@@ -499,7 +499,7 @@ function ClientEmail(props: LivraisonInfos & {
   return (
     <Html>
       <Head />
-      <Preview>Votre livraison Primeur Chez Vous est confirmée</Preview>
+      <Preview>Votre livraison Primeurs Chez Vous est confirmée</Preview>
       <Body style={main}>
         <Container style={container}>
           <Heading as="h1" style={h1}>Bonjour {props.prenom},</Heading>
@@ -834,19 +834,18 @@ function RappelJ1Email(props: {
   creneauLabel: string;
   adresseFull: string;
   cancelUrl: string;
-  livreurPrenom: string;
   cutoffHeure: number;
 }) {
   const dateLong = formatDateLong(props.dateLivraison) ?? props.dateLivraison;
   return (
     <Html>
       <Head />
-      <Preview>Votre livraison Primeur Chez Vous demain — {dateLong}</Preview>
+      <Preview>Votre livraison Primeurs Chez Vous demain — {dateLong}</Preview>
       <Body style={main}>
         <Container style={container}>
           <Heading as="h1" style={h1}>Bonjour {props.prenom},</Heading>
           <Text style={paragraph}>
-            Petit rappel : votre livraison <strong>Primeur Chez Vous</strong> est prévue demain.
+            Petit rappel : votre livraison <strong>Primeurs Chez Vous</strong> est prévue demain.
           </Text>
 
           <Section
@@ -882,7 +881,7 @@ function RappelJ1Email(props: {
           </Section>
 
           <Text style={paragraph}>
-            <strong>{props.livreurPrenom}</strong> sera à votre porte sur ce créneau. Si vous n&apos;êtes pas chez vous,
+            Votre livreur sera à votre porte sur ce créneau. Si vous n&apos;êtes pas chez vous,
             il vous appellera pour convenir d&apos;un point de remise (voisin, gardien, lieu sûr).
           </Text>
 
@@ -921,7 +920,6 @@ export type EmailRappelJ1Args = {
   creneauLabel: string;
   adresseFull: string;
   cancelUrl: string;
-  livreurPrenom: string;
   cutoffHeure: number;
 };
 
@@ -934,12 +932,11 @@ export async function emailRappelJ1(args: EmailRappelJ1Args): Promise<string> {
 function RelanceJ14Email(props: {
   prenom: string;
   boutiqueUrl: string;
-  livreurPrenom: string;
 }) {
   return (
     <Html>
       <Head />
-      <Preview>Le marché du moment — Primeur Chez Vous</Preview>
+      <Preview>Le marché du moment — Primeurs Chez Vous</Preview>
       <Body style={main}>
         <Container style={container}>
           <Heading as="h1" style={h1}>Bonjour {props.prenom},</Heading>
@@ -977,7 +974,7 @@ function RelanceJ14Email(props: {
           <Hr style={hr} />
           <Text style={paragraph}>
             À très vite,<br />
-            <strong>{props.livreurPrenom}</strong>
+            <strong>L&apos;équipe Primeurs Chez Vous</strong>
           </Text>
 
           <Footer />
@@ -990,7 +987,6 @@ function RelanceJ14Email(props: {
 export type EmailRelanceJ14Args = {
   prenom: string;
   boutiqueUrl: string;
-  livreurPrenom: string;
 };
 
 export async function emailRelanceJ14(args: EmailRelanceJ14Args): Promise<string> {

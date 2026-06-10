@@ -4,7 +4,7 @@ import { sendEmail } from '@/lib/mailer';
 import { emailRappelJ1, emailRelanceJ14 } from '@/lib/emails/templates';
 import { buildCancelUrl } from '@/lib/cancel-token';
 import { getCutoffVeilleHeure } from '@/lib/livraison';
-import { SITE, LIVREUR } from '@/lib/site';
+import { SITE } from '@/lib/site';
 import { splitClientNom } from '@/lib/order';
 
 export const dynamic = 'force-dynamic';
@@ -71,12 +71,11 @@ async function runRappelJ1(): Promise<{ tomorrowIso: string; sent: number; faile
         creneauLabel: cmd.creneau_livraison,
         adresseFull,
         cancelUrl,
-        livreurPrenom: LIVREUR.prenom,
         cutoffHeure,
       });
       await sendEmail({
         to: cmd.client_email,
-        subject: 'Votre livraison Primeur Chez Vous demain',
+        subject: 'Votre livraison Primeurs Chez Vous demain',
         html,
       });
       const { error: flagErr } = await supabaseAdmin
@@ -169,11 +168,10 @@ async function runRelanceJ14(): Promise<{ sent: number; skipped: number; failed:
       const html = await emailRelanceJ14({
         prenom,
         boutiqueUrl: `${SITE.url}/boutique`,
-        livreurPrenom: LIVREUR.prenom,
       });
       await sendEmail({
         to: cand.client_email,
-        subject: 'Le marché du moment — Primeur Chez Vous',
+        subject: 'Le marché du moment — Primeurs Chez Vous',
         html,
       });
       // Flag toutes les commandes de cet email <= cand.created_at pour

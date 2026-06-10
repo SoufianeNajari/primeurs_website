@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     'Découvrez notre sélection de fruits et légumes frais, sélectionnés à Rungis. Commande en ligne, livraison à domicile mardi et vendredi après-midi.',
   alternates: { canonical: '/boutique' },
   openGraph: {
-    title: 'Boutique — Primeur Chez Vous',
+    title: 'Boutique — Primeurs Chez Vous',
     description: 'Fruits & légumes frais, livrés à domicile depuis Rungis.',
     url: '/boutique',
   },

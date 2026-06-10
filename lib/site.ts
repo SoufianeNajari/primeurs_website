@@ -25,17 +25,17 @@ function resolveSiteUrl(): string {
 }
 
 export const SITE = {
-  name: 'Primeur Chez Vous',
-  fullName: 'Primeur Chez Vous · by Pontault Primeurs',
-  shortName: 'Primeur Chez Vous',
+  name: 'Primeurs Chez Vous',
+  fullName: 'Primeurs Chez Vous · by Pontault Primeurs',
+  shortName: 'Primeurs Chez Vous',
   description:
     'Livraison à domicile de fruits et légumes frais, sélectionnés chaque matin au marché de Rungis. Mardi et vendredi après-midi, paiement à la réception.',
   // Boutique partenaire (Pontault Primeurs) — sert de référence historique pour les avis Google.
   // Cf. option A validée 2026-05-06 : on capitalise sur les avis sans réintroduire le co-branding partout.
   partenaire: {
     name: 'Pontault Primeurs',
-    anneeFondation: 1992,
-    description: 'Primeur de proximité fondé en 1992 à Pontault-Combault.',
+    anneeFondation: 2007,
+    description: 'Primeurs de proximité fondés en 2007 à Pontault-Combault.',
   },
   // URL canonique du site. Cascade :
   //  1. NEXT_PUBLIC_SITE_URL — à configurer manuellement quand on aura un domaine custom
@@ -44,8 +44,9 @@ export const SITE = {
   //  4. localhost:3000 — dev local
   url: resolveSiteUrl(),
   locale: 'fr_FR',
-  telephone: '+33160296298',
-  telephoneDisplay: '01 60 29 62 98',
+  // Ligne mobile unique (joignable 7j/7), identique au numéro WhatsApp.
+  telephone: '+33764383935',
+  telephoneDisplay: '07 64 38 39 35',
   // Ligne WhatsApp directe (joignable 7j/7) — affichée dans la section contact
   // de la home et le footer. Format international sans « + » pour les liens wa.me.
   whatsapp: '33764383935',
@@ -79,19 +80,6 @@ export const SITE = {
     instagram: '',
     facebook: '',
   },
-};
-
-// Persona livreur — incarne la marque Primeur Chez Vous sur la home et la page /qui-livre.
-// Placeholder photo et bio à remplacer par les vraies infos quand fournies par l'utilisateur.
-// Photo : Unsplash libre (https://unsplash.com/license). Auteur : Christopher Campbell.
-export const LIVREUR = {
-  prenom: 'Karim',
-  nomComplet: '',
-  bio:
-    "Bonjour, moi c'est Karim. Chaque mardi et vendredi, je me lève à 4 h pour sélectionner moi-même, dans les allées de Rungis, les fruits et légumes que je vous livrerai l'après-midi. Je choisis chaque produit comme s'il était pour ma table : à maturité, au meilleur de sa saison. Une question, un créneau à décaler ? Vous m'écrivez direct sur WhatsApp. C'est ça, ma promesse.",
-  photoUrl:
-    'https://images.unsplash.com/photo-1566753323558-f4e0952af115?auto=format&fit=crop&w=800&q=80',
-  photoAlt: 'Portrait du livreur Primeur Chez Vous',
 };
 
 export const DEFAULT_OG_IMAGE = `${SITE.url}/images/hero.jpg`;

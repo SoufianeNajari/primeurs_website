@@ -7,7 +7,7 @@ import { SITE } from '@/lib/site';
 export const metadata: Metadata = {
   title: 'Zones desservies',
   description:
-    'Liste des communes desservies par Primeur Chez Vous : livraison à domicile de fruits et légumes frais autour de Pontault-Combault.',
+    'Liste des communes desservies par Primeurs Chez Vous : livraison à domicile de fruits et légumes frais autour de Pontault-Combault.',
   alternates: { canonical: '/zones-livrees' },
 };
 

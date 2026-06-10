@@ -471,8 +471,12 @@ export default function OrderPage() {
               )}
               {fourchette && (
                 <p className="px-6 pb-4 pt-2 text-xs text-neutral-500 italic bg-neutral-50">
-                  Prix indicatif, ajusté à la pesée (cours du jour, poids réel). Si l&apos;écart dépasse la fourchette, nous vous contactons avant préparation. Paiement à la réception.
+                  Le montant final est ajusté en fonction du poids réel des produits préparés et reste dans la fourchette annoncée. 
+                  Le montant définitif vous est communiqué par SMS ou WhatsApp une fois votre commande préparée. <br /> <br />
+                  En cas d’indisponibilité d’un produit, nous vous contactons afin de vous en informer et de vous proposer une solution adaptée.
+                  Le règlement s’effectue à la réception de votre commande.
                 </p>
+
               )}
               {sousMin && (
                 <div className="px-6 py-4 border-t border-neutral-200 bg-red-soft/40 flex gap-3 items-start text-sm text-red-text font-medium">

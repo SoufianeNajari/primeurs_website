@@ -1,4 +1,4 @@
-// Configuration livraison "Primeur Chez Vous by Pontault Primeurs".
+// Configuration livraison "Primeurs Chez Vous by Pontault Primeurs".
 //
 // Sources de vérité :
 // - Villes desservies (8) : sélection 10-15 min voiture autour de Pontault.

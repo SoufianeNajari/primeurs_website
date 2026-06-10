@@ -48,10 +48,10 @@ export default function UpsellSuggestions() {
     <section className="bg-white border border-neutral-200">
       <div className="bg-neutral-50 px-6 py-4 border-b border-neutral-200 flex items-center gap-3">
         <Sparkles className="text-green-primary" size={20} strokeWidth={1.5} />
-        <h2 className="text-lg font-serif text-neutral-800">Coups de cœur du primeur</h2>
+        <h2 className="text-lg font-serif text-neutral-800">Coups de cœur des primeurs</h2>
       </div>
       <p className="px-6 pt-4 text-sm text-neutral-500 italic">
-        Une sélection que Karim aime particulièrement en ce moment.
+        Une sélection que nous aimons particulièrement en ce moment.
       </p>
       <ul className="px-4 sm:px-6 py-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
         {suggestions.map((s) => {

@@ -48,7 +48,7 @@ export default function Navbar({ isClientAuthed = false }: { isClientAuthed?: bo
       <div className="max-w-6xl mx-auto px-4 h-20 flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2" onClick={() => setIsOpen(false)}>
-          <span className="text-xl md:text-2xl font-serif font-bold text-neutral-800 tracking-wide uppercase">Primeur Chez Vous</span>
+          <span className="text-xl md:text-2xl font-serif font-bold text-neutral-800 tracking-wide uppercase">Primeurs Chez Vous</span>
         </Link>
 
         {/* Desktop Menu */}
@@ -63,7 +63,7 @@ export default function Navbar({ isClientAuthed = false }: { isClientAuthed?: bo
             href="/qui-livre"
             className={`font-medium tracking-widest uppercase text-[11px] transition-colors hover:text-green-primary ${pathname?.startsWith('/qui-livre') ? 'text-green-primary' : 'text-neutral-600'}`}
           >
-            Qui livre&nbsp;?
+            Nos services
           </Link>
           <Link
             href="/blog"
@@ -120,7 +120,7 @@ export default function Navbar({ isClientAuthed = false }: { isClientAuthed?: bo
             className={`text-[11px] tracking-widest uppercase font-medium px-4 py-4 border-l-2 ${pathname?.startsWith('/qui-livre') ? 'border-green-primary text-green-primary' : 'border-transparent text-neutral-600'}`}
             onClick={() => setIsOpen(false)}
           >
-            Qui livre&nbsp;?
+            Nos services
           </Link>
           <Link
             href="/blog"

@@ -58,8 +58,8 @@ const FAQ_ITEMS: QA[] = [
         Nos fruits et légumes sont sélectionnés à la main chaque matin de
         livraison, à Rungis, parmi des produits frais cueillis à maturité —
         pas calibrés pour la grande distribution. La différence se sent au goût
-        et à la conservation. Notre marge nous permet de payer un primeur,
-        un livreur, et de soutenir un commerce de proximité.
+        et à la conservation. Notre marge nous permet de rémunérer nos primeurs
+        et nos livreurs, et de soutenir un commerce de proximité.
       </p>
     ),
   },
