@@ -2,12 +2,14 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getIronSession } from 'iron-session';
 import type { AdminSession } from '@/lib/admin-auth';
-import type { ClientSession } from '@/lib/client-auth';
 
 // Middleware unifié :
 //   - /admin/* + /api/admin/* → cookie pp_admin (iron-session)
-//   - /boutique, /boutique/*, /order, /order/*, /api/order → cookie pp_client
-//   - reste public (home, /blog, /connexion, etc.)
+//   - reste public (home, /boutique, /order, /blog, etc.)
+//
+// Note : la boutique et la commande étaient auparavant réservées aux clients
+// autorisés (gate par téléphone, cookie pp_client). Ce pare-feu servait aux
+// tests privés — il est désactivé pour l'ouverture publique du site.
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const res = NextResponse.next();
@@ -24,12 +26,6 @@ export async function middleware(request: NextRequest) {
   }
 
   const isAdminRoute = pathname.startsWith('/admin') || pathname.startsWith('/api/admin/');
-  const isClientRoute =
-    pathname === '/boutique' ||
-    pathname.startsWith('/boutique/') ||
-    pathname === '/order' ||
-    pathname.startsWith('/order/') ||
-    pathname === '/api/order';
 
   if (isAdminRoute) {
     let isAuthed = false;
@@ -49,36 +45,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/admin', request.url));
   }
 
-  if (isClientRoute) {
-    let isAuthed = false;
-    try {
-      const s = await getIronSession<ClientSession>(request, res, {
-        password: secret,
-        cookieName: 'pp_client',
-      });
-      isAuthed = Boolean(s.clientId);
-    } catch {}
-
-    if (isAuthed) return res;
-    if (pathname === '/api/order') {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
-    }
-    const loginUrl = new URL('/connexion', request.url);
-    loginUrl.searchParams.set('from', pathname);
-    return NextResponse.redirect(loginUrl);
-  }
-
   return res;
 }
 
 export const config = {
-  matcher: [
-    '/admin/:path*',
-    '/api/admin/:path*',
-    '/boutique',
-    '/boutique/:path*',
-    '/order',
-    '/order/:path*',
-    '/api/order',
-  ],
+  matcher: ['/admin/:path*', '/api/admin/:path*'],
 };
