@@ -69,8 +69,7 @@ const FAQ_ITEMS: QA[] = [
       <p>
         Oui. Chaque tournée commence par une sélection physique au marché de
         Rungis avant 6 h du matin. Pas de plateforme intermédiaire, pas de
-        stockage long. Ce que nous achetons le matin, nous le livrons l&apos;après-midi
-        ou en début de soirée.
+        stockage long.
       </p>
     ),
   },

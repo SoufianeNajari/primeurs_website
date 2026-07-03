@@ -15,13 +15,14 @@ export default function LivreurSection() {
             Nos services
           </span>
           <h2 className="text-3xl md:text-4xl font-serif text-neutral-800 mb-5">
-            Vos fruits et légumes frais, sélectionnés à Rungis et livrés chez vous.
+            Offrez-vous le meilleur des fruits et légumes, livrés directement chez vous.
           </h2>
           <p className="text-neutral-700 leading-relaxed text-[15px] md:text-base">
-            Chaque matin de livraison, nous sélectionnons à la main au marché de Rungis des fruits
-            et légumes frais et de qualité auprès de nos fournisseurs, au meilleur de leur saison. Vous commandez en ligne, on vous
-            livre à domicile le mardi ou le vendredi après-midi, et vous réglez à la réception.
-            Une question, un créneau à décaler&nbsp;? On vous répond directement sur WhatsApp, 7j/7.
+            Nous sélectionnons avec exigence des produits frais, savoureux et de saison pour vous garantir une qualité irréprochable. 
+            
+            Commandez en quelques clics et profitez d&apos;une livraison à domicile le mardi ou le vendredi après-midi, avec paiement à la réception pour plus de simplicité.
+            Nous sommes disponibles 7j/7 sur WhatsApp pour vous accompagner.
+            Faites le choix de la fraîcheur, du goût et du confort au quotidien
           </p>
         </div>
 
