@@ -215,14 +215,12 @@ function LignesTable({ lignes, lockPrices = false }: { lignes: LigneCommande[]; 
 }
 
 function Footer() {
-  const addr = `${SITE.address.street}, ${SITE.address.postalCode} ${SITE.address.city}`;
   return (
     <Section style={{ textAlign: 'center', marginTop: '32px' }}>
       <Hr style={hr} />
       <Text style={{ ...paragraph, fontFamily: 'Georgia, serif', fontSize: '17px', margin: '0 0 4px' }}>
         <strong>{SITE.name}</strong>
       </Text>
-      <Text style={muted}>{addr}</Text>
       <Text style={muted}>{SITE.telephoneDisplay}</Text>
     </Section>
   );

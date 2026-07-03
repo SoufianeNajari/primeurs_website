@@ -51,11 +51,12 @@ export const SITE = {
   // de la home et le footer. Format international sans « + » pour les liens wa.me.
   whatsapp: '33764383935',
   whatsappDisplay: '07 64 38 39 35',
-  // Email de contact public. Vide tant qu'aucune adresse dédiée n'est créée :
-  //  les composants qui l'utilisent (Footer, mentions légales, confidentialité,
-  //  zones-livrées, JSON-LD localbusiness) gèrent le cas vide en affichant
-  //  '[À DÉFINIR]' au lieu d'un mailto: cassé.
-  email: '',
+  // Email de contact public. Adresse Gmail active en attendant la mise en place
+  //  de la redirection contact@primeurschezvous.fr (forwarding gratuit registrar
+  //  ou Cloudflare Email Routing). Une fois la redirection en place, remplacer par
+  //  'contact@primeurschezvous.fr' — les composants (Footer, mentions légales,
+  //  confidentialité, zones-livrées, JSON-LD localbusiness) suivent automatiquement.
+  email: 'primeurschezvous@gmail.com',
   address: {
     street: '44 Avenue Charles Rouxel',
     postalCode: '77340',

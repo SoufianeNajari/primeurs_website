@@ -13,13 +13,6 @@ export default function CgvPage() {
   return (
     <LegalLayout title="Conditions générales de vente" lastUpdate="6 mai 2026">
       <section>
-        <div style={{ background: '#FFF4E5', border: '2px dashed #E0A030', padding: '12px 16px', marginBottom: '24px', color: '#7A4A00' }}>
-          <strong>⚠️ À COMPLÉTER avant mise en production</strong> — Les CGV ci-dessous mentionnent
-          {' '}{SITE.name} comme nom commercial. L&apos;identité juridique du Vendeur (raison sociale,
-          SIRET, adresse) doit être renseignée dans les <a href="/mentions-legales">mentions légales</a> dès
-          immatriculation de la micro-entreprise.
-        </div>
-
         <h2>Article 1 — Objet</h2>
         <p>
           Les présentes conditions générales de vente (ci-après «&nbsp;CGV&nbsp;») régissent les commandes
