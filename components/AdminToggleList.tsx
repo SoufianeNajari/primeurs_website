@@ -20,6 +20,16 @@ type Props = {
 
 const SEARCH_STORAGE_KEY = 'admin_dispo_search'
 const CATEGORY_STORAGE_KEY = 'admin_dispo_categorie'
+const STATUS_STORAGE_KEY = 'admin_dispo_statut'
+
+type StatusFilter = 'all' | 'dispo' | 'indispo' | 'masque'
+
+const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
+  { value: 'all', label: 'Tous' },
+  { value: 'dispo', label: 'Dispo' },
+  { value: 'indispo', label: 'Indispo' },
+  { value: 'masque', label: 'Masqué' },
+]
 
 function normalize(text: string): string {
   return text
@@ -34,6 +44,7 @@ export default function AdminToggleList({ initialProducts }: Props) {
   const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set())
   const [search, setSearch] = useState('')
   const [activeCat, setActiveCat] = useState<string>('Toutes')
+  const [activeStatus, setActiveStatus] = useState<StatusFilter>('all')
   const toast = useToast()
 
   useEffect(() => {
@@ -42,6 +53,8 @@ export default function AdminToggleList({ initialProducts }: Props) {
       if (s) setSearch(s)
       const c = localStorage.getItem(CATEGORY_STORAGE_KEY)
       if (c) setActiveCat(c)
+      const st = localStorage.getItem(STATUS_STORAGE_KEY)
+      if (st && STATUS_OPTIONS.some((o) => o.value === st)) setActiveStatus(st as StatusFilter)
     } catch {
       /* */
     }
@@ -65,6 +78,15 @@ export default function AdminToggleList({ initialProducts }: Props) {
     }
   }, [activeCat])
 
+  useEffect(() => {
+    try {
+      if (activeStatus !== 'all') localStorage.setItem(STATUS_STORAGE_KEY, activeStatus)
+      else localStorage.removeItem(STATUS_STORAGE_KEY)
+    } catch {
+      /* */
+    }
+  }, [activeStatus])
+
   const categories = useMemo(
     () => ['Toutes', ...Array.from(new Set(products.map((p) => p.categorie)))],
     [products],
@@ -74,10 +96,16 @@ export default function AdminToggleList({ initialProducts }: Props) {
     const q = normalize(search.trim())
     return products.filter((p) => {
       if (activeCat !== 'Toutes' && p.categorie !== activeCat) return false
+      if (activeStatus !== 'all') {
+        const masque = p.masque_boutique
+        if (activeStatus === 'masque' && !masque) return false
+        if (activeStatus === 'indispo' && (masque || p.disponible)) return false
+        if (activeStatus === 'dispo' && (masque || !p.disponible)) return false
+      }
       if (q && !normalize(p.nom).includes(q)) return false
       return true
     })
-  }, [products, search, activeCat])
+  }, [products, search, activeCat, activeStatus])
 
   const grouped = useMemo(() => {
     return filtered.reduce((acc, p) => {
@@ -176,7 +204,7 @@ export default function AdminToggleList({ initialProducts }: Props) {
 
   const totalCount = products.length
   const filteredCount = filtered.length
-  const hasFilter = search.length > 0 || activeCat !== 'Toutes'
+  const hasFilter = search.length > 0 || activeCat !== 'Toutes' || activeStatus !== 'all'
 
   if (totalCount === 0) {
     return <div className="text-center text-neutral-500 py-8 font-serif">Aucun produit trouvé.</div>
@@ -230,6 +258,26 @@ export default function AdminToggleList({ initialProducts }: Props) {
           })}
         </div>
 
+        <div className="flex gap-2 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 pb-1 scrollbar-hide">
+          {STATUS_OPTIONS.map(({ value, label }) => {
+            const isActive = activeStatus === value
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setActiveStatus(value)}
+                className={`shrink-0 px-3 py-1.5 text-xs uppercase tracking-widest font-medium border transition-colors ${
+                  isActive
+                    ? 'bg-neutral-800 text-white border-neutral-800'
+                    : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400'
+                }`}
+              >
+                {label}
+              </button>
+            )
+          })}
+        </div>
+
         <div className="flex items-center justify-between text-xs text-neutral-500 font-serif">
           <span>
             {filteredCount} / {totalCount} produit{totalCount > 1 ? 's' : ''}
@@ -240,6 +288,7 @@ export default function AdminToggleList({ initialProducts }: Props) {
               onClick={() => {
                 setSearch('')
                 setActiveCat('Toutes')
+                setActiveStatus('all')
               }}
               className="text-neutral-600 hover:text-neutral-900 underline"
             >
