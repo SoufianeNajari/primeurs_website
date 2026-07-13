@@ -7,7 +7,7 @@ import OrderList from './OrderList'
 
 export const dynamic = 'force-dynamic'
 
-type Periode = 'today' | '7d' | '30d'
+type Periode = 'today' | '7d' | '30d' | 'all'
 
 function periodeStart(p: Periode): Date {
   const d = new Date()
@@ -15,6 +15,8 @@ function periodeStart(p: Periode): Date {
     d.setHours(0, 0, 0, 0)
   } else if (p === '30d') {
     d.setDate(d.getDate() - 30)
+  } else if (p === 'all') {
+    return new Date(0)
   } else {
     d.setDate(d.getDate() - 7)
   }
@@ -25,11 +27,12 @@ const PERIODE_LABEL: Record<Periode, string> = {
   today: "Aujourd'hui",
   '7d': '7 derniers jours',
   '30d': '30 derniers jours',
+  all: 'Tout',
 }
 
 export default async function OrdersPage({ searchParams }: { searchParams?: { periode?: string } }) {
   const raw = searchParams?.periode
-  const periode: Periode = raw === 'today' || raw === '30d' || raw === '7d' ? raw : '7d'
+  const periode: Periode = raw === 'today' || raw === '30d' || raw === 'all' || raw === '7d' ? raw : '7d'
   const start = periodeStart(periode)
 
   const origin = currentOriginFromRequest(headers())
@@ -63,7 +66,7 @@ export default async function OrdersPage({ searchParams }: { searchParams?: { pe
     )
   }
 
-  const periodes: Periode[] = ['today', '7d', '30d']
+  const periodes: Periode[] = ['today', '7d', '30d', 'all']
 
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto">
