@@ -4,6 +4,13 @@ import ClientsManager from './ClientsManager';
 
 export const dynamic = 'force-dynamic';
 
+export type ClientOrder = {
+  id: string;
+  created_at: string;
+  statut: string;
+  totalCents: number;
+};
+
 export type ClientRow = {
   key: string;
   nom: string;
@@ -13,9 +20,11 @@ export type ClientRow = {
   commandesCount: number;
   totalCents: number;
   derniereCommande: string; // ISO
+  orders: ClientOrder[]; // historique complet (annulées incluses), desc
 };
 
 type CommandeRow = {
+  id: string;
   client_nom: string | null;
   client_telephone: string | null;
   client_email: string | null;
@@ -42,7 +51,7 @@ function orderTotalCents(c: CommandeRow): number {
 export default async function AdminClientsPage() {
   const { data: commandesRaw } = await supabaseAdmin
     .from('commandes')
-    .select('client_nom, client_telephone, client_email, created_at, statut, prix_final, lignes')
+    .select('id, client_nom, client_telephone, client_email, created_at, statut, prix_final, lignes')
     .order('created_at', { ascending: false });
 
   const commandes = (commandesRaw || []) as CommandeRow[];
@@ -57,6 +66,7 @@ export default async function AdminClientsPage() {
     if (!key) continue;
 
     const isCancelled = c.statut === 'annulée';
+    const totalCents = orderTotalCents(c);
     let entry = map.get(key);
     if (!entry) {
       entry = {
@@ -69,6 +79,7 @@ export default async function AdminClientsPage() {
         commandesCount: 0,
         totalCents: 0,
         derniereCommande: c.created_at,
+        orders: [],
         _seenNom: !!(c.client_nom || '').trim(),
         _seenEmail: !!c.client_email,
       };
@@ -85,10 +96,13 @@ export default async function AdminClientsPage() {
       }
     }
 
-    // Une commande annulée ne compte ni dans le nb ni dans le total.
+    // Historique complet visible dans le dépliage (annulées incluses).
+    entry.orders.push({ id: c.id, created_at: c.created_at, statut: c.statut, totalCents });
+
+    // Une commande annulée ne compte ni dans le nb ni dans le total agrégés.
     if (!isCancelled) {
       entry.commandesCount += 1;
-      entry.totalCents += orderTotalCents(c);
+      entry.totalCents += totalCents;
     }
   }
 
@@ -104,6 +118,7 @@ export default async function AdminClientsPage() {
       commandesCount: c.commandesCount,
       totalCents: c.totalCents,
       derniereCommande: c.derniereCommande,
+      orders: c.orders,
     }))
     .sort((a, b) => b.derniereCommande.localeCompare(a.derniereCommande));
 

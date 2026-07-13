@@ -455,8 +455,14 @@ export default function OrderList({
     await setStatusWithToast(id, newStatus, currentStatus, label, newStatus === 'retirée')
   }
 
-  const restoreOrder = async (id: string) => {
-    await setStatusWithToast(id, 'prête', 'retirée', 'Commande restaurée en « Prête »', false)
+  // Retour en arrière d'un cran : Livrée → Prête, Prête → Reçue.
+  const revertStatus = async (id: string, currentStatus: string) => {
+    let newStatus = ''
+    if (currentStatus === 'retirée') newStatus = 'prête'
+    else if (currentStatus === 'prête') newStatus = 'reçue'
+    else return
+    const label = newStatus === 'prête' ? 'Commande remise en « Prête »' : 'Commande remise en « Reçue »'
+    await setStatusWithToast(id, newStatus, currentStatus, label, false)
   }
 
   const togglePrep = (orderId: string, lineKey: string) => {
@@ -598,15 +604,15 @@ export default function OrderList({
                 {order.statut === 'reçue' ? '→ Prête' : '→ Livrée'}
               </button>
             )}
-            {order.statut === 'retirée' && (
+            {(order.statut === 'prête' || order.statut === 'retirée') && (
               <button
                 disabled={loadingIds.has(order.id)}
-                onClick={() => restoreOrder(order.id)}
+                onClick={() => revertStatus(order.id, order.statut)}
                 className="inline-flex items-center gap-1.5 px-3 min-h-[40px] border border-neutral-300 text-neutral-700 hover:border-neutral-500 hover:text-neutral-900 transition-colors text-[11px] uppercase tracking-widest font-medium disabled:opacity-50"
-                title="Restaurer en « Prête »"
+                title={order.statut === 'retirée' ? 'Repasser en « Prête »' : 'Repasser en « Reçue »'}
               >
                 <Undo2 size={14} />
-                <span className="hidden sm:inline">Restaurer</span>
+                <span className="hidden sm:inline">{order.statut === 'retirée' ? '← Prête' : '← Reçue'}</span>
               </button>
             )}
             {order.statut !== 'annulée' && (
