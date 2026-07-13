@@ -78,9 +78,54 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       }
       update.statut = body.statut;
       nouveauStatut = body.statut;
+      // Annulation admin : horodater pour la section « Annulées » et le suivi.
+      if (body.statut === 'annulée') {
+        update.cancelled_at = new Date().toISOString();
+      }
     }
 
-    if ('prix_final' in body) {
+    // Lignes réelles du ticket de caisse (quantité + prix réels par article).
+    // Quand elles sont fournies, prix_final est RECALCULÉ côté serveur = somme
+    // des sous-totaux (on ne fait pas confiance à un total envoyé par le client).
+    if ('ticket_lignes' in body) {
+      const raw = body.ticket_lignes;
+      if (raw === null) {
+        update.ticket_lignes = null;
+      } else if (!Array.isArray(raw) || raw.length > 200) {
+        return NextResponse.json({ error: 'Ticket invalide' }, { status: 400 });
+      } else {
+        let total = 0;
+        const lignes = [];
+        for (const item of raw) {
+          if (item == null || typeof item !== 'object') {
+            return NextResponse.json({ error: 'Ligne de ticket invalide' }, { status: 400 });
+          }
+          const q = Number(item.quantite_reelle);
+          const p = Number(item.prix_unitaire_reel);
+          if (Number.isNaN(q) || q < 0 || q > 9999) {
+            return NextResponse.json({ error: 'Quantité réelle invalide' }, { status: 400 });
+          }
+          if (Number.isNaN(p) || p < 0 || p > 99999.99) {
+            return NextResponse.json({ error: 'Prix réel invalide' }, { status: 400 });
+          }
+          total += q * p;
+          lignes.push({
+            produitId: String(item.produitId ?? '').slice(0, 100),
+            optionId: String(item.optionId ?? '').slice(0, 100),
+            nom: String(item.nom ?? '').slice(0, 200),
+            libelle: String(item.libelle ?? '').slice(0, 200),
+            quantite_reelle: Math.round(q * 1000) / 1000,
+            prix_unitaire_reel: Math.round(p * 100) / 100,
+          });
+        }
+        update.ticket_lignes = lignes;
+        update.prix_final = Math.round(total * 100) / 100;
+      }
+    }
+
+    // prix_final direct (compat : saisie manuelle sans détail par ligne).
+    // Ignoré si ticket_lignes vient de le recalculer ci-dessus.
+    if ('prix_final' in body && !('prix_final' in update)) {
       const v = body.prix_final;
       if (v === null || v === '') {
         update.prix_final = null;

@@ -110,7 +110,7 @@ export default function CancelClient({
             <div className="text-center">
               <AlertTriangle className="mx-auto text-amber-600 mb-4" size={36} strokeWidth={1.5} />
               <h1 className="text-2xl font-serif text-neutral-800 mb-3">Commande déjà livrée</h1>
-              <p className="text-neutral-600">Cette commande a déjà été livrée et ne peut plus être annulée.</p>
+              <p className="text-neutral-600">Cette commande a déjà été livrée et ne peut plus être annulée en ligne.</p>
             </div>
           ) : !cancellationOpen ? (
             <div className="text-center">

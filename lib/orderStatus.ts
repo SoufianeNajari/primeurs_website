@@ -3,7 +3,8 @@ export type OrderStatut = 'reçue' | 'prête' | 'retirée' | 'annulée' | string
 export function statutLabel(s: OrderStatut): string {
   if (s === 'reçue') return 'Reçue';
   if (s === 'prête') return 'Prête';
-  if (s === 'retirée') return 'Retirée';
+  // Valeur DB inchangée ('retirée') — libellé « Livrée » (activité 100% livraison).
+  if (s === 'retirée') return 'Livrée';
   if (s === 'annulée') return 'Annulée';
   return s;
 }

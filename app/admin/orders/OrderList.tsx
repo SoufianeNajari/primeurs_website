@@ -4,10 +4,20 @@ import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { triggerHaptic } from '@/lib/haptic'
 import { calcFourchette, type FourchetteBornes } from '@/lib/fourchette'
-import { Printer, Phone, Mail, Clock, MessageSquare, MessageCircle, Undo2, ChevronDown, ChevronUp, Search, X, Link as LinkIcon, Send } from 'lucide-react'
+import { Printer, Phone, Mail, Clock, MessageSquare, MessageCircle, Undo2, ChevronDown, ChevronUp, Search, X, Link as LinkIcon, Send, Receipt, FileDown, Ban } from 'lucide-react'
 import { useToast } from '@/components/admin/Toast'
+import { useConfirm } from '@/components/admin/ConfirmModal'
 import { statutBadgeCls, statutLabel } from '@/lib/orderStatus'
 import { shortOrderId, splitClientNom } from '@/lib/order'
+
+type TicketLigneReelle = {
+  produitId: string
+  optionId: string
+  nom: string
+  libelle: string
+  quantite_reelle: number
+  prix_unitaire_reel: number
+}
 
 const SEARCH_STORAGE_KEY = 'orders_search'
 
@@ -58,6 +68,8 @@ type Order = {
   email_client_sent_at?: string | null;
   email_shop_sent_at?: string | null;
   email_last_error?: string | null;
+  ticket_lignes?: TicketLigneReelle[] | null;
+  ticket_sent_at?: string | null;
 }
 
 type StatusFilter = 'tous' | 'reçue' | 'prête' | 'retirée' | 'annulée';
@@ -185,6 +197,7 @@ export default function OrderList({
   const [prepStates, setPrepStates] = useState<Record<string, Set<string>>>({})
   const [expandedRetired, setExpandedRetired] = useState<Set<string>>(new Set())
   const toast = useToast()
+  const confirm = useConfirm()
   const router = useRouter()
 
   // Auto-refresh des commandes quand l'onglet est visible.
@@ -294,20 +307,58 @@ export default function OrderList({
     }
   }
 
-  const updatePrixFinal = async (id: string, value: number | null) => {
-    setOrders(prev => prev.map(o => o.id === id ? { ...o, prix_final: value } : o))
+  const saveTicket = async (id: string, ticketLignes: TicketLigneReelle[], total: number) => {
+    setOrders(prev => prev.map(o => o.id === id ? { ...o, ticket_lignes: ticketLignes, prix_final: total } : o))
     try {
       const res = await fetch(`/api/orders/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prix_final: value }),
+        body: JSON.stringify({ ticket_lignes: ticketLignes }),
       })
       if (!res.ok) throw new Error('Erreur')
-      toast.success(value == null ? 'Prix final effacé' : `Prix final enregistré : ${value.toFixed(2)}€`)
+      toast.success(`Ticket enregistré : ${total.toFixed(2)}€`)
     } catch (e) {
       console.error(e)
-      toast.error('Échec sauvegarde prix final')
+      toast.error('Échec sauvegarde du ticket')
     }
+  }
+
+  function downloadTicket(orderId: string) {
+    window.open(`/api/ticket/order/${orderId}`, '_blank')
+  }
+
+  const sendTicket = async (order: Order) => {
+    if (!order.client_email) {
+      toast.error("Ce client n'a pas d'adresse email")
+      return
+    }
+    const confirmMsg = order.ticket_sent_at
+      ? `Renvoyer le ticket de caisse à ${order.client_email} ? (déjà envoyé une fois)`
+      : `Envoyer le ticket de caisse à ${order.client_email} ?`
+    if (!window.confirm(confirmMsg)) return
+    triggerHaptic()
+    try {
+      const res = await fetch(`/api/orders/${order.id}/send-ticket`, { method: 'POST' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Erreur')
+      toast.success('Ticket envoyé au client')
+      setOrders(prev => prev.map(o => o.id === order.id ? { ...o, ticket_sent_at: new Date().toISOString() } : o))
+    } catch (e) {
+      console.error(e)
+      toast.error(e instanceof Error ? e.message : 'Échec envoi du ticket')
+    }
+  }
+
+  const cancelOrder = async (order: Order) => {
+    const ok = await confirm({
+      title: 'Annuler cette commande ?',
+      message: `La commande ${shortOrderId(order.id)} de ${order.client_nom} passera en « Annulée ».`,
+      confirmLabel: 'Annuler la commande',
+      cancelLabel: 'Retour',
+      variant: 'danger',
+    })
+    if (!ok) return
+    await setStatusWithToast(order.id, 'annulée', order.statut, 'Commande annulée')
   }
 
   // Print : ouverture d'une page autonome (hors shell React) qui auto-print.
@@ -400,7 +451,7 @@ export default function OrderList({
     else if (currentStatus === 'prête') newStatus = 'retirée'
     else return;
 
-    const label = newStatus === 'prête' ? 'Commande prête' : newStatus === 'retirée' ? 'Commande retirée' : 'Statut mis à jour'
+    const label = newStatus === 'prête' ? 'Commande prête' : newStatus === 'retirée' ? 'Commande livrée' : 'Statut mis à jour'
     await setStatusWithToast(id, newStatus, currentStatus, label, newStatus === 'retirée')
   }
 
@@ -442,7 +493,7 @@ export default function OrderList({
     { value: 'tous', label: 'Tous' },
     { value: 'reçue', label: 'Reçues' },
     { value: 'prête', label: 'Prêtes' },
-    { value: 'retirée', label: 'Retirées' },
+    { value: 'retirée', label: 'Livrées' },
     { value: 'annulée', label: 'Annulées' },
   ]
 
@@ -535,7 +586,7 @@ export default function OrderList({
               <Printer size={16} />
               <span className="hidden sm:inline">Imprimer</span>
             </button>
-            {order.statut !== 'retirée' ? (
+            {(order.statut === 'reçue' || order.statut === 'prête') && (
               <button
                 disabled={loadingIds.has(order.id)}
                 onClick={() => updateStatus(order.id, order.statut)}
@@ -544,9 +595,10 @@ export default function OrderList({
                   : 'bg-green-primary text-white border border-green-primary hover:bg-green-dark'}
                 `}
               >
-                {order.statut === 'reçue' ? '→ Prête' : '→ Retirée'}
+                {order.statut === 'reçue' ? '→ Prête' : '→ Livrée'}
               </button>
-            ) : (
+            )}
+            {order.statut === 'retirée' && (
               <button
                 disabled={loadingIds.has(order.id)}
                 onClick={() => restoreOrder(order.id)}
@@ -555,6 +607,18 @@ export default function OrderList({
               >
                 <Undo2 size={14} />
                 <span className="hidden sm:inline">Restaurer</span>
+              </button>
+            )}
+            {order.statut !== 'annulée' && (
+              <button
+                disabled={loadingIds.has(order.id)}
+                onClick={() => cancelOrder(order)}
+                className="inline-flex items-center gap-1.5 px-3 min-h-[40px] border border-neutral-300 text-neutral-400 hover:border-red-text hover:text-red-text transition-colors text-[11px] uppercase tracking-widest font-medium disabled:opacity-50"
+                title="Annuler cette commande"
+                aria-label="Annuler cette commande"
+              >
+                <Ban size={14} />
+                <span className="hidden sm:inline">Annuler</span>
               </button>
             )}
           </div>
@@ -751,13 +815,15 @@ export default function OrderList({
           </div>
         )}
 
-        {/* PRIX FINAL TICKET */}
+        {/* TICKET DE CAISSE — quantités + prix réels par article */}
         {showPrixFinal && (
-          <PrixFinalRow
-            orderId={order.id}
-            initial={order.prix_final ?? null}
+          <TicketEditor
+            order={order}
+            prixActuels={prixActuels}
             estime={tot.total}
-            onSave={(v) => updatePrixFinal(order.id, v)}
+            onSave={(lignes, total) => saveTicket(order.id, lignes, total)}
+            onDownload={() => downloadTicket(order.id)}
+            onSend={() => sendTicket(order)}
           />
         )}
 
@@ -870,7 +936,7 @@ export default function OrderList({
 
       {completedOrders.length > 0 && (
         <div className="space-y-2 pt-8 border-t border-neutral-200 no-print">
-          <h3 className="text-[11px] uppercase tracking-widest font-medium text-neutral-500 border-b border-neutral-200 pb-2">Commandes retirées ({completedOrders.length})</h3>
+          <h3 className="text-[11px] uppercase tracking-widest font-medium text-neutral-500 border-b border-neutral-200 pb-2">Commandes livrées ({completedOrders.length})</h3>
           {completedOrders.map(order => {
             const isOpen = expandedRetired.has(order.id)
             return (
@@ -944,108 +1010,202 @@ export default function OrderList({
 }
 
 
-function PrixFinalRow({
-  orderId,
-  initial,
+function parseNum(v: string): number | null {
+  const t = v.trim()
+  if (t === '') return null
+  const n = Number(t.replace(',', '.'))
+  return Number.isNaN(n) ? null : n
+}
+
+type TicketRow = { quantite: string; prix: string }
+
+function TicketEditor({
+  order,
+  prixActuels,
   estime,
   onSave,
+  onDownload,
+  onSend,
 }: {
-  orderId: string
-  initial: number | null
+  order: Order
+  prixActuels: Record<string, number | null>
   estime: number | null
-  onSave: (value: number | null) => Promise<void>
+  onSave: (lignes: TicketLigneReelle[], total: number) => Promise<void>
+  onDownload: () => void
+  onSend: () => void
 }) {
-  const [value, setValue] = useState<string>(initial == null ? '' : initial.toFixed(2))
+  const buildRows = (): TicketRow[] =>
+    order.lignes.map((l, i) => {
+      const existing = order.ticket_lignes?.[i]
+      const prixActuel = prixActuels[`${l.produitId}:${l.optionId}`]
+      const q = existing?.quantite_reelle ?? l.quantite
+      const p = existing?.prix_unitaire_reel ?? l.prix ?? prixActuel ?? null
+      return {
+        quantite: q == null ? '' : String(q),
+        prix: p == null ? '' : Number(p).toFixed(2),
+      }
+    })
+
+  const [rows, setRows] = useState<TicketRow[]>(buildRows)
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => {
-    setValue(initial == null ? '' : initial.toFixed(2))
-  }, [initial, orderId])
+  // Resync uniquement quand le ticket enregistré change réellement (signature
+  // stable) — évite d'écraser la saisie en cours au refresh RSC de 30 s.
+  const ticketSig = JSON.stringify(order.ticket_lignes ?? null)
+  useEffect(() => { setRows(buildRows()) // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order.id, ticketSig])
 
-  const parsed = (() => {
-    if (value.trim() === '') return null
-    const n = Number(value.replace(',', '.'))
-    if (Number.isNaN(n) || n < 0 || n > 99999.99) return undefined
-    return Math.round(n * 100) / 100
-  })()
-  const invalid = parsed === undefined
-  const dirty = (initial ?? null) !== (parsed ?? null)
+  const setRow = (idx: number, patch: Partial<TicketRow>) =>
+    setRows(prev => prev.map((r, i) => i === idx ? { ...r, ...patch } : r))
 
-  const ecart = estime != null && parsed != null && parsed > 0
-    ? { abs: parsed - estime, pct: ((parsed - estime) / estime) * 100 }
+  const lineSub = (r: TicketRow): number | null => {
+    const q = parseNum(r.quantite)
+    const p = parseNum(r.prix)
+    if (q == null || p == null || q < 0 || p < 0) return null
+    return Math.round(q * p * 100) / 100
+  }
+
+  const rowInvalid = (r: TicketRow): boolean => {
+    const q = parseNum(r.quantite)
+    const p = parseNum(r.prix)
+    return q == null || p == null || q < 0 || q > 9999 || p < 0 || p > 99999.99
+  }
+
+  const anyInvalid = rows.some(rowInvalid)
+  const total = Math.round(rows.reduce((acc, r) => acc + (lineSub(r) ?? 0), 0) * 100) / 100
+
+  const ecart = estime != null && !anyInvalid && total > 0
+    ? { abs: total - estime, pct: ((total - estime) / estime) * 100 }
     : null
 
   const handleSave = async () => {
-    if (invalid || !dirty) return
+    if (anyInvalid) return
     setSaving(true)
     try {
-      await onSave(parsed ?? null)
+      const lignes: TicketLigneReelle[] = order.lignes.map((l, i) => ({
+        produitId: l.produitId,
+        optionId: l.optionId,
+        nom: l.nom,
+        libelle: l.libelle,
+        quantite_reelle: parseNum(rows[i].quantite)!,
+        prix_unitaire_reel: parseNum(rows[i].prix)!,
+      }))
+      await onSave(lignes, total)
     } finally {
       setSaving(false)
     }
   }
 
-  const handleClear = async () => {
-    if (initial == null && value === '') return
-    setSaving(true)
-    try {
-      await onSave(null)
-      setValue('')
-    } finally {
-      setSaving(false)
-    }
-  }
+  const hasTicket = order.prix_final != null && (order.ticket_lignes?.length ?? 0) > 0
 
   return (
     <div className="border-t border-neutral-200 pt-3 mb-3 no-print">
-      <div className="text-[10px] uppercase tracking-widest text-neutral-500 font-semibold mb-2">Prix final ticket de caisse</div>
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative">
-          <input
-            type="text"
-            inputMode="decimal"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            placeholder="0.00"
-            disabled={saving}
-            aria-label="Prix final"
-            className={`w-32 min-h-[40px] px-3 pr-7 border text-right font-mono text-base ${invalid ? 'border-red-text bg-red-soft' : 'border-neutral-300'} focus:outline-none focus:border-green-primary disabled:opacity-50`}
-          />
-          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-neutral-500 pointer-events-none">€</span>
+      <div className="text-[10px] uppercase tracking-widest text-neutral-500 font-semibold mb-2">
+        Ticket de caisse — quantités &amp; prix réels
+      </div>
+
+      <div className="border border-neutral-200 divide-y divide-neutral-100">
+        <div className="hidden sm:grid grid-cols-[1fr_90px_100px_90px] gap-2 px-3 py-1.5 bg-neutral-50 text-[10px] uppercase tracking-widest text-neutral-500 font-medium">
+          <div>Article</div>
+          <div className="text-right">Qté réelle</div>
+          <div className="text-right">Prix unit.</div>
+          <div className="text-right">Sous-total</div>
+        </div>
+        {order.lignes.map((l, i) => {
+          const r = rows[i] ?? { quantite: '', prix: '' }
+          const sub = lineSub(r)
+          const invalid = rowInvalid(r)
+          return (
+            <div key={i} className="grid grid-cols-[1fr_90px_100px] sm:grid-cols-[1fr_90px_100px_90px] gap-2 items-center px-3 py-2">
+              <div className="min-w-0">
+                <span className="font-medium text-sm text-neutral-800">{l.nom}</span>
+                {l.libelle && <span className="italic text-xs text-neutral-500 ml-1.5">{l.libelle}</span>}
+              </div>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={r.quantite}
+                onChange={(e) => setRow(i, { quantite: e.target.value })}
+                disabled={saving}
+                aria-label={`Quantité réelle ${l.nom}`}
+                placeholder="Qté"
+                className={`min-h-[38px] px-2 border text-right font-mono text-sm ${invalid ? 'border-red-text bg-red-soft' : 'border-neutral-300'} focus:outline-none focus:border-green-primary disabled:opacity-50`}
+              />
+              <div className="relative">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={r.prix}
+                  onChange={(e) => setRow(i, { prix: e.target.value })}
+                  disabled={saving}
+                  aria-label={`Prix unitaire réel ${l.nom}`}
+                  placeholder="0.00"
+                  className={`w-full min-h-[38px] px-2 pr-6 border text-right font-mono text-sm ${invalid ? 'border-red-text bg-red-soft' : 'border-neutral-300'} focus:outline-none focus:border-green-primary disabled:opacity-50`}
+                />
+                <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">€</span>
+              </div>
+              <div className="col-span-3 sm:col-span-1 text-right font-semibold text-sm text-neutral-800">
+                {sub == null ? '—' : euro.format(sub)}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 mt-3">
+        <div className="flex items-baseline gap-2 mr-auto">
+          <span className="text-sm text-neutral-600">Total ticket</span>
+          <span className="font-serif text-lg text-neutral-800">{euro.format(total)}</span>
+          {ecart && (
+            <span
+              className={`text-xs font-medium ${
+                Math.abs(ecart.pct) < 2 ? 'text-neutral-500'
+                : ecart.abs > 0 ? 'text-orange-700'
+                : 'text-green-primary'
+              }`}
+            >
+              {ecart.abs >= 0 ? '+' : ''}{ecart.abs.toFixed(2)}€ ({ecart.pct >= 0 ? '+' : ''}{ecart.pct.toFixed(1)}%) vs estimé
+            </span>
+          )}
         </div>
         <button
           type="button"
           onClick={handleSave}
-          disabled={invalid || !dirty || saving}
+          disabled={anyInvalid || saving}
           className="px-4 min-h-[40px] bg-green-primary text-white text-[11px] uppercase tracking-widest font-semibold hover:bg-green-dark disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          {saving ? '…' : 'Enregistrer'}
+          {saving ? '…' : 'Enregistrer le ticket'}
         </button>
-        {initial != null && (
+      </div>
+      {anyInvalid && (
+        <div className="text-xs text-red-text mt-1">Quantité (0–9999) et prix (0–99999.99) requis sur chaque ligne.</div>
+      )}
+
+      {hasTicket && (
+        <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-neutral-100">
           <button
             type="button"
-            onClick={handleClear}
-            disabled={saving}
-            className="px-3 min-h-[40px] border border-neutral-300 text-neutral-600 hover:border-neutral-500 hover:text-neutral-900 text-[11px] uppercase tracking-widest font-medium disabled:opacity-50"
+            onClick={onDownload}
+            className="inline-flex items-center gap-1.5 px-3 min-h-[40px] border border-neutral-300 text-neutral-700 hover:border-neutral-500 hover:text-neutral-900 transition-colors text-[11px] uppercase tracking-widest font-medium"
           >
-            Effacer
+            <FileDown size={15} /> Télécharger le ticket
           </button>
-        )}
-        {ecart && (
-          <span
-            className={`text-xs font-medium ${
-              Math.abs(ecart.pct) < 2 ? 'text-neutral-500'
-              : ecart.abs > 0 ? 'text-orange-700'
-              : 'text-green-primary'
-            }`}
+          <button
+            type="button"
+            onClick={onSend}
+            disabled={!order.client_email}
+            title={order.client_email ? undefined : "Ce client n'a pas d'adresse email"}
+            className="inline-flex items-center gap-1.5 px-3 min-h-[40px] border border-green-primary text-green-primary hover:bg-green-primary/5 transition-colors text-[11px] uppercase tracking-widest font-medium disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {ecart.abs >= 0 ? '+' : ''}{ecart.abs.toFixed(2)}€ ({ecart.pct >= 0 ? '+' : ''}{ecart.pct.toFixed(1)}%) vs estimé
-          </span>
-        )}
-        {invalid && (
-          <span className="text-xs text-red-text">Valeur invalide (0 – 99999.99)</span>
-        )}
-      </div>
+            <Receipt size={15} /> {order.ticket_sent_at ? 'Renvoyer au client' : 'Envoyer au client'}
+          </button>
+          {order.ticket_sent_at && (
+            <span className="text-xs text-neutral-400">
+              Envoyé le {new Date(order.ticket_sent_at).toLocaleDateString('fr-FR')}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   )
 }

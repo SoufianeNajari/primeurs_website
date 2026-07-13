@@ -3,13 +3,19 @@ import { Resend } from 'resend';
 // Ne pas initialiser Resend en haut du fichier pour éviter le crash au chargement si la clé manque
 // On l'initialisera dans la fonction
 
+type MailAttachment = {
+  filename: string;
+  content: Buffer;
+};
+
 type SendMailOptions = {
   to: string | string[];
   subject: string;
   html: string;
+  attachments?: MailAttachment[];
 };
 
-export async function sendEmail({ to, subject, html }: SendMailOptions) {
+export async function sendEmail({ to, subject, html, attachments }: SendMailOptions) {
   const apiKey = process.env.RESEND_API_KEY;
   
   if (!apiKey) {
@@ -30,6 +36,9 @@ export async function sendEmail({ to, subject, html }: SendMailOptions) {
       to: Array.isArray(to) ? to : [to],
       subject,
       html,
+      ...(attachments && attachments.length > 0
+        ? { attachments: attachments.map((a) => ({ filename: a.filename, content: a.content })) }
+        : {}),
     });
 
     return data;
