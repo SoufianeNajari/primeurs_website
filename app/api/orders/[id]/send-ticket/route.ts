@@ -47,7 +47,12 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
   }
 
   const { prenom } = splitClientNom(order.client_nom);
-  const totalTxt = `${Number(order.prix_final).toFixed(2).replace('.', ',')} €`;
+  // Montant réellement payé = sous-total produits (prix_final) + frais de
+  // livraison − réduction code promo. Même formule que le PDF (lib/ticketPdf).
+  const fraisEuros = (order.frais_livraison_cents ?? 0) / 100;
+  const reductionEuros = (order.reduction_cents ?? 0) / 100;
+  const totalPaye = Math.round((Number(order.prix_final) + fraisEuros - reductionEuros) * 100) / 100;
+  const totalTxt = `${totalPaye.toFixed(2).replace('.', ',')} €`;
   const shortId = shortOrderId(order.id);
 
   const html = `
