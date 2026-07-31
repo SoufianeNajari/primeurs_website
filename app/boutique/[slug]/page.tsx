@@ -5,7 +5,7 @@ import { ChevronLeft, Leaf, MapPin, Refrigerator, CalendarRange, Sprout, Award, 
 import { supabaseAdmin } from '@/lib/supabase';
 import { formatPrixResume, getProductTags, isEnSaison, type Product } from '@/lib/produit';
 import { isCommandesBloquees } from '@/lib/parametres';
-import BoutiqueFermee from '@/components/BoutiqueFermee';
+import BoutiquePauseBanner from '@/components/BoutiquePauseBanner';
 import StickyCartButton from '@/components/StickyCartButton';
 import ProductAddButton from '@/components/ProductAddButton';
 import ProductGallery from '@/components/ProductGallery';
@@ -93,9 +93,7 @@ async function getRelatedArticles(slug: string): Promise<Article[]> {
 }
 
 export default async function ProductPage({ params }: { params: { slug: string } }) {
-  if (await isCommandesBloquees()) {
-    return <BoutiqueFermee />;
-  }
+  const bloquees = await isCommandesBloquees();
   const product = await getProductBySlug(params.slug);
   if (!product) notFound();
   const relatedArticles = await getRelatedArticles(params.slug);
@@ -165,6 +163,8 @@ export default async function ProductPage({ params }: { params: { slug: string }
     <main className="flex-grow pb-28 min-h-screen bg-neutral-50">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }} />
+
+      {bloquees && <BoutiquePauseBanner />}
 
       <div className="max-w-5xl mx-auto px-4 pt-6 pb-4">
         <Link

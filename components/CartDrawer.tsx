@@ -391,15 +391,31 @@ export default function CartDrawer() {
                 </div>
               </>
             )}
-            <button
-              onClick={() => {
-                setIsCartOpen(false);
-                router.push('/order');
-              }}
-              className="w-full bg-green-primary text-white py-4 font-serif text-lg hover:bg-green-dark transition-colors border border-green-primary flex justify-center items-center gap-3 shadow-lg"
-            >
-              Passer la commande
-            </button>
+            {config.bloquees ? (
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  disabled
+                  className="w-full bg-neutral-200 text-neutral-500 py-4 font-serif text-lg border border-neutral-300 flex justify-center items-center gap-3 cursor-not-allowed"
+                >
+                  Commandes rouvertes le 25 août
+                </button>
+                <p className="text-[11px] text-neutral-500 text-center leading-relaxed">
+                  Votre panier est conservé. 🎁 Offre de rentrée : 10 € offerts dès 50 € d&apos;achat
+                  avec le code <span className="text-green-dark font-medium">RENTREE</span>.
+                </p>
+              </div>
+            ) : (
+              <button
+                onClick={() => {
+                  setIsCartOpen(false);
+                  router.push('/order');
+                }}
+                className="w-full bg-green-primary text-white py-4 font-serif text-lg hover:bg-green-dark transition-colors border border-green-primary flex justify-center items-center gap-3 shadow-lg"
+              >
+                Passer la commande
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setIsCartOpen(false)}

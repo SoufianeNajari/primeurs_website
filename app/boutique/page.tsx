@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import ProductGrid from '@/components/ProductGrid';
 import StickyCartButton from '@/components/StickyCartButton';
 import ScrollToTopButton from '@/components/ScrollToTopButton';
-import BoutiqueFermee from '@/components/BoutiqueFermee';
+import BoutiquePauseBanner from '@/components/BoutiquePauseBanner';
 import WelcomeBackBanner from '@/components/WelcomeBackBanner';
 import { isCommandesBloquees } from '@/lib/parametres';
 import { listCategoriesAdmin } from '@/lib/categories';
@@ -24,9 +24,7 @@ export const metadata: Metadata = {
 };
 
 export default async function BoutiquePage() {
-  if (await isCommandesBloquees()) {
-    return <BoutiqueFermee />;
-  }
+  const bloquees = await isCommandesBloquees();
 
   const [{ data: products }, categories] = await Promise.all([
     supabaseAdmin
@@ -64,6 +62,8 @@ export default async function BoutiquePage() {
           <p className="text-neutral-500 font-medium text-lg uppercase tracking-widest text-[11px]">Découvrez notre sélection fraîche du jour</p>
         </div>
       </div>
+
+      {bloquees && <BoutiquePauseBanner />}
 
       <WelcomeBackBanner />
 

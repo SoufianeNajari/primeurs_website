@@ -9,9 +9,9 @@ import {
 } from './livraison';
 import type { LivraisonConfig } from '@/app/api/parametres/livraison/route';
 
-// v2 : ajout seuilGratuitCents — bump pour invalider sessionStorage des
-// clients déjà en place sans ce champ.
-const STORAGE_KEY = 'primeur_livraison_config_v2';
+// v3 : ajout bloquees — bump pour invalider sessionStorage des clients déjà
+// en place sans ce champ (v2 = seuilGratuitCents).
+const STORAGE_KEY = 'primeur_livraison_config_v3';
 const TTL_MS = 60 * 60 * 1000; // 1 h
 
 const FALLBACK: LivraisonConfig = {
@@ -19,6 +19,7 @@ const FALLBACK: LivraisonConfig = {
   minCents: DEFAULT_MIN_COMMANDE_CENTS,
   cutoffHeure: DEFAULT_CUTOFF_VEILLE_HEURE,
   seuilGratuitCents: DEFAULT_SEUIL_LIVRAISON_GRATUITE_CENTS,
+  bloquees: false,
 };
 
 type Cached = { cfg: LivraisonConfig; ts: number };
@@ -50,11 +51,12 @@ export function useLivraisonConfig(): LivraisonConfig {
   const [cfg, setCfg] = useState<LivraisonConfig>(() => readCache() ?? FALLBACK);
 
   useEffect(() => {
+    // Le cache sert au premier rendu (pas de flash), mais on revalide toujours :
+    // `bloquees` doit refléter l'état réel, sinon un client garde jusqu'à 1 h
+    // un panier « commandable » alors que les commandes sont en pause (ou l'inverse
+    // à la réouverture).
     const cached = readCache();
-    if (cached) {
-      setCfg(cached);
-      return;
-    }
+    if (cached) setCfg(cached);
     let cancelled = false;
     fetch('/api/parametres/livraison')
       .then((r) => (r.ok ? r.json() : null))
@@ -64,7 +66,8 @@ export function useLivraisonConfig(): LivraisonConfig {
           typeof data.fraisCents === 'number' &&
           typeof data.minCents === 'number' &&
           typeof data.cutoffHeure === 'number' &&
-          typeof data.seuilGratuitCents === 'number'
+          typeof data.seuilGratuitCents === 'number' &&
+          typeof data.bloquees === 'boolean'
         ) {
           setCfg(data);
           writeCache(data);

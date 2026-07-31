@@ -9,6 +9,7 @@ import {
   DEFAULT_CUTOFF_VEILLE_HEURE,
   DEFAULT_SEUIL_LIVRAISON_GRATUITE_CENTS,
 } from '@/lib/livraison';
+import { isCommandesBloquees } from '@/lib/parametres';
 
 // Cache CDN 5 min : ces paramètres changent rarement (admin SQL),
 // pas besoin d'aller-retour DB à chaque ouverture du formulaire.
@@ -19,17 +20,20 @@ export type LivraisonConfig = {
   minCents: number;
   cutoffHeure: number;
   seuilGratuitCents: number;
+  /** Commandes en pause : le catalogue reste visible, la validation est fermée. */
+  bloquees: boolean;
 };
 
 export async function GET() {
   try {
-    const [fraisCents, minCents, cutoffHeure, seuilGratuitCents] = await Promise.all([
+    const [fraisCents, minCents, cutoffHeure, seuilGratuitCents, bloquees] = await Promise.all([
       getFraisLivraisonCents(),
       getMinCommandeCents(),
       getCutoffVeilleHeure(),
       getSeuilLivraisonGratuiteCents(),
+      isCommandesBloquees(),
     ]);
-    const payload: LivraisonConfig = { fraisCents, minCents, cutoffHeure, seuilGratuitCents };
+    const payload: LivraisonConfig = { fraisCents, minCents, cutoffHeure, seuilGratuitCents, bloquees };
     return NextResponse.json(payload, {
       headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=900' },
     });
@@ -39,6 +43,7 @@ export async function GET() {
       minCents: DEFAULT_MIN_COMMANDE_CENTS,
       cutoffHeure: DEFAULT_CUTOFF_VEILLE_HEURE,
       seuilGratuitCents: DEFAULT_SEUIL_LIVRAISON_GRATUITE_CENTS,
+      bloquees: false,
     };
     return NextResponse.json(fallback, {
       headers: { 'Cache-Control': 'public, s-maxage=60' },
