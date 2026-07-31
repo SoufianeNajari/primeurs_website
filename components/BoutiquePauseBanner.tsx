@@ -21,7 +21,7 @@ export default function BoutiquePauseBanner() {
               🚚 Réouverture le 25 août
             </h2>
             <p className="text-neutral-600 text-sm leading-relaxed">
-              Vous pouvez parcourir la boutique et préparer votre panier dès maintenant —
+              Vous pouvez parcourir la boutique et préparer votre panier dès maintenant,
               la validation des commandes rouvre le 25&nbsp;août.
             </p>
           </div>
