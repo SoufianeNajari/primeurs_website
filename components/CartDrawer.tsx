@@ -402,7 +402,7 @@ export default function CartDrawer() {
                 </button>
                 <p className="text-[11px] text-neutral-500 text-center leading-relaxed">
                   Votre panier est conservé. 🎁 Offre de rentrée : 10 € offerts dès 50 € d&apos;achat
-                  avec le code <span className="text-green-dark font-medium">RENTREE</span>.
+                  avec le code <span className="text-green-dark font-medium">RENTREE10</span>.
                 </p>
               </div>
             ) : (
