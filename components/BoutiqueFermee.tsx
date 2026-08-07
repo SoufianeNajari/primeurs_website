@@ -30,7 +30,7 @@ export default function BoutiqueFermee() {
             10 € offerts dès 50 € d&apos;achat 🎉
           </p>
           <p className="text-[11px] uppercase tracking-widest text-neutral-500 mt-3">
-            Code <span className="text-green-dark font-medium">RENTREE</span>
+            Code <span className="text-green-dark font-medium">RENTREE10</span>
           </p>
         </div>
 
