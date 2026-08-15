@@ -22,6 +22,7 @@ import {
   computeFraisLivraisonCents,
   getCutoffVeilleHeure,
   nextDateForCreneau,
+  isoDateFromCreneauDate,
 } from '@/lib/livraison';
 import type { ProduitOption } from '@/lib/produit';
 
@@ -159,8 +160,7 @@ export async function POST(request: Request) {
     // On recalcule la date côté serveur (source de vérité) et on vérifie qu'elle
     // correspond à ce que le client a vu — sinon on prend la prochaine date valide.
     const cutoffHeure = await getCutoffVeilleHeure();
-    const dateAttendue = nextDateForCreneau(creneau, cutoffHeure);
-    const dateAttendueIso = `${dateAttendue.getFullYear()}-${String(dateAttendue.getMonth() + 1).padStart(2, '0')}-${String(dateAttendue.getDate()).padStart(2, '0')}`;
+    const dateAttendueIso = isoDateFromCreneauDate(nextDateForCreneau(creneau, cutoffHeure));
     if (dateAttendueIso !== dateLivraisonRaw) {
       return NextResponse.json(
         { error: 'Le créneau choisi n\'est plus disponible (cutoff dépassé). Recharge la page.' },

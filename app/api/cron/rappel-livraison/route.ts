@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { sendEmail } from '@/lib/mailer';
 import { emailRappelJ1, emailRelanceJ14 } from '@/lib/emails/templates';
 import { buildCancelUrl } from '@/lib/cancel-token';
-import { getCutoffVeilleHeure } from '@/lib/livraison';
+import { getCutoffVeilleHeure, parisIsoDate } from '@/lib/livraison';
 import { SITE } from '@/lib/site';
 import { splitClientNom } from '@/lib/order';
 
@@ -35,10 +35,10 @@ export async function GET(request: NextRequest) {
 // ───── Rappel J-1 ─────────────────────────────────────────────────────────
 
 async function runRappelJ1(): Promise<{ tomorrowIso: string; sent: number; failed: number }> {
-  const now = new Date();
-  const tomorrow = new Date(now);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowIso = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
+  // Jour parisien + 1 : `date_livraison` est un jour calendaire de Paris, et le
+  // runtime Vercel tourne en UTC. Le cron passe à 6h UTC (8h Paris) donc les
+  // deux coïncident aujourd'hui — on ne veut pas que ça dépende de l'horaire.
+  const tomorrowIso = parisIsoDate(1);
 
   const { data: commandes, error } = await supabaseAdmin
     .from('commandes')

@@ -105,65 +105,11 @@ export function computeFraisLivraisonCents(
   return fraisCents;
 }
 
-// Calcule la prochaine date de livraison pour un créneau donné, en respectant
-// le cutoff (veille à H heures). Si le cutoff de la prochaine occurrence est
-// déjà passé, on saute à l'occurrence suivante.
+// ───── Horloge murale Europe/Paris ─────
 //
-// `now` accepté en paramètre pour testabilité.
-export function nextDateForCreneau(
-  creneau: CreneauLivraison,
-  cutoffVeilleHeure: number,
-  now: Date = new Date(),
-): Date {
-  const candidate = new Date(now);
-  candidate.setHours(0, 0, 0, 0);
-
-  for (let i = 0; i < 14; i++) {
-    const day = (candidate.getDay() + 7) % 7;
-    if (day === creneau.jourSemaine) {
-      const cutoff = new Date(candidate);
-      cutoff.setDate(cutoff.getDate() - 1);
-      cutoff.setHours(cutoffVeilleHeure, 0, 0, 0);
-      if (now < cutoff) return candidate;
-    }
-    candidate.setDate(candidate.getDate() + 1);
-  }
-  // Sécurité : ne devrait jamais arriver (un créneau hebdo est toujours dispo dans 14 j).
-  return candidate;
-}
-
-export type CreneauOption = {
-  creneau: CreneauLivraison;
-  date: Date;
-  iso: string; // YYYY-MM-DD pour stockage et envoi formulaire
-};
-
-export function listCreneauOptions(
-  cutoffVeilleHeure: number,
-  now: Date = new Date(),
-): CreneauOption[] {
-  return CRENEAUX_LIVRAISON.map((c) => {
-    const date = nextDateForCreneau(c, cutoffVeilleHeure, now);
-    const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-    return { creneau: c, date, iso };
-  });
-}
-
-export function formatCreneauDate(date: Date): string {
-  return date.toLocaleDateString('fr-FR', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  });
-}
-
-// ───── Cutoff d'annulation client ─────
-//
-// L'annulation en ligne (lien signé reçu par email) reste possible tant qu'on
-// n'a pas dépassé le même cutoff que la commande, appliqué à la livraison : la
-// veille du jour de livraison à `cutoffVeilleHeure` (défaut 18h), heure de
-// Paris. Au-delà, le père a déjà acheté/préparé la marchandise à Rungis : on
-// bloque le self-service et on renvoie le client vers le téléphone / WhatsApp.
+// Ces helpers sont la seule façon correcte de raisonner sur des dates dans ce
+// fichier : le code tourne à la fois dans le navigateur (fuseau Paris) et sur
+// Vercel (fuseau UTC), et ne doit dépendre d'aucun réglage TZ implicite.
 
 const PARIS_TZ = 'Europe/Paris';
 
@@ -192,6 +138,109 @@ function parisWallClockToMs(year: number, month: number, day: number, hour: numb
   const offset = parisOffsetMs(new Date(guess));
   return guess - offset;
 }
+
+// Jour calendaire parisien (année, mois 1-12, jour) d'un instant donné.
+// Décaler l'instant de l'offset puis lire en UTC revient à lire l'horloge Paris.
+function parisCalendarDate(instant: Date): { year: number; month: number; day: number } {
+  const shifted = new Date(instant.getTime() + parisOffsetMs(instant));
+  return {
+    year: shifted.getUTCFullYear(),
+    month: shifted.getUTCMonth() + 1,
+    day: shifted.getUTCDate(),
+  };
+}
+
+// Calcule la prochaine date de livraison pour un créneau donné, en respectant
+// le cutoff (veille à H heures). Si le cutoff de la prochaine occurrence est
+// déjà passé, on saute à l'occurrence suivante.
+//
+// TOUT le calcul est mené sur l'horloge murale d'Europe/Paris, jamais sur le
+// fuseau du process : le navigateur du client tourne en Paris, les fonctions
+// Vercel en UTC. Avec des getters locaux (getDay/setHours), les deux côtés ne
+// calculaient pas la même date entre 18h et 20h Paris les veilles de livraison,
+// et /api/order rejetait la commande en 400 (« cutoff dépassé ») pendant 2 h.
+//
+// La date renvoyée est ancrée à MIDI UTC du jour calendaire parisien visé :
+// midi est assez loin des bascules DST (~1h-3h du matin) pour que les getters
+// UTC et l'affichage en heure de Paris tombent toujours sur le même jour.
+// Utiliser `isoDateFromCreneauDate()` pour en extraire le YYYY-MM-DD.
+//
+// `now` accepté en paramètre pour testabilité.
+export function nextDateForCreneau(
+  creneau: CreneauLivraison,
+  cutoffVeilleHeure: number,
+  now: Date = new Date(),
+): Date {
+  const today = parisCalendarDate(now);
+  // Arithmétique calendaire menée en UTC : setUTCDate gère les fins de mois et
+  // ignore les DST, contrairement aux setters locaux.
+  const cursor = new Date(Date.UTC(today.year, today.month - 1, today.day, 12, 0, 0));
+
+  for (let i = 0; i < 14; i++) {
+    if (cursor.getUTCDay() === creneau.jourSemaine) {
+      // Veille du jour de livraison, à `cutoffVeilleHeure` heure de Paris.
+      const veille = new Date(cursor.getTime() - 24 * 60 * 60 * 1000);
+      const cutoffMs = parisWallClockToMs(
+        veille.getUTCFullYear(), veille.getUTCMonth() + 1, veille.getUTCDate(), cutoffVeilleHeure,
+      );
+      if (now.getTime() < cutoffMs) return new Date(cursor);
+    }
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  // Sécurité : ne devrait jamais arriver (un créneau hebdo est toujours dispo dans 14 j).
+  return new Date(cursor);
+}
+
+// YYYY-MM-DD d'une date renvoyée par nextDateForCreneau (ancrée à midi UTC).
+// Getters UTC obligatoires : avec getFullYear/getMonth/getDate, un process en
+// UTC-X renverrait la veille.
+export function isoDateFromCreneauDate(date: Date): string {
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+}
+
+// YYYY-MM-DD du jour parisien courant, décalé de `offsetDays` (1 = demain).
+// À utiliser partout où l'on compare à `commandes.date_livraison`, qui est un
+// jour calendaire parisien : `new Date()` + getters locaux donnerait la veille
+// sur un runtime en UTC entre minuit et 2h du matin heure de Paris.
+export function parisIsoDate(offsetDays = 0, now: Date = new Date()): string {
+  const { year, month, day } = parisCalendarDate(now);
+  const d = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+  d.setUTCDate(d.getUTCDate() + offsetDays);
+  return isoDateFromCreneauDate(d);
+}
+
+export type CreneauOption = {
+  creneau: CreneauLivraison;
+  date: Date;
+  iso: string; // YYYY-MM-DD pour stockage et envoi formulaire
+};
+
+export function listCreneauOptions(
+  cutoffVeilleHeure: number,
+  now: Date = new Date(),
+): CreneauOption[] {
+  return CRENEAUX_LIVRAISON.map((c) => {
+    const date = nextDateForCreneau(c, cutoffVeilleHeure, now);
+    return { creneau: c, date, iso: isoDateFromCreneauDate(date) };
+  });
+}
+
+export function formatCreneauDate(date: Date): string {
+  return date.toLocaleDateString('fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    timeZone: PARIS_TZ,
+  });
+}
+
+// ───── Cutoff d'annulation client ─────
+//
+// L'annulation en ligne (lien signé reçu par email) reste possible tant qu'on
+// n'a pas dépassé le même cutoff que la commande, appliqué à la livraison : la
+// veille du jour de livraison à `cutoffVeilleHeure` (défaut 18h), heure de
+// Paris. Au-delà, le père a déjà acheté/préparé la marchandise à Rungis : on
+// bloque le self-service et on renvoie le client vers le téléphone / WhatsApp.
 
 // Instant (epoch ms) du cutoff d'annulation pour une livraison donnée : la
 // veille de `dateLivraisonIso` (YYYY-MM-DD) à `cutoffVeilleHeure`, heure Paris.

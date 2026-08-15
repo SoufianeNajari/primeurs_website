@@ -2,6 +2,7 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { SITE } from '@/lib/site'
 import { nearestNeighborOrder, buildGoogleMapsUrl } from '@/lib/tournee'
 import { geocodeAddress } from '@/lib/geocoding'
+import { parisIsoDate } from '@/lib/livraison'
 import TourneeMap from './TourneeMap'
 import Link from 'next/link'
 import { MapPin, Phone, ExternalLink, AlertTriangle, Truck } from 'lucide-react'
@@ -23,9 +24,10 @@ type Commande = {
   lng: number | null
 }
 
+// Jour parisien, pas jour du runtime : la page est rendue côté serveur (UTC sur
+// Vercel) et `date_livraison` est un jour calendaire de Paris.
 function todayIso(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  return parisIsoDate()
 }
 
 function formatDateLong(iso: string): string {
