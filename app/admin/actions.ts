@@ -7,7 +7,7 @@ import { PARAM_COMMANDES_BLOQUEES, setParam } from '@/lib/parametres'
 
 export async function login(formData: FormData) {
   const ip = getClientIp()
-  const rl = rateLimit('admin-login', ip, 5, 15 * 60 * 1000)
+  const rl = await rateLimit('admin-login', ip, 5, 15 * 60 * 1000)
   if (!rl.success) {
     return { success: false, error: 'Trop de tentatives. Réessayez dans quelques minutes.' }
   }

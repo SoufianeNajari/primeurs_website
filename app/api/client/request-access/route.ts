@@ -9,7 +9,7 @@ import { escapeHtml } from '@/lib/html';
 
 export async function POST(request: Request) {
   const ip = getClientIp();
-  const rl = rateLimit('client-request', ip, 3, 24 * 60 * 60 * 1000); // 3 / jour / IP
+  const rl = await rateLimit('client-request', ip, 3, 24 * 60 * 60 * 1000); // 3 / jour / IP
   if (!rl.success) {
     const retryAfter = Math.max(1, Math.ceil((rl.resetAt - Date.now()) / 1000));
     return NextResponse.json(

@@ -6,7 +6,7 @@ import { rateLimit, getClientIp } from '@/lib/rate-limit';
 
 export async function POST(request: Request) {
   const ip = getClientIp();
-  const rl = rateLimit('client-login', ip, 5, 60 * 60 * 1000); // 5 / heure / IP
+  const rl = await rateLimit('client-login', ip, 5, 60 * 60 * 1000); // 5 / heure / IP
   if (!rl.success) {
     const retryAfter = Math.max(1, Math.ceil((rl.resetAt - Date.now()) / 1000));
     return NextResponse.json(

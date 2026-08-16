@@ -11,7 +11,7 @@ export async function POST() {
 
   // Rate limit : 6 refresh / heure / IP (l'API Places coûte de l'argent en prod)
   const ip = getClientIp();
-  const rl = rateLimit('reviews-refresh', ip, 6, 60 * 60 * 1000);
+  const rl = await rateLimit('reviews-refresh', ip, 6, 60 * 60 * 1000);
   if (!rl.success) {
     const retryAfter = Math.max(1, Math.ceil((rl.resetAt - Date.now()) / 1000));
     return NextResponse.json(

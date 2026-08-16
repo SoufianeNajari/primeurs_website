@@ -62,7 +62,7 @@ export async function POST(request: Request) {
 
     // Rate limit : 5 commandes / 10 min / IP
     const ip = getClientIp();
-    const rl = rateLimit('order', ip, 5, 10 * 60 * 1000);
+    const rl = await rateLimit('order', ip, 5, 10 * 60 * 1000);
     if (!rl.success) {
       const retryAfter = Math.max(1, Math.ceil((rl.resetAt - Date.now()) / 1000));
       return NextResponse.json(

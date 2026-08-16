@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
   // Rate limit : 30 validations / 5 min / IP — généreux mais protège du spam.
   const ip = getClientIp();
-  const rl = rateLimit('promo', ip, 30, 5 * 60 * 1000);
+  const rl = await rateLimit('promo', ip, 30, 5 * 60 * 1000);
   if (!rl.success) {
     return NextResponse.json(
       { ok: false, raison: 'Trop de tentatives. Réessayez plus tard.' },
