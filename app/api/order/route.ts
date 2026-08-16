@@ -38,6 +38,7 @@ type PanierItem = {
 };
 
 const COMMENTAIRE_MAX = 80;
+const PANIER_LIGNES_MAX = 100;
 
 function sanitizeCommentaireServer(raw: unknown): string | undefined {
   if (typeof raw !== 'string') return undefined;
@@ -171,12 +172,23 @@ export async function POST(request: Request) {
     if (!panier || !Array.isArray(panier) || panier.length === 0) {
       return NextResponse.json({ error: 'Le panier est vide.' }, { status: 400 });
     }
+    // Plafond du nombre de lignes : les quantités étaient bornées mais pas leur
+    // nombre. Un POST à 10 000 lignes produisait un .in() géant vers Supabase et
+    // une colonne JSON énorme en base. Le catalogue tient en quelques dizaines
+    // de références, 100 lignes laissent une marge confortable.
+    if (panier.length > PANIER_LIGNES_MAX) {
+      return NextResponse.json(
+        { error: `Panier trop volumineux (maximum ${PANIER_LIGNES_MAX} lignes).` },
+        { status: 400 },
+      );
+    }
 
     // Validation stricte des lignes panier : on ne fait pas confiance au client
     // sur les quantités (un entier 0/négatif/fractionnaire/énorme fausserait le
     // sous-total, le minimum de commande, la livraison offerte et le code promo)
     // ni sur le format des identifiants produit (un id non-UUID déclenche une
     // erreur Postgres 22P02 en 500 au lieu d'un 400 propre).
+    const clesVues = new Set<string>();
     for (const item of panier) {
       if (!item || !isValidUuid(item.produitId) || typeof item.optionId !== 'string' || !item.optionId) {
         return NextResponse.json({ error: 'Panier invalide.' }, { status: 400 });
@@ -184,10 +196,19 @@ export async function POST(request: Request) {
       if (!Number.isInteger(item.quantite) || item.quantite <= 0 || item.quantite > 999) {
         return NextResponse.json({ error: 'Quantité invalide dans le panier.' }, { status: 400 });
       }
+      // Le panier client est indexé par (produitId, optionId) — cf. cartKey() —
+      // donc un doublon ne peut pas venir de l'app. On le rejette plutôt que de
+      // l'agréger : agréger fusionnerait deux notes libres différentes, et le
+      // plafond de quantité par ligne serait contournable en dupliquant.
+      const cle = `${item.produitId}::${item.optionId}`;
+      if (clesVues.has(cle)) {
+        return NextResponse.json({ error: 'Panier invalide (ligne en double).' }, { status: 400 });
+      }
+      clesVues.add(cle);
     }
 
     // Re-vérif disponibilité + lecture fraîche des prix
-    const produitIds = panier.map((item) => item.produitId);
+    const produitIds = Array.from(new Set(panier.map((item) => item.produitId)));
     const { data: produitsDb, error: produitsError } = await supabaseAdmin
       .from('produits')
       .select('id, nom, disponible, options, masque_boutique')
