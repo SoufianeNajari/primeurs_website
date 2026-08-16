@@ -13,9 +13,22 @@ export async function GET() {
   // 30 s) rejouerait le bug "prix périmé après modif admin".
   noStore();
   try {
+    // Route PUBLIQUE (aucune auth) : elle ne doit exposer ni les produits
+    // masqués de la boutique, ni plus de colonnes que nécessaire. Toutes les
+    // autres surfaces publiques filtrent déjà masque_boutique (/boutique,
+    // fiche produit, sitemap, upsell, coups de cœur) — sans ce filtre, un
+    // produit retiré volontairement de la vitrine restait consultable ici avec
+    // son nom, son prix et sa description.
+    //
+    // Le seul consommateur est CartContext, qui n'utilise que ces 4 colonnes
+    // et traite déjà l'absence d'un produit comme une suppression : le
+    // comportement de purge du panier est identique, la réponse est bien plus
+    // légère (plus de descriptions ni de tableaux d'images transportés).
+    // `.or()` : masque_boutique est NULL sur les lignes antérieures à la 014.
     const { data, error } = await supabaseAdmin
       .from('produits')
-      .select('*')
+      .select('id, disponible, masque_boutique, options')
+      .or('masque_boutique.is.null,masque_boutique.eq.false')
       .order('categorie')
       .order('nom');
 
