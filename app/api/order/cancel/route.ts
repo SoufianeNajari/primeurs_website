@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { sendEmail } from '@/lib/mailer';
 import { verifyCancelToken } from '@/lib/cancel-token';
+import { releaseOrderCodeUsage } from '@/lib/codes-promos';
 import { shortOrderId } from '@/lib/order';
 import { getCutoffVeilleHeure, isCancellationOpen } from '@/lib/livraison';
 import { SITE } from '@/lib/site';
@@ -79,6 +80,16 @@ export async function POST(request: Request) {
   if (updateErr) {
     console.error('[cancel] update error:', updateErr);
     return NextResponse.json({ error: 'Erreur lors de l\'annulation.' }, { status: 500 });
+  }
+
+  // Rend son code promo au client : la commande n'aura pas lieu, il ne doit pas
+  // perdre son offre (RENTREE10 = un seul usage par adresse). Idempotent via
+  // commandes.code_promo_libere_at. Best-effort : une restitution ratée ne doit
+  // pas faire échouer l'annulation elle-même.
+  try {
+    await releaseOrderCodeUsage(id);
+  } catch (e) {
+    console.error('[cancel] releaseOrderCodeUsage failed:', e);
   }
 
   // Notif shop (best-effort, on ne fait pas échouer l'annulation si l'email plante)

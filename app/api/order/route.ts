@@ -7,7 +7,7 @@ import { buildCancelUrl } from '@/lib/cancel-token';
 import { getClientSession } from '@/lib/client-auth';
 import { isCommandesBloquees } from '@/lib/parametres';
 import { getFourchetteBornes } from '@/lib/fourchette';
-import { validateCodePromo, tryConsumeCodeUsage, tryConsumeAddressUsage, releaseAddressUsage } from '@/lib/codes-promos';
+import { validateCodePromo, tryConsumeCodeUsage, tryConsumeAddressUsage, releaseAddressUsage, releaseCodeUsage } from '@/lib/codes-promos';
 import { isValidEmail } from '@/lib/email';
 import { isValidUuid } from '@/lib/uuid';
 import { currentOriginFromRequest } from '@/lib/site';
@@ -262,6 +262,10 @@ export async function POST(request: Request) {
     let codePromoApplique: string | null = null;
     let reductionCents = 0;
     let codePromoId: string | null = null;
+    // Le quota par adresse a-t-il été consommé pour cette commande ? Nécessaire
+    // pour le relâcher si l'insert échoue plus bas (un code null n'a pas de
+    // ligne compteur, on ne veut pas décrémenter à l'aveugle).
+    let addressUsageConsumed = false;
     if (typeof codePromoRaw === 'string' && codePromoRaw.trim() && !tousIncertains) {
       const validation = await validateCodePromo(codePromoRaw, totalCertainCents, client.email, banId);
       if (validation.ok) {
@@ -278,6 +282,7 @@ export async function POST(request: Request) {
             codePromoApplique = code.code;
             reductionCents = validation.reductionCents;
             codePromoId = code.id;
+            addressUsageConsumed = addrLimit != null;
           } else if (addrLimit != null) {
             // Global épuisé après réservation adresse : on relâche pour ne pas
             // « brûler » un usage adresse sur une commande sans code appliqué.
@@ -319,6 +324,16 @@ export async function POST(request: Request) {
 
     if (dbError) {
       console.error('Erreur Supabase:', dbError);
+      // Les compteurs ont été consommés juste au-dessus, mais il n'y a pas de
+      // commande : sans ça le client repart sans rien ET avec son code brûlé
+      // (RENTREE10 est plafonné à un usage par adresse). Best-effort, on ne
+      // laisse pas une erreur de restitution masquer l'erreur d'origine.
+      if (codePromoApplique) {
+        await releaseCodeUsage(codePromoApplique).catch(() => {});
+        if (addressUsageConsumed) {
+          await releaseAddressUsage(codePromoApplique, banId).catch(() => {});
+        }
+      }
       return NextResponse.json({ error: "Erreur lors de l'enregistrement de la commande." }, { status: 500 });
     }
 

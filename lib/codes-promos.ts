@@ -172,6 +172,90 @@ export async function releaseAddressUsage(codeText: string, banId: string): Prom
   if (error) console.error('[codes-promos] release_address_usage:', error);
 }
 
+// Relâche (décrémente) le compteur GLOBAL d'un code — symétrique de
+// tryConsumeCodeUsage. Prend le code textuel, seul identifiant conservé sur la
+// commande. Best-effort : un code renommé/supprimé entre-temps ne fait rien.
+export async function releaseCodeUsage(codeText: string): Promise<void> {
+  if (!codeText) return;
+  const { error } = await supabaseAdmin.rpc('release_code_usage', { p_code: codeText });
+  if (error) console.error('[codes-promos] release_code_usage:', error);
+}
+
+// ───── Restitution du code promo à l'annulation d'une commande ─────
+//
+// Les deux compteurs sont consommés avant l'insert de la commande. Si la
+// commande n'aboutit pas (annulation client via lien signé, annulation admin),
+// le client doit récupérer son offre : sinon un client qui annule avec le lien
+// que le site lui envoie lui-même dans l'email J-1 perd son RENTREE10, plafonné
+// à un usage par adresse. Voir la migration 039 pour la révision de la
+// sémantique « on ne décrémente jamais » posée en 033.
+//
+// L'idempotence est portée par `commandes.code_promo_libere_at` : le passage
+// NULL → now() se fait par un UPDATE conditionnel, donc un seul appelant peut
+// gagner la course, quel que soit le chemin d'annulation (lien client, PATCH
+// admin, double-clic). Retourne true si cet appel a effectivement relâché.
+export async function releaseOrderCodeUsage(orderId: string): Promise<boolean> {
+  const { data, error } = await supabaseAdmin
+    .from('commandes')
+    .update({ code_promo_libere_at: new Date().toISOString() })
+    .eq('id', orderId)
+    .is('code_promo_libere_at', null)
+    .not('code_promo', 'is', null)
+    .select('code_promo, ban_id')
+    .maybeSingle();
+
+  if (error) {
+    console.error('[codes-promos] releaseOrderCodeUsage claim:', error);
+    return false;
+  }
+  // Aucune ligne réservée : commande sans code promo, ou déjà relâchée.
+  if (!data?.code_promo) return false;
+
+  await releaseCodeUsage(data.code_promo);
+  // No-op si le code n'avait pas de quota par adresse (aucune ligne compteur).
+  if (data.ban_id) await releaseAddressUsage(data.code_promo, data.ban_id);
+  return true;
+}
+
+// Symétrique : l'admin fait marche arrière sur une annulation (« annulée » →
+// « reçue »). La commande redevient réelle, elle doit donc reconsommer ce
+// qu'elle avait rendu. Best-effort : si le plafond a été atteint entre-temps
+// par quelqu'un d'autre, on le journalise et on laisse la commande garder sa
+// remise — on ne va pas retirer une réduction déjà annoncée au client.
+export async function reconsumeOrderCodeUsage(orderId: string): Promise<void> {
+  const { data, error } = await supabaseAdmin
+    .from('commandes')
+    .update({ code_promo_libere_at: null })
+    .eq('id', orderId)
+    .not('code_promo_libere_at', 'is', null)
+    .select('code_promo, ban_id')
+    .maybeSingle();
+
+  if (error) {
+    console.error('[codes-promos] reconsumeOrderCodeUsage claim:', error);
+    return;
+  }
+  if (!data?.code_promo) return;
+
+  const { data: code } = await supabaseAdmin
+    .from('codes_promos')
+    .select('id, usage_max_par_adresse')
+    .eq('code', data.code_promo)
+    .maybeSingle();
+  if (!code) return;
+
+  const consumed = await tryConsumeCodeUsage(code.id);
+  if (!consumed) {
+    console.warn('[codes-promos] reconsume: plafond global atteint', { orderId, code: data.code_promo });
+  }
+  if (code.usage_max_par_adresse != null && data.ban_id) {
+    const ok = await tryConsumeAddressUsage(data.code_promo, data.ban_id, code.usage_max_par_adresse);
+    if (!ok) {
+      console.warn('[codes-promos] reconsume: quota adresse atteint', { orderId, code: data.code_promo });
+    }
+  }
+}
+
 // Valide un code et calcule la réduction. Aucune mutation BDD.
 // Utilisé par /api/codes-promos/validate (avant commande) et par /api/order
 // (re-validation atomique au moment de l'enregistrement).

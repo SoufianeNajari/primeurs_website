@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { isAdmin } from '@/lib/admin-auth';
 import { badRequestIfNotUuid } from '@/lib/uuid';
-import { loadActiveCode } from '@/lib/codes-promos';
+import { loadActiveCode, releaseOrderCodeUsage, reconsumeOrderCodeUsage } from '@/lib/codes-promos';
 import { traiterUsageSiParrainage } from '@/lib/parrainage';
 
 // Vocabulaire de statuts réel de l'app et de la base — doit rester aligné sur
@@ -157,6 +157,21 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     if (nouveauStatut === 'retirée') {
       tenterCreditMerciSiLivree(id).catch((err) =>
         console.error('[orders PATCH] tenterCreditMerciSiLivree:', err),
+      );
+    }
+
+    // Code promo : une annulation admin rend son offre au client, exactement
+    // comme l'annulation self-service (même situation de son point de vue : pas
+    // de livraison). Et la marche arrière sur une annulation la reconsomme,
+    // sinon la commande garderait sa remise sans compter dans les plafonds.
+    // Les deux opérations sont idempotentes (commandes.code_promo_libere_at).
+    if (nouveauStatut === 'annulée') {
+      releaseOrderCodeUsage(id).catch((err) =>
+        console.error('[orders PATCH] releaseOrderCodeUsage:', err),
+      );
+    } else if (nouveauStatut !== null) {
+      reconsumeOrderCodeUsage(id).catch((err) =>
+        console.error('[orders PATCH] reconsumeOrderCodeUsage:', err),
       );
     }
 
