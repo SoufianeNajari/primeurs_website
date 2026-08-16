@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import { escapeHtml } from '@/lib/html'
 
 // Carte Leaflet via CDN — zéro dep npm, juste 2 fichiers chargés une fois.
 // Affiche les stops numérotés + le point de départ + une polyline reliant
@@ -145,8 +146,4 @@ export default function TourneeMap({
       aria-label="Carte de la tournée"
     />
   )
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string))
 }

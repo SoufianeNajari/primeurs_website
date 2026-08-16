@@ -14,6 +14,7 @@ import { SITE } from '@/lib/site';
 import { formatArticleDate, type Article } from '@/lib/article';
 import { breadcrumbJsonLd } from '@/lib/json-ld';
 import type { Metadata } from 'next';
+import { serializeJsonLd } from '@/lib/html';
 
 // Pas de cache : la fiche est la source d'achat finale, le prix doit être exact.
 export const revalidate = 0;
@@ -161,8 +162,8 @@ export default async function ProductPage({ params }: { params: { slug: string }
 
   return (
     <main className="flex-grow pb-28 min-h-screen bg-neutral-50">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumb) }} />
 
       {bloquees && <BoutiquePauseBanner />}
 

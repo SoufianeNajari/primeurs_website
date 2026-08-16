@@ -26,6 +26,7 @@ async function getArticle(slug: string): Promise<Article | null> {
 }
 
 import { formatPrixResume, type ProduitOption } from '@/lib/produit';
+import { serializeJsonLd } from '@/lib/html';
 
 type LinkedProduit = {
   slug: string;
@@ -136,11 +137,11 @@ export default async function ArticlePage({
     <main className="flex-grow bg-neutral-50 py-12 md:py-16">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumb) }}
       />
 
       <article className="max-w-3xl mx-auto px-4">

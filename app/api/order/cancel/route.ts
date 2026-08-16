@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { sendEmail } from '@/lib/mailer';
 import { verifyCancelToken } from '@/lib/cancel-token';
 import { releaseOrderCodeUsage } from '@/lib/codes-promos';
+import { escapeHtml } from '@/lib/html';
 import { shortOrderId } from '@/lib/order';
 import { getCutoffVeilleHeure, isCancellationOpen } from '@/lib/livraison';
 import { SITE } from '@/lib/site';
@@ -106,12 +107,12 @@ export async function POST(request: Request) {
         html: `
           <div style="font-family: -apple-system, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; background: #fff; border: 1px solid #E5E5E5;">
             <h2 style="font-family: Georgia, serif; color: #9B3A3A; font-weight: normal;">Commande annulée par le client</h2>
-            <p><strong>${order.client_nom}</strong> (${order.client_email}) a annulé sa livraison.</p>
+            <p><strong>${escapeHtml(order.client_nom)}</strong> (${escapeHtml(order.client_email)}) a annulé sa livraison.</p>
             <ul style="line-height: 1.7;">
-              <li>Commande : <strong>${shortId}</strong></li>
-              <li>Date prévue : <strong>${dateText}</strong></li>
-              <li>Créneau : <strong>${creneauText}</strong></li>
-              <li>Ville : <strong>${villeText}</strong></li>
+              <li>Commande : <strong>${escapeHtml(shortId)}</strong></li>
+              <li>Date prévue : <strong>${escapeHtml(dateText)}</strong></li>
+              <li>Créneau : <strong>${escapeHtml(creneauText)}</strong></li>
+              <li>Ville : <strong>${escapeHtml(villeText)}</strong></li>
             </ul>
             <p style="color: #666; font-size: 13px;">L'annulation a été effectuée via le lien signé envoyé dans l'email J-1.</p>
           </div>

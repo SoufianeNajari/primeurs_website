@@ -6,7 +6,7 @@ export type BreadcrumbItem = { name: string; href: string };
 // systématiquement absolutisées (Google attend une URL complète, pas un path
 // relatif). Usage type :
 //   <script type="application/ld+json"
-//     dangerouslySetInnerHTML={{ __html: JSON.stringify(
+//     dangerouslySetInnerHTML={{ __html: serializeJsonLd(
 //       breadcrumbJsonLd([
 //         { name: 'Accueil', href: '/' },
 //         { name: 'Boutique', href: '/boutique' },

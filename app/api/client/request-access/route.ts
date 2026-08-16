@@ -5,10 +5,7 @@ import { normalizePhoneFR, formatPhoneFRDisplay } from '@/lib/phone';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { SITE } from '@/lib/site';
 import { isValidEmail } from '@/lib/email';
-
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
-}
+import { escapeHtml } from '@/lib/html';
 
 export async function POST(request: Request) {
   const ip = getClientIp();

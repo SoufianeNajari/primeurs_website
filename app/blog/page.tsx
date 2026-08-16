@@ -5,6 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { SITE } from '@/lib/site';
 import { formatArticleDate, type Article } from '@/lib/article';
 import { breadcrumbJsonLd } from '@/lib/json-ld';
+import { serializeJsonLd } from '@/lib/html';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,7 +45,7 @@ export default async function BlogPage() {
 
   return (
     <main className="flex-grow bg-neutral-50 py-16 md:py-24">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumb) }} />
       <div className="max-w-6xl mx-auto px-4">
         <header className="text-center mb-16 max-w-2xl mx-auto">
           <p className="text-xs uppercase tracking-widest text-green-primary font-medium mb-4">

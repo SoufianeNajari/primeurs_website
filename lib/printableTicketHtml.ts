@@ -1,5 +1,6 @@
 import { calcFourchette, type FourchetteBornes } from '@/lib/fourchette'
 import { shortOrderId } from '@/lib/order'
+import { escapeHtml } from '@/lib/html'
 
 type Ligne = {
   produitId: string
@@ -35,16 +36,7 @@ export type TicketOrder = {
   frais_livraison_cents?: number | null
 }
 
-function esc(s: string | null | undefined): string {
-  if (s == null) return ''
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-}
-
+const esc = escapeHtml
 
 function formatDateLongue(iso: string): string {
   return new Date(iso + (iso.length === 10 ? 'T00:00:00' : '')).toLocaleDateString('fr-FR', {

@@ -8,6 +8,7 @@ import PWAPrompt from "@/components/PWAPrompt";
 import { Analytics } from "@vercel/analytics/next";
 import { SITE, DEFAULT_OG_IMAGE } from "@/lib/site";
 import { isClientAuthorized } from "@/lib/client-auth";
+import { serializeJsonLd } from '@/lib/html';
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
@@ -112,7 +113,7 @@ export default async function RootLayout({
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd) }}
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(localBusinessJsonLd) }}
         />
       </head>
       <body
