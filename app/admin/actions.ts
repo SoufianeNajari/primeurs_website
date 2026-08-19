@@ -46,6 +46,10 @@ export async function setCommandesBloquees(bloque: boolean) {
     revalidatePath('/admin/dashboard')
     revalidatePath('/boutique', 'layout')
     revalidatePath('/order', 'layout')
+    // Le CartDrawer lit `bloquees` via cette route, servie en s-maxage=300 :
+    // sans purge, le bouton « commander » reste figé jusqu'à 15 min après la
+    // bascule (grisé à la réouverture, actif à la mise en pause).
+    revalidatePath('/api/parametres/livraison')
     return { success: true }
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : 'Erreur' }
