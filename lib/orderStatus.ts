@@ -16,3 +16,14 @@ export function statutBadgeCls(s: OrderStatut): string {
   if (s === 'annulée') return 'bg-red-soft text-red-text border border-red-text/20';
   return 'bg-neutral-100 text-neutral-500 border border-neutral-200';
 }
+
+// Vue du tableau de bord. « Prévu » mesure ce qui est engagé, « Réel » ce qui a
+// effectivement été livré et pesé ; l'écart entre les deux vaut taux
+// d'annulation tardive + écart de pesée.
+export type StatutFiltre = 'active' | 'livree' | 'all';
+
+export function parseStatutFiltre(v: string | undefined): StatutFiltre {
+  if (v === 'all') return 'all';
+  if (v === 'livree') return 'livree';
+  return 'active';
+}

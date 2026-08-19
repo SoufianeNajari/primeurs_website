@@ -5,6 +5,7 @@ import PeriodFilter from './PeriodFilter';
 import { isCommandesBloquees } from '@/lib/parametres';
 import Link from 'next/link';
 import { Download } from 'lucide-react';
+import { parseStatutFiltre, type StatutFiltre } from '@/lib/orderStatus';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,6 +19,14 @@ type Ligne = {
   quantite: number;
 };
 
+type TicketLigne = {
+  produitId?: string;
+  nom: string;
+  libelle?: string;
+  quantite_reelle?: number | null;
+  prix_unitaire_reel?: number | null;
+};
+
 type Commande = {
   id: string;
   created_at: string;
@@ -26,6 +35,7 @@ type Commande = {
   client_telephone?: string | null;
   prix_final?: number | null;
   lignes: Ligne[];
+  ticket_lignes?: TicketLigne[] | null;
 };
 
 const euro = new Intl.NumberFormat('fr-FR', {
@@ -61,6 +71,12 @@ function addDays(d: Date, n: number): Date {
   c.setUTCDate(c.getUTCDate() + n);
   return c;
 }
+
+const STATUT_LABELS: Record<StatutFiltre, string> = {
+  active: 'Prévu — commandes engagées (reçues, prêtes, livrées), hors annulées',
+  livree: 'Réel — commandes effectivement livrées, au montant pesé',
+  all: 'Toutes les commandes, annulées comprises',
+};
 
 type ResolvedPeriod = {
   period: string;
@@ -153,6 +169,34 @@ function commandeRevenue(c: Commande): number | null {
   return any ? total : null;
 }
 
+// Lignes à agréger pour le Top produits. En mode « Réel », on prend le ticket
+// de caisse (quantités pesées et prix pratiqués) dès qu'il existe : afficher
+// les quantités estimées dans une vue « réel » serait trompeur. Repli sur les
+// lignes de commande si le ticket n'a pas été saisi.
+function lignesPourStats(c: Commande, reel: boolean): { cle: string; nom: string; qte: number; ca: number }[] {
+  if (reel && c.ticket_lignes && c.ticket_lignes.length > 0) {
+    return c.ticket_lignes.map((t) => {
+      const qte = Number(t.quantite_reelle || 0);
+      const pu = t.prix_unitaire_reel;
+      return {
+        cle: t.produitId || t.nom,
+        nom: t.nom,
+        qte,
+        ca: pu != null ? Number(pu) * qte : 0,
+      };
+    });
+  }
+  return (c.lignes || []).map((l) => {
+    const qte = Number(l.quantite || 0);
+    return {
+      cle: l.produitId || l.nom,
+      nom: l.nom,
+      qte,
+      ca: l.prix != null ? Number(l.prix) * qte : 0,
+    };
+  });
+}
+
 function fmtMonth(d: Date): string {
   return d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
 }
@@ -169,7 +213,7 @@ export default async function DashboardPage({
   const period = searchParams?.period || '30d';
   const from = searchParams?.from || null;
   const to = searchParams?.to || null;
-  const statut = searchParams?.statut === 'all' ? 'all' : 'active';
+  const statut: StatutFiltre = parseStatutFiltre(searchParams?.statut);
   const topBy = searchParams?.topBy === 'ca' ? 'ca' : 'qte';
   const graphType = searchParams?.graph === 'ca' ? 'ca' : 'count';
 
@@ -179,13 +223,19 @@ export default async function DashboardPage({
 
   const { data: commandesData } = await supabaseAdmin
     .from('commandes')
-    .select('id, created_at, statut, client_nom, client_telephone, prix_final, lignes')
+    .select('id, created_at, statut, client_nom, client_telephone, prix_final, lignes, ticket_lignes')
     .gte('created_at', resolved.fromDate.toISOString())
     .lt('created_at', resolved.toDateExclusive.toISOString())
     .order('created_at', { ascending: false });
 
   const all = (commandesData || []) as Commande[];
-  const commandes = statut === 'active' ? all.filter((c) => c.statut !== 'annulée') : all;
+  // « Prévu » = tout ce qui est engagé (reçue + prête + livrée), hors annulées.
+  // « Réel »  = ce qui a effectivement été livré. Le CA y est le montant pesé :
+  //   commandeRevenue() privilégie prix_final, posé à l'édition du ticket.
+  const commandes =
+    statut === 'all' ? all
+    : statut === 'livree' ? all.filter((c) => c.statut === 'retirée')
+    : all.filter((c) => c.statut !== 'annulée');
 
   // KPIs
   let revenuTotal = 0;
@@ -205,19 +255,17 @@ export default async function DashboardPage({
   const prodMap = new Map<string, { nom: string; qte: number; ca: number; commandes: number }>();
   for (const c of commandes) {
     const seen = new Set<string>();
-    for (const l of c.lignes || []) {
-      const key = l.produitId || l.nom;
-      if (!key) continue;
-      const cur = prodMap.get(key) || { nom: l.nom, qte: 0, ca: 0, commandes: 0 };
-      const qte = Number(l.quantite || 0);
-      cur.qte += qte;
-      if (l.prix != null) cur.ca += Number(l.prix) * qte;
-      if (!seen.has(key)) {
+    for (const l of lignesPourStats(c, statut === 'livree')) {
+      if (!l.cle) continue;
+      const cur = prodMap.get(l.cle) || { nom: l.nom, qte: 0, ca: 0, commandes: 0 };
+      cur.qte += l.qte;
+      cur.ca += l.ca;
+      if (!seen.has(l.cle)) {
         cur.commandes += 1;
-        seen.add(key);
+        seen.add(l.cle);
       }
       cur.nom = l.nom;
-      prodMap.set(key, cur);
+      prodMap.set(l.cle, cur);
     }
   }
   const topProduits = Array.from(prodMap.values())
@@ -286,6 +334,7 @@ export default async function DashboardPage({
       <div className="mb-8">
         <h2 className="text-2xl font-serif text-neutral-800 mb-2">Tableau de bord</h2>
         <p className="text-sm text-neutral-500">{resolved.label}.</p>
+        <p className="text-xs text-neutral-400 mt-1">{STATUT_LABELS[statut]}.</p>
       </div>
 
       <CommandesBloqueesToggle initial={bloque} />

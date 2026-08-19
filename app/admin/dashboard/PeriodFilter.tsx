@@ -2,6 +2,16 @@
 
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import type { StatutFiltre } from '@/lib/orderStatus'
+
+// « Prévu » vs « Réel » : le premier mesure ce qui est engagé, le second ce qui
+// a effectivement été livré et pesé. L'écart entre les deux = taux de casse
+// (annulations tardives) + écart de pesée.
+const STATUTS: { value: StatutFiltre; label: string; title: string }[] = [
+  { value: 'active', label: 'Prévu', title: 'Commandes engagées : reçues, prêtes et livrées, hors annulées' },
+  { value: 'livree', label: 'Réel', title: 'Commandes effectivement livrées, aux quantités et prix pesés' },
+  { value: 'all', label: 'Toutes', title: 'Toutes les commandes, annulées comprises' },
+]
 
 const PERIODS: { value: string; label: string }[] = [
   { value: '7d', label: '7 j' },
@@ -24,7 +34,7 @@ export default function PeriodFilter({
   period: string
   from: string | null
   to: string | null
-  statut: 'active' | 'all'
+  statut: StatutFiltre
 }) {
   const router = useRouter()
   const params = useSearchParams()
@@ -127,27 +137,21 @@ export default function PeriodFilter({
       )}
 
       <div className="flex flex-wrap gap-2 items-center">
-        <span className="text-[10px] uppercase tracking-widest text-neutral-500 font-medium mr-1">Statut</span>
-        <a
-          href={buildHref({ statut: 'active' })}
-          className={`text-[11px] uppercase tracking-widest font-medium px-3 py-2 border transition-colors ${
-            statut === 'active'
-              ? 'border-green-primary text-green-primary bg-green-primary/5'
-              : 'border-neutral-200 text-neutral-500 hover:border-neutral-400 hover:text-neutral-800'
-          }`}
-        >
-          Hors annulées
-        </a>
-        <a
-          href={buildHref({ statut: 'all' })}
-          className={`text-[11px] uppercase tracking-widest font-medium px-3 py-2 border transition-colors ${
-            statut === 'all'
-              ? 'border-green-primary text-green-primary bg-green-primary/5'
-              : 'border-neutral-200 text-neutral-500 hover:border-neutral-400 hover:text-neutral-800'
-          }`}
-        >
-          Toutes
-        </a>
+        <span className="text-[10px] uppercase tracking-widest text-neutral-500 font-medium mr-1">Vue</span>
+        {STATUTS.map((s) => (
+          <a
+            key={s.value}
+            href={buildHref({ statut: s.value })}
+            title={s.title}
+            className={`text-[11px] uppercase tracking-widest font-medium px-3 py-2 border transition-colors ${
+              statut === s.value
+                ? 'border-green-primary text-green-primary bg-green-primary/5'
+                : 'border-neutral-200 text-neutral-500 hover:border-neutral-400 hover:text-neutral-800'
+            }`}
+          >
+            {s.label}
+          </a>
+        ))}
       </div>
     </div>
   )
